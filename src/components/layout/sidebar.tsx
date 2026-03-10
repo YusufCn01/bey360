@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import Link from "next/link";
@@ -173,7 +173,7 @@ export function Sidebar({ companyName, logoUrl }: SidebarProps) {
           </div>
         ) : null}
         <p className="text-3xl font-bold tracking-tight">{companyName}</p>
-        <p className="text-xs uppercase tracking-[0.15em] text-cyan-200/80">Tek Marka ERP / POS</p>
+        <p className="text-xs uppercase tracking-[0.15em] text-cyan-200/80">Bey360 ERP / POS</p>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-1">
@@ -239,3 +239,4 @@ export function Sidebar({ companyName, logoUrl }: SidebarProps) {
     </aside>
   );
 }
+

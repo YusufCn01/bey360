@@ -24,7 +24,7 @@ export default async function FounderLayout({ children }: { children: ReactNode 
           <div className="flex flex-wrap items-center gap-2">
             <div className="rounded-lg border border-cyan-300/40 bg-slate-900/35 px-3 py-2">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100/80">Kurucu Paneli</p>
-              <p className="text-base font-bold">Tek Marka Platform Yonetimi</p>
+              <p className="text-base font-bold">Bey360 Platform Yonetimi</p>
             </div>
             <Link
               href="/panel"
@@ -57,8 +57,9 @@ export default async function FounderLayout({ children }: { children: ReactNode 
       <main>{children}</main>
 
       <footer className="mt-4 rounded-lg border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-sm font-semibold text-[color:var(--mx-text-muted)]">
-        Copyright (c) 2026 Tek Marka Kurucu Paneli
+        Copyright (c) 2026 Bey360 Kurucu Paneli
       </footer>
     </div>
   );
 }
+

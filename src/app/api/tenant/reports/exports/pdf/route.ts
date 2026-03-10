@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { jsPDF } from "jspdf";
 import { AuthorizationError, requireTenantAccess } from "@/lib/auth/tenant-access";
 import { fail } from "@/lib/http/response";
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text("Beyoğlu Dashboard Raporu", 14, 20);
+    doc.text("Bey360 Dashboard Raporu", 14, 20);
     doc.setFontSize(11);
 
     const lines = [
@@ -48,4 +48,5 @@ export async function GET(request: NextRequest) {
     return fail("PDF raporu hazırlanırken hata oluştu.", "REPORT_PDF_ERROR", 500);
   }
 }
+
 

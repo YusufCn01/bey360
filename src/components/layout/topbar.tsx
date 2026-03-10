@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 
@@ -68,7 +68,7 @@ export function Topbar({
           )}
 
           <div className="mr-2 rounded-lg border border-cyan-200/25 bg-slate-900/20 px-3 py-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">Tek Marka Panel</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">Bey360 Panel</p>
             <p className="text-sm font-bold">{companyName}</p>
           </div>
 
@@ -139,3 +139,4 @@ export function Topbar({
     </header>
   );
 }
+

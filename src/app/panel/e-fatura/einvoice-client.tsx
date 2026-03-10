@@ -71,7 +71,7 @@ export function EInvoiceClient() {
         query.set("status", statusFilter);
       }
 
-      const response = await fetch(`/api/tenant/einvoice/documents${query.toString()}`);
+      const response = await fetch(`/api/tenant/einvoice/documents?${query.toString()}`);
       const body = (await response.json()) as {
         success: boolean;
         data: EInvoiceRow[];

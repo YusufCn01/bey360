@@ -1,5 +1,6 @@
 "use client";
 
+import type { InputHTMLAttributes } from "react";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -65,12 +66,11 @@ type ForgotOtpResponse = {
 };
 
 const features = [
-  "Hızlı satış ve stok yönetimi",
-  "Çoklu şube ve depo desteği",
-  "Gerçek zamanlı raporlama",
-  "Mobil ve masaüstü uyumluluk",
-  "e-Fatura ve e-Arşiv entegrasyonu",
-  "Çok kiracılı güvenli altyapı",
+  "Hızlı satış, ön muhasebe ve stok yönetimi tek panelde",
+  "Çoklu şube ve depo yapısı ile ölçeklenebilir kullanım",
+  "Dokunmatik kasalara uygun modern POS altyapısı",
+  "e-Fatura, e-Arşiv ve raporlama süreçlerinde hazır akışlar",
+  "Bulutta güvenli çalışma, rol bazlı yetki ve audit kayıtları",
 ];
 
 function readApiErrorMessage(raw: unknown, fallback: string): string {
@@ -94,6 +94,19 @@ function formatDateTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+function FieldLabel({ children }: { children: string }) {
+  return <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-[0.08em] text-[#91a4e6]">{children}</label>;
+}
+
+function FieldInput(props: InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className={`h-12 w-full rounded-xl border border-[#3b4e95] bg-[#1f2c66] px-4 text-sm font-semibold text-[#eaf0ff] placeholder:text-[#7f92d1] outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/30 ${props.className ?? ""}`}
+    />
+  );
 }
 
 export function LoginForm() {
@@ -203,13 +216,13 @@ export function LoginForm() {
     }
 
     router.push("/panel");
-    router.refresh();
   });
 
   const submitDemo = demoForm.handleSubmit(async (values) => {
     setDemoBusy(true);
     setDemoError(null);
     setDemoSuccess(null);
+
     try {
       const response = await fetch("/api/auth/demo-account", {
         method: "POST",
@@ -224,9 +237,8 @@ export function LoginForm() {
         throw new Error(readApiErrorMessage(raw, "Demo hesap açılamadı."));
       }
 
-      setDemoSuccess("Demo hesabınız açıldı. Yönetim paneline yönlendiriliyorsunuz...");
+      setDemoSuccess("Demo hesabınız açıldı. Yönlendiriliyorsunuz...");
       router.push("/panel");
-      router.refresh();
     } catch (requestError) {
       setDemoError(requestError instanceof Error ? requestError.message : "Demo hesap açılamadı.");
     } finally {
@@ -238,6 +250,7 @@ export function LoginForm() {
     setForgotBusy(true);
     setForgotError(null);
     setForgotMessage(null);
+
     try {
       const response = await fetch("/api/auth/password/forgot", {
         method: "POST",
@@ -246,6 +259,7 @@ export function LoginForm() {
         },
         body: JSON.stringify(values),
       });
+
       const raw = (await response.json().catch(() => null)) as
         | { success: true; data: ForgotOtpResponse }
         | ApiErrorEnvelope
@@ -274,13 +288,14 @@ export function LoginForm() {
 
   const submitForgotReset = forgotResetForm.handleSubmit(async (values) => {
     if (!forgotContext) {
-      setForgotError("Önce SMS kodu almanız gerekiyor.");
+      setForgotError("Önce SMS kodu almalısınız.");
       return;
     }
 
     setForgotBusy(true);
     setForgotError(null);
     setForgotMessage(null);
+
     try {
       const response = await fetch("/api/auth/password/reset", {
         method: "POST",
@@ -295,6 +310,7 @@ export function LoginForm() {
           confirmPassword: values.confirmPassword,
         }),
       });
+
       const raw = (await response.json().catch(() => null)) as
         | { success: true; data: { message: string } }
         | ApiErrorEnvelope
@@ -321,191 +337,171 @@ export function LoginForm() {
 
   return (
     <>
-      <div className="mx-auto w-full max-w-[980px] overflow-hidden rounded-[30px] border border-[#4e5ca5]/50 bg-[#26336f]/80 shadow-[0_30px_90px_rgba(8,16,52,0.55)] backdrop-blur-sm">
-        <div className="grid min-h-[640px] grid-cols-1 md:grid-cols-[1.1fr_1fr]">
-          <section className="relative p-6 md:p-8">
-            <div className="mb-6">
-              <p className="text-[36px] font-black uppercase tracking-[0.08em] text-white">Motus Bulut</p>
-              <p className="text-sm font-semibold text-[#b8c1f0]">Yeni Nesil Satış Platformu</p>
-            </div>
+      <div className="mx-auto w-full max-w-[1120px] overflow-hidden rounded-[30px] border border-[#4156a6]/60 bg-[#121d4b]/75 shadow-[0_30px_100px_rgba(3,10,35,0.6)] backdrop-blur-sm">
+        <div className="grid min-h-[680px] grid-cols-1 lg:grid-cols-[1.2fr_1fr]">
+          <aside className="relative overflow-hidden border-b border-[#33478f] bg-gradient-to-br from-[#152058] via-[#141f4d] to-[#0f173e] p-7 lg:border-b-0 lg:border-r lg:p-10">
+            <div className="pointer-events-none absolute -right-20 top-4 h-72 w-72 rounded-full bg-cyan-300/10 blur-2xl" />
+            <div className="pointer-events-none absolute -left-16 bottom-8 h-64 w-64 rounded-full bg-emerald-300/10 blur-2xl" />
 
-            <div className="mb-5 grid grid-cols-2 rounded-2xl border border-[#4f5fab] bg-[#2a3878] p-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab("login")}
-                className={`h-11 rounded-xl text-sm font-bold transition ${
-                  activeTab === "login" ? "bg-[#5c6aa8] text-white shadow-[0_8px_16px_rgba(15,22,61,0.4)]" : "text-[#aab3df]"
-                }`}
-              >
-                Giriş Yap
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("demo")}
-                className={`h-11 rounded-xl text-sm font-bold transition ${
-                  activeTab === "demo" ? "bg-[#5c6aa8] text-white shadow-[0_8px_16px_rgba(15,22,61,0.4)]" : "text-[#aab3df]"
-                }`}
-              >
-                Demo Hesap Aç
-              </button>
-            </div>
-
-            {activeTab === "login" ? (
-              <form onSubmit={submitLogin} className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Şirket Alanı</label>
-                  <input
-                    className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-base font-semibold text-white placeholder:text-[#95a0d2]"
-                    {...loginForm.register("tenantSlug")}
-                    placeholder="ornek-bayi"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Kullanıcı</label>
-                  <input
-                    className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-base font-semibold text-white placeholder:text-[#95a0d2]"
-                    {...loginForm.register("loginId")}
-                    placeholder="E-posta veya kullanıcı adı"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Şifre</label>
-                  <input
-                    type="password"
-                    className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-base font-semibold text-white placeholder:text-[#95a0d2]"
-                    {...loginForm.register("password")}
-                  />
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={openForgotModal}
-                    className="text-sm font-semibold text-[#cbd3ff] underline-offset-4 hover:text-white hover:underline"
-                  >
-                    Şifremi Unuttum
-                  </button>
-                </div>
-
-                {loginError ? (
-                  <p className="rounded-xl border border-rose-300/50 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-100">
-                    {loginError}
-                  </p>
-                ) : null}
-
-                <div className="pt-2">
-                  <Button
-                    type="submit"
-                    className="h-12 w-full rounded-xl border border-emerald-300/30 bg-emerald-600 text-lg font-black text-white hover:bg-emerald-500"
-                    disabled={loginBusy}
-                  >
-                    {loginBusy ? "Giriş yapılıyor..." : "Giriş Yap"}
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={submitDemo} className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">GSM Numarası</label>
-                  <input
-                    className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-base font-semibold text-white placeholder:text-[#95a0d2]"
-                    placeholder="05xx xxx xx xx"
-                    {...demoForm.register("gsmNumber")}
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Şirket Yılı</label>
-                    <input
-                      type="number"
-                      min={2000}
-                      max={2100}
-                      className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-base font-semibold text-white placeholder:text-[#95a0d2]"
-                      {...demoForm.register("companyYear", { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Kullanıcı</label>
-                    <input
-                      className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-base font-semibold text-white placeholder:text-[#95a0d2]"
-                      {...demoForm.register("username")}
-                      placeholder="admin"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Şirket Adı</label>
-                  <input
-                    className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-base font-semibold text-white placeholder:text-[#95a0d2]"
-                    placeholder="Örn: Tek Marka Market"
-                    {...demoForm.register("companyName")}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Şifre</label>
-                  <input
-                    type="password"
-                    className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-base font-semibold text-white placeholder:text-[#95a0d2]"
-                    {...demoForm.register("password")}
-                  />
-                </div>
-
-                {demoSuccess ? (
-                  <p className="rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100">
-                    {demoSuccess}
-                  </p>
-                ) : null}
-                {demoError ? (
-                  <p className="rounded-xl border border-rose-300/50 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-100">
-                    {demoError}
-                  </p>
-                ) : null}
-
-                <div className="pt-2">
-                  <Button
-                    type="submit"
-                    className="h-12 w-full rounded-xl border border-cyan-300/20 bg-cyan-600 text-lg font-black text-white hover:bg-cyan-500"
-                    disabled={demoBusy}
-                  >
-                    {demoBusy ? "Demo hesap açılıyor..." : "Demo Hesap Aç"}
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            <div className="mt-5 rounded-xl border border-[#4f5fab] bg-[#313f7a] px-4 py-3 text-sm">
-              <p className="font-semibold text-[#c9d1fb]">Yeni bayi olmak ister misiniz?</p>
-              <Link href="/bayi-basvuru" className="mt-1 inline-block font-black text-emerald-300 hover:text-emerald-200">
-                Bayi Başvuru Formuna Git
-              </Link>
-            </div>
-          </section>
-
-          <aside className="relative border-t border-[#4e5ca5]/40 bg-[#1f2a66]/95 p-7 md:border-l md:border-t-0 md:p-10">
-            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#4b5ca8]/20" />
-            <div className="pointer-events-none absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-[#4b5ca8]/20" />
             <div className="relative">
-              <h2 className="text-4xl font-black leading-tight text-white">Bulutun Konforunu Keşfedin</h2>
-              <p className="mt-3 text-base font-semibold text-[#adb7e8]">Tüm cihazlardan erişim, hızlı kullanım, canlı operasyon.</p>
+              <div className="mb-7 flex items-center gap-3">
+                <div className="grid h-12 w-12 place-items-center rounded-xl border border-cyan-300/40 bg-cyan-300/15 text-sm font-black tracking-widest text-cyan-100">
+                  B360
+                </div>
+                <div>
+                  <p className="text-3xl font-black tracking-tight text-white">Bey360</p>
+                  <p className="text-sm font-semibold text-[#9fb4ff]">Ticari Yönetim Platformu</p>
+                </div>
+              </div>
+
+              <h2 className="max-w-md text-4xl font-black leading-tight text-white">Bulutta hızlı, sahada güçlü ticari operasyon</h2>
+              <p className="mt-4 max-w-md text-sm font-semibold leading-6 text-[#aec0ff]">
+                Perakende, market ve ön muhasebe süreçlerinizi tek marka altında yönetin. Bey360 ile satıştan raporlamaya kadar tüm
+                süreçler tek panelde.
+              </p>
 
               <ul className="mt-8 space-y-3">
                 {features.map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-base font-semibold text-[#d7ddff]">
-                    <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
+                  <li key={item} className="flex items-start gap-3 rounded-xl border border-[#3a4d97] bg-[#101947]/55 px-3 py-2 text-sm text-[#e4ebff]">
+                    <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-400/20 text-emerald-300">
                       ✓
                     </span>
-                    <span>{item}</span>
+                    <span className="font-medium">{item}</span>
                   </li>
                 ))}
               </ul>
             </div>
           </aside>
+
+          <section className="bg-[#1a275f]/90 p-6 sm:p-8">
+            <div className="rounded-2xl border border-[#3e53a1] bg-[#151f52]/80 p-2">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("login")}
+                  className={`h-11 rounded-xl text-sm font-black transition ${
+                    activeTab === "login" ? "bg-[#5a6db4] text-white shadow-[0_10px_20px_rgba(0,0,0,0.25)]" : "text-[#9bb0ef]"
+                  }`}
+                >
+                  Giriş Yap
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("demo")}
+                  className={`h-11 rounded-xl text-sm font-black transition ${
+                    activeTab === "demo" ? "bg-[#5a6db4] text-white shadow-[0_10px_20px_rgba(0,0,0,0.25)]" : "text-[#9bb0ef]"
+                  }`}
+                >
+                  Demo Hesap Aç
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              {activeTab === "login" ? (
+                <form onSubmit={submitLogin} className="space-y-3">
+                  <div>
+                    <FieldLabel>Şirket Alanı</FieldLabel>
+                    <FieldInput {...loginForm.register("tenantSlug")} placeholder="ornek-bayi" />
+                  </div>
+
+                  <div>
+                    <FieldLabel>Kullanıcı</FieldLabel>
+                    <FieldInput {...loginForm.register("loginId")} placeholder="E-posta veya kullanıcı adı" />
+                  </div>
+
+                  <div>
+                    <FieldLabel>Şifre</FieldLabel>
+                    <FieldInput type="password" {...loginForm.register("password")} />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={openForgotModal}
+                      className="text-sm font-semibold text-[#c7d4ff] underline-offset-4 hover:text-white hover:underline"
+                    >
+                      Şifremi Unuttum
+                    </button>
+                  </div>
+
+                  {loginError ? (
+                    <p className="rounded-xl border border-rose-300/50 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-100">{loginError}</p>
+                  ) : null}
+
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      className="h-12 w-full rounded-xl border border-emerald-300/30 bg-emerald-600 text-base font-black text-white hover:bg-emerald-500"
+                      disabled={loginBusy}
+                    >
+                      {loginBusy ? "Giriş yapılıyor..." : "Giriş Yap"}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={submitDemo} className="space-y-3">
+                  <div>
+                    <FieldLabel>GSM Numarası</FieldLabel>
+                    <FieldInput placeholder="05xx xxx xx xx" {...demoForm.register("gsmNumber")} />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <FieldLabel>Şirket Yılı</FieldLabel>
+                      <FieldInput type="number" min={2000} max={2100} {...demoForm.register("companyYear", { valueAsNumber: true })} />
+                    </div>
+                    <div>
+                      <FieldLabel>Kullanıcı</FieldLabel>
+                      <FieldInput placeholder="admin" {...demoForm.register("username")} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <FieldLabel>Şirket Adı</FieldLabel>
+                    <FieldInput placeholder="Örn: Bey360 Market" {...demoForm.register("companyName")} />
+                  </div>
+
+                  <div>
+                    <FieldLabel>Şifre</FieldLabel>
+                    <FieldInput type="password" {...demoForm.register("password")} />
+                  </div>
+
+                  {demoSuccess ? (
+                    <p className="rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100">
+                      {demoSuccess}
+                    </p>
+                  ) : null}
+                  {demoError ? (
+                    <p className="rounded-xl border border-rose-300/50 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-100">{demoError}</p>
+                  ) : null}
+
+                  <div className="pt-2">
+                    <Button
+                      type="submit"
+                      className="h-12 w-full rounded-xl border border-cyan-300/20 bg-cyan-600 text-base font-black text-white hover:bg-cyan-500"
+                      disabled={demoBusy}
+                    >
+                      {demoBusy ? "Demo hesap açılıyor..." : "Demo Hesap Aç"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            <div className="mt-6 rounded-xl border border-[#3a4f9a] bg-[#121c4b] px-4 py-3 text-sm">
+              <p className="font-semibold text-[#c8d5ff]">Yeni bayi olmak ister misiniz?</p>
+              <Link href="/bayi-basvuru" className="mt-1 inline-block font-black text-emerald-300 hover:text-emerald-200">
+                Bayi Başvuru Formuna Git
+              </Link>
+            </div>
+          </section>
         </div>
       </div>
 
       {forgotOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-[#4e5ca5] bg-[#24306a] p-5 shadow-[0_24px_60px_rgba(7,12,39,0.65)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-[#3f539d] bg-[#162259] p-5 shadow-[0_24px_60px_rgba(7,12,39,0.65)]">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-lg font-black text-white">Şifremi Unuttum</p>
               <button
@@ -520,31 +516,20 @@ export function LoginForm() {
             {forgotStep === "send" ? (
               <form onSubmit={submitForgotSend} className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Şirket Alanı</label>
-                  <input
-                    className="h-11 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
-                    {...forgotSendForm.register("tenantSlug")}
-                  />
+                  <FieldLabel>Şirket Alanı</FieldLabel>
+                  <FieldInput {...forgotSendForm.register("tenantSlug")} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Kullanıcı</label>
-                  <input
-                    className="h-11 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
-                    {...forgotSendForm.register("loginId")}
-                    placeholder="E-posta veya kullanıcı adı"
-                  />
+                  <FieldLabel>Kullanıcı</FieldLabel>
+                  <FieldInput {...forgotSendForm.register("loginId")} placeholder="E-posta veya kullanıcı adı" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">GSM Numarası</label>
-                  <input
-                    className="h-11 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
-                    {...forgotSendForm.register("gsmNumber")}
-                    placeholder="05xx xxx xx xx"
-                  />
+                  <FieldLabel>GSM Numarası</FieldLabel>
+                  <FieldInput {...forgotSendForm.register("gsmNumber")} placeholder="05xx xxx xx xx" />
                 </div>
                 <Button
                   type="submit"
-                  className="h-11 w-full rounded-xl bg-cyan-600 text-base font-black hover:bg-cyan-500"
+                  className="h-11 w-full rounded-xl bg-cyan-600 text-base font-black text-white hover:bg-cyan-500"
                   disabled={forgotBusy}
                 >
                   {forgotBusy ? "Kod gönderiliyor..." : "SMS Kod Gönder"}
@@ -565,29 +550,16 @@ export function LoginForm() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">SMS Kodu</label>
-                  <input
-                    className="h-11 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold tracking-[0.25em] text-white placeholder:text-[#95a0d2]"
-                    {...forgotResetForm.register("otpCode")}
-                    placeholder="000000"
-                    maxLength={6}
-                  />
+                  <FieldLabel>SMS Kodu</FieldLabel>
+                  <FieldInput {...forgotResetForm.register("otpCode")} placeholder="000000" maxLength={6} className="tracking-[0.25em]" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Yeni Şifre</label>
-                  <input
-                    type="password"
-                    className="h-11 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
-                    {...forgotResetForm.register("newPassword")}
-                  />
+                  <FieldLabel>Yeni Şifre</FieldLabel>
+                  <FieldInput type="password" {...forgotResetForm.register("newPassword")} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Yeni Şifre Tekrar</label>
-                  <input
-                    type="password"
-                    className="h-11 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
-                    {...forgotResetForm.register("confirmPassword")}
-                  />
+                  <FieldLabel>Yeni Şifre Tekrar</FieldLabel>
+                  <FieldInput type="password" {...forgotResetForm.register("confirmPassword")} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -606,7 +578,7 @@ export function LoginForm() {
                   </Button>
                   <Button
                     type="submit"
-                    className="h-11 rounded-xl bg-emerald-600 text-base font-black hover:bg-emerald-500"
+                    className="h-11 rounded-xl bg-emerald-600 text-base font-black text-white hover:bg-emerald-500"
                     disabled={forgotBusy}
                   >
                     {forgotBusy ? "Şifre güncelleniyor..." : "Şifreyi Yenile"}

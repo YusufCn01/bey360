@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 
@@ -13,7 +13,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tek Marka - Bulut ERP / POS",
+  title: "Bey360 - Bulut ERP / POS",
   description: "Türkiye odaklı çok kiracılı SaaS ERP, POS ve ticari otomasyon platformu",
 };
 
@@ -39,3 +39,4 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
+

@@ -13,7 +13,7 @@ export default async function FounderLoginPage() {
     <div className="mx-panel-shell flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md border-[color:var(--mx-border-strong)]">
         <CardHeader className="bg-[linear-gradient(110deg,var(--mx-topbar-from),var(--mx-topbar-mid),var(--mx-topbar-to))] text-white">
-          <CardTitle className="text-xl text-white">Tek Marka Kurucu Paneli</CardTitle>
+          <CardTitle className="text-xl text-white">Bey360 Kurucu Paneli</CardTitle>
           <p className="text-sm text-cyan-100">Bayilik, lisans ve duyuru yonetimi</p>
         </CardHeader>
         <CardContent>
@@ -23,3 +23,4 @@ export default async function FounderLoginPage() {
     </div>
   );
 }
+

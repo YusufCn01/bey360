@@ -113,13 +113,13 @@ export function DealerApplicationForm() {
 
       const body = (await response.json().catch(() => null)) as ApiEnvelope<DealerApplicationResponse> | null;
       if (!response.ok || !body?.success || !body.data) {
-        throw new Error(body?.error?.message ?? "Başvuru gönderilemedi.");
+        throw new Error(body?.error?.message ?? "BaÅŸvuru gÃ¶nderilemedi.");
       }
 
       setResult(body.data);
       setForm(initialFormState);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Başvuru gönderilemedi.");
+      setError(requestError instanceof Error ? requestError.message : "BaÅŸvuru gÃ¶nderilemedi.");
     } finally {
       setSubmitting(false);
     }
@@ -129,26 +129,26 @@ export function DealerApplicationForm() {
     <div className="mx-auto w-full max-w-[1100px] rounded-[28px] border border-[#4e5ca5]/50 bg-[#25336f]/85 p-6 text-white shadow-[0_30px_90px_rgba(8,16,52,0.55)] backdrop-blur-sm md:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[34px] font-black uppercase tracking-[0.06em] text-white">Bayi Başvuru Formu</p>
-          <p className="text-sm font-semibold text-[#b8c1f0]">Tek Marka ekibine başvurunuzu iletin, ekibimiz size hızlıca dönüş yapsın.</p>
+          <p className="text-[34px] font-black uppercase tracking-[0.06em] text-white">Bayi BaÅŸvuru Formu</p>
+          <p className="text-sm font-semibold text-[#b8c1f0]">Bey360 ekibine baÅŸvurunuzu iletin, ekibimiz size hÄ±zlÄ±ca dÃ¶nÃ¼ÅŸ yapsÄ±n.</p>
         </div>
         <Link
           href="/giris"
           className="rounded-xl border border-[#5f71bd] bg-[#3a4a88] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#485a9a]"
         >
-          Giriş Ekranına Dön
+          GiriÅŸ EkranÄ±na DÃ¶n
         </Link>
       </div>
 
       <form onSubmit={submit} className="space-y-4">
         <div className="grid gap-3 md:grid-cols-3">
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Firma Adı</label>
+            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Firma AdÄ±</label>
             <input
               className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
               value={form.companyName}
               onChange={(event) => patch("companyName", event.target.value)}
-              placeholder="Örn: Tek Marka Marketçilik A.Ş."
+              placeholder="Ã–rn: Bey360 MarketÃ§ilik A.Å."
               required
             />
           </div>
@@ -158,7 +158,7 @@ export function DealerApplicationForm() {
               className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
               value={form.tradeName}
               onChange={(event) => patch("tradeName", event.target.value)}
-              placeholder="Örn: Tek Marka"
+              placeholder="Ã–rn: Bey360"
             />
           </div>
         </div>
@@ -175,7 +175,7 @@ export function DealerApplicationForm() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Yetkili Adı</label>
+            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Yetkili AdÄ±</label>
             <input
               className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
               value={form.contactFirstName}
@@ -184,7 +184,7 @@ export function DealerApplicationForm() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Yetkili Soyadı</label>
+            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Yetkili SoyadÄ±</label>
             <input
               className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
               value={form.contactLastName}
@@ -193,12 +193,12 @@ export function DealerApplicationForm() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Görevi</label>
+            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">GÃ¶revi</label>
             <input
               className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
               value={form.contactTitle}
               onChange={(event) => patch("contactTitle", event.target.value)}
-              placeholder="Örn: İşletme Sahibi"
+              placeholder="Ã–rn: Ä°ÅŸletme Sahibi"
             />
           </div>
         </div>
@@ -225,7 +225,7 @@ export function DealerApplicationForm() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">İl</label>
+            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Ä°l</label>
             <input
               className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
               value={form.city}
@@ -234,7 +234,7 @@ export function DealerApplicationForm() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">İlçe</label>
+            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Ä°lÃ§e</label>
             <input
               className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
               value={form.district}
@@ -245,7 +245,7 @@ export function DealerApplicationForm() {
 
         <div className="grid gap-3 md:grid-cols-4">
           <div>
-            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Talep Planı</label>
+            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Talep PlanÄ±</label>
             <select
               className="h-12 w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 text-sm font-semibold text-white"
               value={form.requestedPlan}
@@ -259,7 +259,7 @@ export function DealerApplicationForm() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Şube Sayısı</label>
+            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Åube SayÄ±sÄ±</label>
             <input
               type="number"
               min={1}
@@ -271,7 +271,7 @@ export function DealerApplicationForm() {
             />
           </div>
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">Aylık Ciro Hedefi (TL)</label>
+            <label className="mb-1 block text-xs font-black uppercase tracking-[0.08em] text-[#aeb7e3]">AylÄ±k Ciro Hedefi (TL)</label>
             <input
               type="number"
               min={0}
@@ -290,7 +290,7 @@ export function DealerApplicationForm() {
             className="w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 py-3 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
             value={form.address}
             onChange={(event) => patch("address", event.target.value)}
-            placeholder="Açık adres"
+            placeholder="AÃ§Ä±k adres"
           />
         </div>
 
@@ -301,15 +301,15 @@ export function DealerApplicationForm() {
             className="w-full rounded-xl border border-[#4f5fab] bg-[#3a467f] px-4 py-3 text-sm font-semibold text-white placeholder:text-[#95a0d2]"
             value={form.note}
             onChange={(event) => patch("note", event.target.value)}
-            placeholder="Operasyon türü, kasa sayısı, e-ticaret ihtiyacı vb."
+            placeholder="Operasyon tÃ¼rÃ¼, kasa sayÄ±sÄ±, e-ticaret ihtiyacÄ± vb."
           />
         </div>
 
         {result ? (
           <div className="rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-4 py-3 text-sm font-semibold text-emerald-100">
-            Başvurunuz alındı. Başvuru No: <span className="font-black">{result.applicationNumber}</span>
+            BaÅŸvurunuz alÄ±ndÄ±. BaÅŸvuru No: <span className="font-black">{result.applicationNumber}</span>
             <br />
-            Kayıt Zamanı: {formatDate(result.submittedAt)}
+            KayÄ±t ZamanÄ±: {formatDate(result.submittedAt)}
           </div>
         ) : null}
 
@@ -332,10 +332,11 @@ export function DealerApplicationForm() {
             Formu Temizle
           </Button>
           <Button type="submit" className="h-12 rounded-xl bg-emerald-600 px-7 text-base font-black text-white hover:bg-emerald-500" disabled={submitting}>
-            {submitting ? "Başvuru Gönderiliyor..." : "Başvuruyu Gönder"}
+            {submitting ? "BaÅŸvuru GÃ¶nderiliyor..." : "BaÅŸvuruyu GÃ¶nder"}
           </Button>
         </div>
       </form>
     </div>
   );
 }
+

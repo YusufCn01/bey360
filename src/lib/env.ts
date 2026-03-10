@@ -1,8 +1,8 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  APP_NAME: z.string().default("Beyoğlu"),
+  APP_NAME: z.string().default("Bey360"),
   APP_URL: z.string().url().default("http://localhost:3000"),
   APP_SECRET: z.string().min(32).default("local-development-secret-please-change-immediately-1234"),
   DATABASE_URL: z.string().min(1).default("postgresql://postgres:postgres@localhost:5432/muhasebe?schema=public"),
@@ -30,4 +30,5 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
 
