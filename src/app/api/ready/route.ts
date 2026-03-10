@@ -5,14 +5,26 @@ import { redis } from "@/lib/queue/redis";
 export async function GET() {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    await redis.ping();
+
+    let redisState: "ok" | "degraded" = "ok";
+    let redisError: string | null = null;
+
+    try {
+      await redis.ping();
+    } catch (error) {
+      // Redis is optional for basic auth/panel flows.
+      // Do not fail whole readiness when only Redis is unavailable.
+      redisState = "degraded";
+      redisError = error instanceof Error ? error.message : "Redis ulasilamiyor";
+    }
 
     return NextResponse.json({
       status: "ready",
       checks: {
         database: "ok",
-        redis: "ok",
+        redis: redisState,
       },
+      ...(redisError ? { warnings: { redis: redisError } } : {}),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
