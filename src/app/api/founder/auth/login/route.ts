@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { isDatabaseConnectionError } from "@/lib/db/error-utils";
 import { fail, ok } from "@/lib/http/response";
 import { setFounderSessionCookie, signFounderSession } from "@/lib/auth/founder-session";
 import { hashPassword, verifyPassword } from "@/lib/security/password";
@@ -70,7 +71,15 @@ export async function POST(request: NextRequest) {
       fullName: founder.fullName,
       bootstrapped,
     });
-  } catch {
+  } catch (error) {
+    if (isDatabaseConnectionError(error)) {
+      return fail(
+        "Veritabani baglantisi kurulamadi. Sunucu ayarlarinda DATABASE_URL ve migration adimlarini kontrol edin.",
+        "DB_CONNECTION_ERROR",
+        503,
+      );
+    }
+
     return fail("Kurucu girisi sirasinda hata olustu.", "FOUNDER_LOGIN_ERROR", 500);
   }
 }

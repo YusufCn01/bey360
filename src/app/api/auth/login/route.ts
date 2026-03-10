@@ -3,6 +3,7 @@ import { AuthError, login } from "@/lib/auth/service";
 import { setSessionCookies } from "@/lib/auth/session";
 import { loginSchema } from "@/lib/auth/validators";
 import { writeAuditLog } from "@/lib/audit/audit-service";
+import { isDatabaseConnectionError } from "@/lib/db/error-utils";
 import { fail, ok } from "@/lib/http/response";
 
 export async function POST(request: NextRequest) {
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
   const parsed = loginSchema.safeParse(body);
 
   if (!parsed.success) {
-    return fail("Giriş formu geçersiz.", "VALIDATION_ERROR", 422);
+    return fail("Giris formu gecersiz.", "VALIDATION_ERROR", 422);
   }
 
   try {
@@ -44,6 +45,14 @@ export async function POST(request: NextRequest) {
       return fail(error.message, error.code, 401);
     }
 
-    return fail("Giriş sırasında beklenmeyen bir hata oluştu.", "INTERNAL_ERROR", 500);
+    if (isDatabaseConnectionError(error)) {
+      return fail(
+        "Veritabani baglantisi kurulamadi. Sunucu ayarlarinda DATABASE_URL ve migration adimlarini kontrol edin.",
+        "DB_CONNECTION_ERROR",
+        503,
+      );
+    }
+
+    return fail("Giris sirasinda beklenmeyen bir hata olustu.", "INTERNAL_ERROR", 500);
   }
 }
