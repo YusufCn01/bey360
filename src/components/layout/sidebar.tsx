@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 type SidebarProps = {
   companyName: string;
   logoUrl?: string;
+  className?: string;
+  onNavigate?: () => void;
 };
 
 function isPathActive(pathname: string, href: string) {
@@ -140,7 +142,7 @@ function getInitialSectionState(pathname: string) {
   return state;
 }
 
-export function Sidebar({ companyName, logoUrl }: SidebarProps) {
+export function Sidebar({ companyName, logoUrl, className, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => getInitialSectionState(pathname));
 
@@ -159,7 +161,7 @@ export function Sidebar({ companyName, logoUrl }: SidebarProps) {
 
   return (
     <aside
-      className="sticky top-0 flex h-screen w-72 shrink-0 flex-col border-r text-white"
+      className={cn("flex min-h-0 shrink-0 flex-col border-r text-white", className)}
       style={{
         borderColor: "var(--mx-border-strong)",
         background: "linear-gradient(to bottom, var(--mx-sidebar-from), var(--mx-sidebar-to))",
@@ -208,6 +210,7 @@ export function Sidebar({ companyName, logoUrl }: SidebarProps) {
                         <Link
                           key={item.href}
                           href={item.href}
+                          onClick={onNavigate}
                           className={cn(
                             "flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition",
                             itemActive ? "bg-white/14 text-cyan-100" : "text-slate-200 hover:bg-white/10 hover:text-white",

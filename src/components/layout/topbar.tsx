@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -27,6 +29,7 @@ type TopbarProps = {
     isForce: boolean;
     publishedAt?: string;
   } | null;
+  onToggleSidebar?: () => void;
 };
 
 const demoToneClassMap: Record<DemoStateTone, string> = {
@@ -45,6 +48,7 @@ export function Topbar({
   demoState,
   maintenanceState = null,
   updateNotice = null,
+  onToggleSidebar,
 }: TopbarProps) {
   return (
     <header
@@ -56,6 +60,15 @@ export function Topbar({
     >
       <div className="flex flex-col gap-3 px-3 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-cyan-200/35 bg-slate-900/25 text-cyan-100 lg:hidden"
+            aria-label="Menüyü aç"
+          >
+            ☰
+          </button>
+
           {logoUrl ? (
             <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-lg border border-cyan-200/40 bg-slate-900/20">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -67,26 +80,26 @@ export function Topbar({
             </div>
           )}
 
-          <div className="mr-2 rounded-lg border border-cyan-200/25 bg-slate-900/20 px-3 py-1.5">
+          <div className="mr-1 rounded-lg border border-cyan-200/25 bg-slate-900/20 px-3 py-1.5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100/80">Bey360 Panel</p>
             <p className="text-sm font-bold">{companyName}</p>
           </div>
 
           <Link
             href="/panel"
-            className="rounded-lg border border-cyan-200/30 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-300/20"
+            className="hidden rounded-lg border border-cyan-200/30 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-300/20 md:inline-flex"
           >
             Gösterge Paneli
           </Link>
           <Link
             href="/panel/ayarlar"
-            className="rounded-lg border border-amber-200/50 bg-amber-300/20 px-4 py-2 text-sm font-semibold text-amber-50 transition hover:bg-amber-300/30"
+            className="hidden rounded-lg border border-amber-200/50 bg-amber-300/20 px-4 py-2 text-sm font-semibold text-amber-50 transition hover:bg-amber-300/30 xl:inline-flex"
           >
             Firma Ayarları
           </Link>
           <Link
             href="/pos"
-            className="rounded-lg border border-emerald-200/50 bg-emerald-300/20 px-4 py-2 text-sm font-semibold text-emerald-50 transition hover:bg-emerald-300/30"
+            className="hidden rounded-lg border border-emerald-200/50 bg-emerald-300/20 px-4 py-2 text-sm font-semibold text-emerald-50 transition hover:bg-emerald-300/30 lg:inline-flex"
           >
             Tam Ekran POS
           </Link>
@@ -96,8 +109,8 @@ export function Topbar({
           <ThemeToggle />
           <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2 text-cyan-100/90">{tenantSlug}</div>
           <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2">{userName}</div>
-          <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2">Şube: {branchName}</div>
-          <div className="rounded-lg border border-amber-200/40 bg-amber-300/15 px-3 py-2 text-amber-50">Duyurular</div>
+          <div className="hidden rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2 sm:inline-flex">Şube: {branchName}</div>
+          <div className="hidden rounded-lg border border-amber-200/40 bg-amber-300/15 px-3 py-2 text-amber-50 xl:inline-flex">Duyurular</div>
           <form action="/api/auth/logout" method="post">
             <Button
               type="submit"

@@ -1,7 +1,6 @@
 ﻿import type { ReactNode } from "react";
 import { cookies } from "next/headers";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Topbar } from "@/components/layout/topbar";
+import { PanelShell } from "@/components/layout/panel-shell";
 import { ACCESS_COOKIE } from "@/lib/auth/session";
 import { isDatabaseConnectionError } from "@/lib/db/error-utils";
 import { prisma } from "@/lib/db/prisma";
@@ -270,44 +269,28 @@ export default async function PanelLayout({ children }: { children: ReactNode })
     const logoUrl = companyUiSettings.logoUrl || undefined;
 
     return (
-      <div className="mx-panel-shell flex min-h-screen">
-        <Sidebar companyName={companyName} logoUrl={logoUrl} />
-        <div className="flex min-h-screen flex-1 flex-col overflow-hidden">
-          <Topbar
-            companyName={companyName}
-            tenantSlug={tenant.tenantSlug}
-            userName={userName}
-            branchName={branchName}
-            logoUrl={logoUrl}
-            demoState={demoState}
-            maintenanceState={maintenanceState}
-            updateNotice={updateNotice}
-          />
-          <main className="flex-1 overflow-y-auto p-3">
-            {maintenanceState.enabled ? (
-              <section className="rounded-xl border border-rose-300 bg-rose-50 p-6 text-rose-900 shadow-sm">
-                <h2 className="text-xl font-black">Platform Bakim Modu Aktif</h2>
-                <p className="mt-2 text-sm font-semibold">{maintenanceState.message}</p>
-                <p className="mt-2 text-xs text-rose-700">
-                  Yazma islemleri gecici olarak durduruldu. Bu ekran bakim bitene kadar pasif kalir.
-                </p>
-              </section>
-            ) : (
-              children
-            )}
-          </main>
-          <footer
-            className="border-t px-4 py-2 text-sm font-semibold"
-            style={{
-              borderColor: "var(--mx-border-strong)",
-              backgroundColor: "color-mix(in srgb, var(--mx-topbar-to) 88%, black 12%)",
-              color: "color-mix(in srgb, var(--mx-text) 90%, white 35%)",
-            }}
-          >
-            Copyright (c) 2026 {companyName}
-          </footer>
-        </div>
-      </div>
+      <PanelShell
+        companyName={companyName}
+        tenantSlug={tenant.tenantSlug}
+        userName={userName}
+        branchName={branchName}
+        logoUrl={logoUrl}
+        demoState={demoState}
+        maintenanceState={maintenanceState}
+        updateNotice={updateNotice}
+      >
+        {maintenanceState.enabled ? (
+          <section className="rounded-xl border border-rose-300 bg-rose-50 p-6 text-rose-900 shadow-sm">
+            <h2 className="text-xl font-black">Platform Bakim Modu Aktif</h2>
+            <p className="mt-2 text-sm font-semibold">{maintenanceState.message}</p>
+            <p className="mt-2 text-xs text-rose-700">
+              Yazma islemleri gecici olarak durduruldu. Bu ekran bakim bitene kadar pasif kalir.
+            </p>
+          </section>
+        ) : (
+          children
+        )}
+      </PanelShell>
     );
   } catch (error) {
     const message = isDatabaseConnectionError(error)

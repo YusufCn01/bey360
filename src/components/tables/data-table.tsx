@@ -23,7 +23,8 @@ export function DataTable<TData, TValue>({
   data,
   globalFilterPlaceholder = "Ara...",
 }: DataTableProps<TData, TValue>) {
-  const [globalFilter, setGlobalFilter] = React.useState("");
+  const [globalFilterInput, setGlobalFilterInput] = React.useState("");
+  const globalFilter = React.useDeferredValue(globalFilterInput);
 
   const table = useReactTable({
     data,
@@ -31,21 +32,24 @@ export function DataTable<TData, TValue>({
     state: {
       globalFilter,
     },
-    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  React.useEffect(() => {
+    table.setPageSize(20);
+  }, [table]);
+
   return (
     <div className="space-y-3">
       <input
-        value={globalFilter}
-        onChange={(event) => setGlobalFilter(event.target.value)}
+        value={globalFilterInput}
+        onChange={(event) => setGlobalFilterInput(event.target.value)}
         placeholder={globalFilterPlaceholder}
-        className="w-full rounded-lg border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-sm text-[color:var(--mx-text)]"
+        className="w-full rounded-lg border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-sm text-[color:var(--mx-text)] outline-none focus:border-[color:var(--mx-brand-500)]"
       />
-      <div className="overflow-auto rounded-lg border border-[color:var(--mx-border)]">
+      <div className="overflow-x-auto rounded-lg border border-[color:var(--mx-border)]">
         <table className="min-w-full divide-y divide-[color:var(--mx-border)] text-sm">
           <thead className="bg-[color:var(--mx-surface-soft)]">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -79,7 +83,11 @@ export function DataTable<TData, TValue>({
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-[color:var(--mx-text-muted)]">
+          Sayfa {table.getState().pagination.pageIndex + 1} / {Math.max(1, table.getPageCount())}
+        </span>
+        <div className="flex items-center gap-2">
         <Button
           variant="secondary"
           size="sm"
@@ -96,6 +104,7 @@ export function DataTable<TData, TValue>({
         >
           Sonraki
         </Button>
+        </div>
       </div>
     </div>
   );
