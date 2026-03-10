@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { ACCESS_COOKIE } from "@/lib/auth/session";
+import { isDatabaseConnectionError } from "@/lib/db/error-utils";
 import { prisma } from "@/lib/db/prisma";
 import { getPlatformMaintenanceState } from "@/lib/platform/maintenance";
 import { verifyAccessToken } from "@/lib/security/jwt";
@@ -248,63 +249,83 @@ async function resolveTopbarUserName() {
 }
 
 export default async function PanelLayout({ children }: { children: ReactNode }) {
-  const [tenant, userName] = await Promise.all([getTenantContext(), resolveTopbarUserName()]);
-  const [subscription, companyUiSettings, updateNotice, maintenanceState] = await Promise.all([
-    getCurrentSubscription(tenant.tenantId),
-    getCompanyUiSettings(tenant.tenantId),
-    getTenantUpdateNotice(tenant.tenantId),
-    getPlatformMaintenanceState(),
-  ]);
-  const subscriptionEndsAt = extractEndDateFromPayload(subscription?.payload);
-  const demoState = resolveDemoState({
-    trialEndsAt: tenant.trialEndsAt,
-    subscriptionEndsAt,
-    now: new Date(),
-  });
+  try {
+    const [tenant, userName] = await Promise.all([getTenantContext(), resolveTopbarUserName()]);
+    const [subscription, companyUiSettings, updateNotice, maintenanceState] = await Promise.all([
+      getCurrentSubscription(tenant.tenantId),
+      getCompanyUiSettings(tenant.tenantId),
+      getTenantUpdateNotice(tenant.tenantId),
+      getPlatformMaintenanceState(),
+    ]);
+    const subscriptionEndsAt = extractEndDateFromPayload(subscription?.payload);
+    const demoState = resolveDemoState({
+      trialEndsAt: tenant.trialEndsAt,
+      subscriptionEndsAt,
+      now: new Date(),
+    });
 
-  const companyName =
-    companyUiSettings.tradeName || companyUiSettings.companyName || tenant.tradeName || tenant.legalName;
-  const branchName = companyUiSettings.branchName || "MERKEZ";
-  const logoUrl = companyUiSettings.logoUrl || undefined;
+    const companyName =
+      companyUiSettings.tradeName || companyUiSettings.companyName || tenant.tradeName || tenant.legalName;
+    const branchName = companyUiSettings.branchName || "MERKEZ";
+    const logoUrl = companyUiSettings.logoUrl || undefined;
 
-  return (
-    <div className="mx-panel-shell flex min-h-screen">
-      <Sidebar companyName={companyName} logoUrl={logoUrl} />
-      <div className="flex min-h-screen flex-1 flex-col overflow-hidden">
-        <Topbar
-          companyName={companyName}
-          tenantSlug={tenant.tenantSlug}
-          userName={userName}
-          branchName={branchName}
-          logoUrl={logoUrl}
-          demoState={demoState}
-          maintenanceState={maintenanceState}
-          updateNotice={updateNotice}
-        />
-        <main className="flex-1 overflow-y-auto p-3">
-          {maintenanceState.enabled ? (
-            <section className="rounded-xl border border-rose-300 bg-rose-50 p-6 text-rose-900 shadow-sm">
-              <h2 className="text-xl font-black">Platform Bakim Modu Aktif</h2>
-              <p className="mt-2 text-sm font-semibold">{maintenanceState.message}</p>
-              <p className="mt-2 text-xs text-rose-700">
-                Yazma islemleri gecici olarak durduruldu. Bu ekran bakim bitene kadar pasif kalir.
-              </p>
-            </section>
-          ) : (
-            children
-          )}
-        </main>
-        <footer
-          className="border-t px-4 py-2 text-sm font-semibold"
-          style={{
-            borderColor: "var(--mx-border-strong)",
-            backgroundColor: "color-mix(in srgb, var(--mx-topbar-to) 88%, black 12%)",
-            color: "color-mix(in srgb, var(--mx-text) 90%, white 35%)",
-          }}
-        >
-          Copyright (c) 2026 {companyName}
-        </footer>
+    return (
+      <div className="mx-panel-shell flex min-h-screen">
+        <Sidebar companyName={companyName} logoUrl={logoUrl} />
+        <div className="flex min-h-screen flex-1 flex-col overflow-hidden">
+          <Topbar
+            companyName={companyName}
+            tenantSlug={tenant.tenantSlug}
+            userName={userName}
+            branchName={branchName}
+            logoUrl={logoUrl}
+            demoState={demoState}
+            maintenanceState={maintenanceState}
+            updateNotice={updateNotice}
+          />
+          <main className="flex-1 overflow-y-auto p-3">
+            {maintenanceState.enabled ? (
+              <section className="rounded-xl border border-rose-300 bg-rose-50 p-6 text-rose-900 shadow-sm">
+                <h2 className="text-xl font-black">Platform Bakim Modu Aktif</h2>
+                <p className="mt-2 text-sm font-semibold">{maintenanceState.message}</p>
+                <p className="mt-2 text-xs text-rose-700">
+                  Yazma islemleri gecici olarak durduruldu. Bu ekran bakim bitene kadar pasif kalir.
+                </p>
+              </section>
+            ) : (
+              children
+            )}
+          </main>
+          <footer
+            className="border-t px-4 py-2 text-sm font-semibold"
+            style={{
+              borderColor: "var(--mx-border-strong)",
+              backgroundColor: "color-mix(in srgb, var(--mx-topbar-to) 88%, black 12%)",
+              color: "color-mix(in srgb, var(--mx-text) 90%, white 35%)",
+            }}
+          >
+            Copyright (c) 2026 {companyName}
+          </footer>
+        </div>
       </div>
-    </div>
-  );
+    );
+  } catch (error) {
+    const message = isDatabaseConnectionError(error)
+      ? "Veritabani baglantisi kurulamadi. DATABASE_URL ayarini ve Neon erisim bilgilerini kontrol edin."
+      : error instanceof Error
+        ? error.message
+        : "Panel yuklenirken beklenmeyen bir hata olustu.";
+
+    return (
+      <div className="mx-panel-shell flex min-h-screen items-center justify-center p-6">
+        <section className="w-full max-w-2xl rounded-2xl border border-rose-300 bg-rose-50 p-6 text-rose-900 shadow-sm">
+          <h1 className="text-xl font-black">Panel baslatilamadi</h1>
+          <p className="mt-3 text-sm font-semibold">{message}</p>
+          <p className="mt-2 text-xs text-rose-700">
+            Sorun devam ederse ortam degiskenlerinde `DEFAULT_TENANT_SLUG` ve `DATABASE_URL` degerlerini dogrulayin.
+          </p>
+        </section>
+      </div>
+    );
+  }
 }

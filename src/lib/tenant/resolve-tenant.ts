@@ -24,6 +24,30 @@ export async function resolveTenantBySlug(tenantSlug: string) {
   });
 }
 
+export async function resolveTenantById(tenantId: string) {
+  return prisma.tenant.findFirst({
+    where: {
+      id: tenantId,
+      deletedAt: null,
+      status: {
+        in: ["TRIALING", "ACTIVE", "PAST_DUE"],
+      },
+    },
+    select: {
+      id: true,
+      slug: true,
+      legalName: true,
+      tradeName: true,
+      locale: true,
+      timezone: true,
+      currency: true,
+      status: true,
+      trialEndsAt: true,
+      activeUntil: true,
+    },
+  });
+}
+
 export function extractTenantSlugFromHost(host?: string): string | null {
   if (!host) {
     return null;
@@ -35,5 +59,10 @@ export function extractTenantSlugFromHost(host?: string): string | null {
     return null;
   }
 
-  return parts[0] || null;
+  const candidate = parts[0] || null;
+  if (!candidate || candidate === "www") {
+    return null;
+  }
+
+  return candidate;
 }

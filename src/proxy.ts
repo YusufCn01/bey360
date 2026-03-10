@@ -4,16 +4,31 @@ import { extractTenantSlugFromHost } from "@/lib/tenant/resolve-tenant";
 
 const protectedPrefixes = ["/panel", "/api/tenant", "/pos"];
 
+function normalizeTenantSlug(value?: string | null): string | null {
+  const normalized = value?.trim().toLowerCase();
+  return normalized && normalized.length > 0 ? normalized : null;
+}
+
+function getDefaultTenantSlug(): string | null {
+  return normalizeTenantSlug(process.env.DEFAULT_TENANT_SLUG);
+}
+
 function resolveTenantSlug(request: NextRequest): string | null {
-  const explicit = request.headers.get("x-tenant") || request.nextUrl.searchParams.get("tenant");
+  const explicit = normalizeTenantSlug(request.headers.get("x-tenant") || request.nextUrl.searchParams.get("tenant"));
   if (explicit) {
-    return explicit.toLowerCase();
+    return explicit;
   }
 
-  const host = request.headers.get("host") ?? undefined;
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const host = forwardedHost || request.headers.get("host") || undefined;
   const hostSlug = extractTenantSlugFromHost(host);
   if (hostSlug) {
     return hostSlug;
+  }
+
+  const defaultTenant = getDefaultTenantSlug();
+  if (defaultTenant) {
+    return defaultTenant;
   }
 
   return process.env.NODE_ENV === "development" ? "demo-market" : null;

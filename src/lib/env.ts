@@ -5,7 +5,7 @@ const envSchema = z.object({
   APP_NAME: z.string().default("Beyoğlu"),
   APP_URL: z.string().url().default("http://localhost:3000"),
   APP_SECRET: z.string().min(32).default("local-development-secret-please-change-immediately-1234"),
-  DATABASE_URL: z.string().min(1).default("postgresql://postgres:postgres@localhost:5432/muhasebeschema=public"),
+  DATABASE_URL: z.string().min(1).default("postgresql://postgres:postgres@localhost:5432/muhasebe?schema=public"),
   REDIS_URL: z.string().min(1).default("redis://localhost:6379"),
   QUEUE_PREFIX: z.string().default("muhasebe"),
   DEFAULT_LOCALE: z.string().default("tr-TR"),
