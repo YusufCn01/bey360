@@ -55,7 +55,7 @@ export function PaymentLinksClient() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/tenant/payment-linkslimit=200");
+      const response = await fetch("/api/tenant/payment-links?limit=200");
       const body = (await response.json()) as { success: boolean; data: PaymentLinkRow[]; error: { message: string } };
       if (!response.ok || !body.success) {
         throw new Error(body.error.message ?? "Ödeme linkleri alınamadı.");

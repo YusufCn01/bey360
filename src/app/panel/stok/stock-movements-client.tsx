@@ -48,7 +48,7 @@ export function StockMovementsClient() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/tenant/inventory/stock-movementslimit=200");
+        const response = await fetch("/api/tenant/inventory/stock-movements?limit=200");
         const body = (await response.json()) as { success: boolean; data: MovementRow[]; error: { message: string } };
         if (!response.ok || !body.success) {
           throw new Error(body.error.message ?? "Stok hareketleri alınamadı.");
