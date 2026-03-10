@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/db/prisma";
 import { asRecord, numberOrZero } from "@/lib/json";
 
+const SALES_SCAN_LIMIT = Math.max(400, Number(process.env.DASHBOARD_SALES_SCAN_LIMIT ?? "1200"));
+const SALE_ITEMS_SCAN_LIMIT = Math.max(800, Number(process.env.DASHBOARD_SALE_ITEMS_SCAN_LIMIT ?? "2000"));
+const STOCK_SCAN_LIMIT = Math.max(500, Number(process.env.DASHBOARD_STOCK_SCAN_LIMIT ?? "2000"));
+const FINANCE_SCAN_LIMIT = Math.max(400, Number(process.env.DASHBOARD_FINANCE_SCAN_LIMIT ?? "1500"));
+
 function isSameDay(date: Date, target: Date) {
   return (
     date.getFullYear() === target.getFullYear() &&
@@ -155,8 +160,16 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
           deletedAt: null,
           status: "completed",
         },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          payload: true,
+          occurredAt: true,
+          createdAt: true,
+        },
         orderBy: { createdAt: "desc" },
-        take: 3000,
+        take: SALES_SCAN_LIMIT,
       }),
       prisma.saleItems.findMany({
         where: {
@@ -164,15 +177,28 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
           deletedAt: null,
           status: "completed",
         },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          payload: true,
+          occurredAt: true,
+          createdAt: true,
+        },
         orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
-        take: 5000,
+        take: SALE_ITEMS_SCAN_LIMIT,
       }),
       prisma.stockBalances.findMany({
         where: {
           tenantId: params.tenantId,
           deletedAt: null,
         },
-        take: 5000,
+        select: {
+          id: true,
+          name: true,
+          payload: true,
+        },
+        take: STOCK_SCAN_LIMIT,
       }),
       prisma.products.findMany({
         where: {
@@ -180,7 +206,13 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
           deletedAt: null,
           status: "active",
         },
-        take: 5000,
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          payload: true,
+        },
+        take: STOCK_SCAN_LIMIT,
       }),
       prisma.collections.findMany({
         where: {
@@ -188,7 +220,10 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
           deletedAt: null,
           status: "completed",
         },
-        take: 3000,
+        select: {
+          payload: true,
+        },
+        take: FINANCE_SCAN_LIMIT,
       }),
       prisma.paymentsOut.findMany({
         where: {
@@ -196,7 +231,10 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
           deletedAt: null,
           status: "completed",
         },
-        take: 3000,
+        select: {
+          payload: true,
+        },
+        take: FINANCE_SCAN_LIMIT,
       }),
       prisma.cashTransactions.findMany({
         where: {
@@ -204,8 +242,17 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
           deletedAt: null,
           status: "posted",
         },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          description: true,
+          payload: true,
+          occurredAt: true,
+          createdAt: true,
+        },
         orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
-        take: 3000,
+        take: FINANCE_SCAN_LIMIT,
       }),
       prisma.purchaseInvoices.findMany({
         where: {
@@ -213,8 +260,13 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
           deletedAt: null,
           status: "posted",
         },
+        select: {
+          payload: true,
+          occurredAt: true,
+          createdAt: true,
+        },
         orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
-        take: 3000,
+        take: FINANCE_SCAN_LIMIT,
       }),
       prisma.saleRegisterSessions.count({
         where: {
@@ -246,15 +298,25 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
           tenantId: params.tenantId,
           deletedAt: null,
         },
+        select: {
+          code: true,
+          payload: true,
+          occurredAt: true,
+          createdAt: true,
+        },
         orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
-        take: 5000,
+        take: STOCK_SCAN_LIMIT,
       }),
       prisma.balanceSnapshots.findMany({
         where: {
           tenantId: params.tenantId,
           deletedAt: null,
         },
-        take: 5000,
+        select: {
+          code: true,
+          payload: true,
+        },
+        take: STOCK_SCAN_LIMIT,
       }),
     ]);
 

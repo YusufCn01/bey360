@@ -2,6 +2,16 @@ import { prisma } from "@/lib/db/prisma";
 
 const MAINTENANCE_SCOPE = "platform_maintenance";
 const DEFAULT_MESSAGE = "Sistem planli bakim modundadir. Lutfen daha sonra tekrar deneyin.";
+const MAINTENANCE_CACHE_TTL_MS = Math.max(5_000, Number(process.env.MAINTENANCE_CACHE_TTL_SECONDS ?? "15") * 1_000);
+
+type MaintenanceCacheEntry = {
+  value: PlatformMaintenanceState;
+  expiresAt: number;
+};
+
+type GlobalWithMaintenanceCache = typeof globalThis & {
+  __platformMaintenanceCache?: MaintenanceCacheEntry;
+};
 
 export type PlatformMaintenanceState = {
   enabled: boolean;
@@ -28,16 +38,28 @@ function asBoolean(value: unknown, fallback = false): boolean {
 }
 
 export async function getPlatformMaintenanceState(): Promise<PlatformMaintenanceState> {
+  const globalScope = globalThis as GlobalWithMaintenanceCache;
+  const now = Date.now();
+  const cached = globalScope.__platformMaintenanceCache;
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
   // Build or CI environments can intentionally omit DATABASE_URL.
   // In that case, return a safe default instead of crashing prerender.
   if (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim().length === 0) {
-    return {
+    const fallback = {
       enabled: false,
       message: DEFAULT_MESSAGE,
       updatedAt: null,
       updatedBy: null,
       startedAt: null,
     };
+    globalScope.__platformMaintenanceCache = {
+      value: fallback,
+      expiresAt: now + MAINTENANCE_CACHE_TTL_MS,
+    };
+    return fallback;
   }
 
   let row: Awaited<ReturnType<typeof prisma.appSettings.findFirst>>;
@@ -50,23 +72,33 @@ export async function getPlatformMaintenanceState(): Promise<PlatformMaintenance
       orderBy: { createdAt: "desc" },
     });
   } catch {
-    return {
+    const fallback = {
       enabled: false,
       message: DEFAULT_MESSAGE,
       updatedAt: null,
       updatedBy: null,
       startedAt: null,
     };
+    globalScope.__platformMaintenanceCache = {
+      value: fallback,
+      expiresAt: now + MAINTENANCE_CACHE_TTL_MS,
+    };
+    return fallback;
   }
 
   if (!row) {
-    return {
+    const fallback = {
       enabled: false,
       message: DEFAULT_MESSAGE,
       updatedAt: null,
       updatedBy: null,
       startedAt: null,
     };
+    globalScope.__platformMaintenanceCache = {
+      value: fallback,
+      expiresAt: now + MAINTENANCE_CACHE_TTL_MS,
+    };
+    return fallback;
   }
 
   const payload = asRecord(row.payload);
@@ -75,13 +107,20 @@ export async function getPlatformMaintenanceState(): Promise<PlatformMaintenance
   const updatedBy = asText(payload.updatedBy) || null;
   const startedAt = asText(payload.startedAt) || null;
 
-  return {
+  const nextState = {
     enabled,
     message,
     updatedAt: row.updatedAt.toISOString(),
     updatedBy,
     startedAt,
   };
+
+  globalScope.__platformMaintenanceCache = {
+    value: nextState,
+    expiresAt: now + MAINTENANCE_CACHE_TTL_MS,
+  };
+
+  return nextState;
 }
 
 export function isWriteMethod(method: string): boolean {
