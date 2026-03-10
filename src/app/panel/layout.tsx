@@ -322,7 +322,8 @@ export default async function PanelLayout({ children }: { children: ReactNode })
           <h1 className="text-xl font-black">Panel baslatilamadi</h1>
           <p className="mt-3 text-sm font-semibold">{message}</p>
           <p className="mt-2 text-xs text-rose-700">
-            Sorun devam ederse ortam degiskenlerinde `DEFAULT_TENANT_SLUG` ve `DATABASE_URL` degerlerini dogrulayin.
+            Sorun devam ederse ortam degiskenlerinde `DEFAULT_TENANT_SLUG` ve `DATABASE_URL` degerlerini dogrulayin veya
+            giris ekranindan demo tenant olusturun.
           </p>
         </section>
       </div>

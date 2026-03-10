@@ -1,7 +1,12 @@
 import { cookies, headers } from "next/headers";
 import { ACCESS_COOKIE } from "@/lib/auth/session";
 import { verifyAccessToken } from "@/lib/security/jwt";
-import { extractTenantSlugFromHost, resolveTenantById, resolveTenantBySlug } from "@/lib/tenant/resolve-tenant";
+import {
+  extractTenantSlugFromHost,
+  resolveSingleActiveTenant,
+  resolveTenantById,
+  resolveTenantBySlug,
+} from "@/lib/tenant/resolve-tenant";
 
 export type TenantContext = {
   tenantId: string;
@@ -76,5 +81,12 @@ export async function getTenantContext(): Promise<TenantContext> {
     }
   }
 
-  throw new Error("Tenant bilgisi bulunamadi. DEFAULT_TENANT_SLUG veya tenant subdomain ayarini kontrol edin.");
+  const singleTenant = await resolveSingleActiveTenant();
+  if (singleTenant) {
+    return toTenantContext(singleTenant);
+  }
+
+  throw new Error(
+    "Tenant bilgisi bulunamadi. DEFAULT_TENANT_SLUG ayarlayin veya giris ekranindan demo/tenant kaydi olusturun.",
+  );
 }

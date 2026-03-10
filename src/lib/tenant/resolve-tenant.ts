@@ -1,26 +1,33 @@
+import { TenantStatus } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+
+const activeTenantWhere = {
+  deletedAt: null,
+  status: {
+    in: [TenantStatus.TRIALING, TenantStatus.ACTIVE, TenantStatus.PAST_DUE],
+  },
+};
+
+const tenantContextSelect = {
+  id: true,
+  slug: true,
+  legalName: true,
+  tradeName: true,
+  locale: true,
+  timezone: true,
+  currency: true,
+  status: true,
+  trialEndsAt: true,
+  activeUntil: true,
+};
 
 export async function resolveTenantBySlug(tenantSlug: string) {
   return prisma.tenant.findFirst({
     where: {
       slug: tenantSlug,
-      deletedAt: null,
-      status: {
-        in: ["TRIALING", "ACTIVE", "PAST_DUE"],
-      },
+      ...activeTenantWhere,
     },
-    select: {
-      id: true,
-      slug: true,
-      legalName: true,
-      tradeName: true,
-      locale: true,
-      timezone: true,
-      currency: true,
-      status: true,
-      trialEndsAt: true,
-      activeUntil: true,
-    },
+    select: tenantContextSelect,
   });
 }
 
@@ -28,24 +35,25 @@ export async function resolveTenantById(tenantId: string) {
   return prisma.tenant.findFirst({
     where: {
       id: tenantId,
-      deletedAt: null,
-      status: {
-        in: ["TRIALING", "ACTIVE", "PAST_DUE"],
-      },
+      ...activeTenantWhere,
     },
-    select: {
-      id: true,
-      slug: true,
-      legalName: true,
-      tradeName: true,
-      locale: true,
-      timezone: true,
-      currency: true,
-      status: true,
-      trialEndsAt: true,
-      activeUntil: true,
-    },
+    select: tenantContextSelect,
   });
+}
+
+export async function resolveSingleActiveTenant() {
+  const rows = await prisma.tenant.findMany({
+    where: activeTenantWhere,
+    select: tenantContextSelect,
+    orderBy: { createdAt: "asc" },
+    take: 2,
+  });
+
+  if (rows.length === 1) {
+    return rows[0];
+  }
+
+  return null;
 }
 
 export function extractTenantSlugFromHost(host?: string): string | null {
