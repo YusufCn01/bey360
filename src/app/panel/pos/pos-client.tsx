@@ -1,0 +1,2963 @@
+﻿"use client";
+
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { formatTry } from "@/lib/format/currency";
+import {
+  defaultPosParameters,
+  parsePosParameters,
+  POS_PARAMETERS_SCOPE,
+  type PosParameters,
+} from "@/modules/pos/domain/pos-parameters";
+import { PosCameraScannerModal } from "@/modules/pos/ui/fast-sales/components/pos-camera-scanner-modal";
+import { PosMixedPaymentModal } from "@/modules/pos/ui/fast-sales/components/pos-mixed-payment-modal";
+import { PosMobileActionBar } from "@/modules/pos/ui/fast-sales/components/pos-mobile-action-bar";
+import { PosNumpad } from "@/modules/pos/ui/fast-sales/components/pos-numpad";
+import { PosSaleTabs } from "@/modules/pos/ui/fast-sales/components/pos-sale-tabs";
+import { PosTopStatusBar } from "@/modules/pos/ui/fast-sales/components/pos-top-status-bar";
+import type { MixedPaymentDraft, SaleTabSnapshot } from "@/modules/pos/ui/fast-sales/types";
+
+type ApiEnvelope<T> = {
+  success: boolean;
+  data: T;
+  error?: { message?: string };
+};
+
+type SessionData = {
+  userId: string;
+  tenantId: string;
+  roleCodes: string[];
+  email: string;
+  permissionKeys?: string[];
+  permissionCatalog?: string[];
+};
+
+type ProductRow = {
+  id: string;
+  code: string;
+  name: string;
+  unit: string;
+  barcode?: string;
+  imageUrl?: string;
+  vatRate: number;
+  stock: number;
+  expiryDate?: string;
+  lockedForSale: boolean;
+  prices: [number, number, number, number];
+};
+
+type ProductApiRow = {
+  id: string;
+  code: string;
+  name: string;
+  payload?: Record<string, unknown>;
+};
+
+type CustomerApiRow = {
+  id?: string;
+  code?: string;
+  name?: string;
+  payload?: Record<string, unknown>;
+  riskLimit?: number;
+  maturityDays?: number;
+  currentBalance?: number;
+  availableRisk?: number;
+  riskUsageRate?: number;
+  riskStatus?: "ok" | "warning" | "over_limit" | "no_limit";
+};
+
+type StockBalanceRow = {
+  payload?: Record<string, unknown>;
+};
+
+type SettingsRow = {
+  payload?: Record<string, unknown>;
+};
+
+type CartLine = {
+  productId: string;
+  productCode: string;
+  productName: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  taxRate: number;
+};
+
+type PosSaleItem = {
+  productId: string;
+  productCode?: string;
+  productName: string;
+  quantity: number;
+  returnedQuantity?: number;
+  remainingQuantity?: number;
+  unitPrice: number;
+  taxRate: number;
+  warehouseId?: string;
+};
+
+type PosPayment = {
+  method: "nakit" | "kart" | "havale_eft" | "cari";
+  amount: number;
+  reference?: string;
+};
+
+type PosSaleHistoryRow = {
+  id: string;
+  saleCode: string;
+  registerId: string;
+  registerName: string;
+  customerCode?: string;
+  customerName?: string;
+  currency: string;
+  total: number;
+  occurredAt: string;
+  items: PosSaleItem[];
+  payments: PosPayment[];
+};
+
+type SuspendedCartRow = {
+  id: string;
+  code?: string;
+  name?: string;
+  payload?: Record<string, unknown>;
+  createdAt?: string;
+};
+
+type SuspendedRestoreResult = {
+  suspendedSaleId: string;
+  registerId?: string;
+  customerCode?: string;
+  customerName?: string;
+  items: PosSaleItem[];
+};
+
+type ReturnDraftLine = {
+  key: string;
+  productId: string;
+  productCode?: string;
+  productName: string;
+  soldQuantity: number;
+  maxReturnQuantity: number;
+  returnQuantity: number;
+  unitPrice: number;
+  taxRate: number;
+  warehouseId?: string;
+  selected: boolean;
+};
+
+type SaleResult = {
+  saleId: string;
+  saleCode: string;
+  netTotal: number;
+  paidTotal: number;
+  outstanding: number;
+  changeAmount: number;
+};
+
+type CustomerScreenLine = {
+  id: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+};
+
+type CustomerScreenState = {
+  registerName: string;
+  customerName: string;
+  total: number;
+  totalQuantity: number;
+  lines: CustomerScreenLine[];
+  updatedAt: string;
+};
+
+type CariCustomerRow = {
+  id: string;
+  code: string;
+  name: string;
+  phone: string;
+  email: string;
+  riskLimit: number;
+  maturityDays: number;
+  currentBalance: number;
+  availableRisk: number;
+  riskUsageRate: number;
+  riskStatus: "ok" | "warning" | "over_limit" | "no_limit";
+};
+
+type ConfirmDialogTone = "info" | "danger";
+
+type ConfirmDialogState = {
+  open: boolean;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  tone: ConfirmDialogTone;
+};
+
+type BarcodeDetectorResult = { rawValue?: string };
+type BarcodeDetectorLike = { detect: (source: ImageBitmapSource) => Promise<BarcodeDetectorResult[]> };
+type BarcodeDetectorClassLike = new (options?: { formats?: string[] }) => BarcodeDetectorLike;
+
+function isInputLikeElement(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName;
+  if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
+    return true;
+  }
+
+  if (target.isContentEditable) {
+    return true;
+  }
+
+  return Boolean(target.closest("[data-shortcut-ignore='true']"));
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value as Record<string, unknown>;
+}
+
+function asNumber(value: unknown, fallback = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return fallback;
+}
+
+function asText(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function toDateOnly(value: string): Date | null {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function isExpired(dateText?: string): boolean {
+  if (!dateText) {
+    return false;
+  }
+
+  const target = toDateOnly(dateText);
+  if (!target) {
+    return false;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return target < today;
+}
+
+function daysUntilExpiry(dateText?: string): number | null {
+  const target = dateText ? toDateOnly(dateText) : null;
+  if (!target) {
+    return null;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = target.getTime() - today.getTime();
+  return Math.floor(diff / (24 * 60 * 60 * 1000));
+}
+
+function parseScaleBarcode(raw: string): { productCode: string; quantity: number } | null {
+  const digits = raw.replace(/\D/g, "");
+  if (!/^28\d{11}$/.test(digits)) {
+    return null;
+  }
+  const productCode = digits.slice(2, 7);
+  const quantity = Number(digits.slice(7, 12)) / 1000;
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return null;
+  }
+  return { productCode, quantity };
+}
+
+function hashColor(input: string): string {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = input.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash % 360);
+  return `linear-gradient(145deg, hsl(${hue} 65% 36%), hsl(${(hue + 26) % 360} 72% 52%))`;
+}
+
+function productInitials(name: string): string {
+  const parts = name.split(" ").filter(Boolean);
+  if (parts.length === 0) {
+    return "UR";
+  }
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
+async function requestApi<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  const body = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !body.success) {
+    throw new Error(body.error?.message ?? "İşlem başarısız oldu.");
+  }
+
+  return body.data;
+}
+
+export function PosClient() {
+  const [registerId, setRegisterId] = React.useState("KASA-01");
+  const [registerName, setRegisterName] = React.useState("Merkez Kasa");
+  const [companyName, setCompanyName] = React.useState("Bulut ERP");
+  const [branchName, setBranchName] = React.useState("MERKEZ");
+  const [cashierName, setCashierName] = React.useState("Kasiyer");
+  const [currencyCode, setCurrencyCode] = React.useState("TRY");
+  const [connectionOnline, setConnectionOnline] = React.useState(true);
+  const [customerCode, setCustomerCode] = React.useState("");
+  const [customerName, setCustomerName] = React.useState("");
+  const [searchText, setSearchText] = React.useState("");
+  const [partialAmount, setPartialAmount] = React.useState("0");
+  const [priceTier, setPriceTier] = React.useState<1 | 2 | 3 | 4>(1);
+  const [cartNote, setCartNote] = React.useState("");
+  const [saleTabs, setSaleTabs] = React.useState<SaleTabSnapshot[]>([
+    { id: "tab-1", label: "Satış 1", cartLines: [], cartNote: "", customerCode: "", customerName: "", partialAmount: "0" },
+    { id: "tab-2", label: "Satış 2", cartLines: [], cartNote: "", customerCode: "", customerName: "", partialAmount: "0" },
+    { id: "tab-3", label: "Satış 3", cartLines: [], cartNote: "", customerCode: "", customerName: "", partialAmount: "0" },
+  ]);
+  const [activeSaleTabId, setActiveSaleTabId] = React.useState("tab-1");
+  const [priceCheckMode, setPriceCheckMode] = React.useState(false);
+  const [missingBarcode, setMissingBarcode] = React.useState("");
+  const [showMissingBarcodeActions, setShowMissingBarcodeActions] = React.useState(false);
+  const [numpadMode, setNumpadMode] = React.useState<"barcode" | "quantity" | "amount">("barcode");
+  const [numpadBuffer, setNumpadBuffer] = React.useState("");
+  const [showMixedPaymentModal, setShowMixedPaymentModal] = React.useState(false);
+  const [mixedPaymentRows, setMixedPaymentRows] = React.useState<MixedPaymentDraft[]>([
+    { id: "pay-1", method: "nakit", amount: "0", reference: "" },
+  ]);
+  const [showAdvancedPos, setShowAdvancedPos] = React.useState(false);
+  const [showCameraScanner, setShowCameraScanner] = React.useState(false);
+  const [cameraBusy, setCameraBusy] = React.useState(false);
+  const [torchEnabled, setTorchEnabled] = React.useState(false);
+
+  const [showCustomPanel, setShowCustomPanel] = React.useState(false);
+  const [customName, setCustomName] = React.useState("Muhtelif Ürün");
+  const [customPrice, setCustomPrice] = React.useState("0");
+  const [customVatRate, setCustomVatRate] = React.useState("20");
+  const [posParameters, setPosParameters] = React.useState<PosParameters>(defaultPosParameters);
+
+  const [products, setProducts] = React.useState<ProductRow[]>([]);
+  const [quickCustomers, setQuickCustomers] = React.useState<Array<{ code: string; name: string }>>([]);
+  const [cart, setCart] = React.useState<CartLine[]>([]);
+  const [selectedLineId, setSelectedLineId] = React.useState<string | null>(null);
+  const [exchangeTargetId, setExchangeTargetId] = React.useState<string | null>(null);
+
+  const [busy, setBusy] = React.useState(false);
+  const [loadingProducts, setLoadingProducts] = React.useState(true);
+  const [sessionReady, setSessionReady] = React.useState(false);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [showOperations, setShowOperations] = React.useState(false);
+  const [suspendedCarts, setSuspendedCarts] = React.useState<SuspendedCartRow[]>([]);
+  const [loadingOperations, setLoadingOperations] = React.useState(false);
+  const [saleLookupCode, setSaleLookupCode] = React.useState("");
+  const [saleLookupResult, setSaleLookupResult] = React.useState<PosSaleHistoryRow | null>(null);
+  const [returnRefundMethod, setReturnRefundMethod] = React.useState<"nakit" | "kart" | "havale_eft" | "cari">("nakit");
+  const [returnReason, setReturnReason] = React.useState("");
+  const [returnLines, setReturnLines] = React.useState<ReturnDraftLine[]>([]);
+  const [processingReturn, setProcessingReturn] = React.useState(false);
+  const [lastSaleReceipt, setLastSaleReceipt] = React.useState<PosSaleHistoryRow | null>(null);
+  const [focusParam, setFocusParam] = React.useState("");
+  const [showCariCustomerModal, setShowCariCustomerModal] = React.useState(false);
+  const [cariCustomerQuery, setCariCustomerQuery] = React.useState("");
+  const [cariCustomers, setCariCustomers] = React.useState<CariCustomerRow[]>([]);
+  const [selectedCariCustomerId, setSelectedCariCustomerId] = React.useState("");
+  const [loadingCariCustomers, setLoadingCariCustomers] = React.useState(false);
+  const [userPermissionKeys, setUserPermissionKeys] = React.useState<string[]>(["sale:pos"]);
+  const [permissionCatalog, setPermissionCatalog] = React.useState<string[]>([]);
+  const [confirmDialog, setConfirmDialog] = React.useState<ConfirmDialogState>({
+    open: false,
+    title: "",
+    description: "",
+    confirmLabel: "Onayla",
+    cancelLabel: "Vazgeç",
+    tone: "info",
+  });
+
+  const searchInputRef = React.useRef<HTMLInputElement | null>(null);
+  const customerScreenChannelRef = React.useRef<BroadcastChannel | null>(null);
+  const customerScreenStateRef = React.useRef<CustomerScreenState | null>(null);
+  const audioContextRef = React.useRef<AudioContext | null>(null);
+  const focusHandledRef = React.useRef<string | null>(null);
+  const confirmDialogResolverRef = React.useRef<((accepted: boolean) => void) | null>(null);
+  const saleTabsRef = React.useRef<SaleTabSnapshot[]>(saleTabs);
+  const activeSaleTabRef = React.useRef<string>(activeSaleTabId);
+  const cameraVideoRef = React.useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = React.useRef<MediaStream | null>(null);
+  const cameraScanIntervalRef = React.useRef<number | null>(null);
+  const [clock, setClock] = React.useState(() => new Date());
+
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setClock(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  React.useEffect(() => {
+    saleTabsRef.current = saleTabs;
+  }, [saleTabs]);
+
+  React.useEffect(() => {
+    activeSaleTabRef.current = activeSaleTabId;
+  }, [activeSaleTabId]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const sync = () => setConnectionOnline(window.navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    setFocusParam(params.get("focus") ?? "");
+  }, []);
+
+  const openConfirmDialog = React.useCallback(
+    (options: Omit<ConfirmDialogState, "open">) =>
+      new Promise<boolean>((resolve) => {
+        confirmDialogResolverRef.current = resolve;
+        setConfirmDialog({
+          open: true,
+          title: options.title,
+          description: options.description,
+          confirmLabel: options.confirmLabel,
+          cancelLabel: options.cancelLabel,
+          tone: options.tone,
+        });
+      }),
+    [],
+  );
+
+  const closeConfirmDialog = React.useCallback((accepted: boolean) => {
+    const resolver = confirmDialogResolverRef.current;
+    confirmDialogResolverRef.current = null;
+    if (resolver) {
+      resolver(accepted);
+    }
+    setConfirmDialog((prev) => ({
+      ...prev,
+      open: false,
+    }));
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      const resolver = confirmDialogResolverRef.current;
+      confirmDialogResolverRef.current = null;
+      if (resolver) {
+        resolver(false);
+      }
+    };
+  }, []);
+
+  const playTone = React.useCallback(
+    (kind: "barcode" | "warning") => {
+      const enabled = kind === "barcode" ? posParameters.barcodeSoundsEnabled : posParameters.warningSoundsEnabled;
+      if (!enabled || typeof window === "undefined") {
+        return;
+      }
+
+      try {
+        const AudioContextClass = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!AudioContextClass) {
+          return;
+        }
+        const context = audioContextRef.current ?? new AudioContextClass();
+        audioContextRef.current = context;
+
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+
+        const now = context.currentTime;
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(kind === "barcode" ? 1040 : 320, now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.09, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + (kind === "barcode" ? 0.08 : 0.2));
+
+        oscillator.start(now);
+        oscillator.stop(now + (kind === "barcode" ? 0.09 : 0.22));
+      } catch {
+        // Ses üretimi desteklenmeyen tarayıcılar için sessizce devam et.
+      }
+    },
+    [posParameters.barcodeSoundsEnabled, posParameters.warningSoundsEnabled],
+  );
+
+  React.useEffect(() => {
+    if (error) {
+      playTone("warning");
+    }
+  }, [error, playTone]);
+
+  const selectedLine = React.useMemo(
+    () => cart.find((line) => line.productId === selectedLineId) ?? null,
+    [cart, selectedLineId],
+  );
+  const userPermissionKeySet = React.useMemo(() => new Set(userPermissionKeys), [userPermissionKeys]);
+  const permissionCatalogSet = React.useMemo(() => new Set(permissionCatalog), [permissionCatalog]);
+
+  const canUsePermission = React.useCallback(
+    (permissionKey: string) => {
+      if (permissionCatalogSet.has(permissionKey)) {
+        return userPermissionKeySet.has(permissionKey);
+      }
+      return userPermissionKeySet.has("sale:pos");
+    },
+    [permissionCatalogSet, userPermissionKeySet],
+  );
+
+  const canReturnOperations = canUsePermission("sale:return");
+  const canDiscountOperations = canUsePermission("sale:discount");
+
+  const getProductPrice = React.useCallback((product: ProductRow, tier: 1 | 2 | 3 | 4) => {
+    const idx = tier - 1;
+    const base = product.prices[0] > 0 ? product.prices[0] : 0;
+    const fromTier = product.prices[idx];
+    return fromTier > 0 ? fromTier : base;
+  }, []);
+
+  const loadData = React.useCallback(async () => {
+    setLoadingProducts(true);
+    setError(null);
+    try {
+      const [productRows, stockRows, customerRows, settingsRow, companySettings] = await Promise.all([
+        requestApi<ProductApiRow[]>("/api/tenant/products?limit=350"),
+        requestApi<StockBalanceRow[]>("/api/tenant/inventory/stock-balances?limit=2000"),
+        requestApi<CustomerApiRow[]>("/api/tenant/customers?limit=3"),
+        requestApi<SettingsRow>(`/api/tenant/settings?scope=${encodeURIComponent(POS_PARAMETERS_SCOPE)}`).catch(() => ({ payload: {} })),
+        requestApi<SettingsRow>("/api/tenant/settings?scope=firma_ayarlari").catch(() => ({ payload: {} })),
+      ]);
+
+      const stockMap = new Map<string, number>();
+      for (const row of stockRows) {
+        const payload = asRecord(row.payload);
+        const productId = asText(payload.productId);
+        if (!productId) {
+          continue;
+        }
+        const quantity = asNumber(payload.available, asNumber(payload.quantity, 0));
+        stockMap.set(productId, (stockMap.get(productId) ?? 0) + quantity);
+      }
+
+      const normalizedProducts = productRows
+        .map((row) => {
+          const payload = asRecord(row.payload);
+          const p1 = asNumber(payload.salePrice, 0);
+          const p2 = asNumber(payload.salePrice2, p1);
+          const p3 = asNumber(payload.salePrice3, p1);
+          const p4 = asNumber(payload.salePrice4, p1);
+
+          return {
+            id: row.id,
+            code: row.code,
+            name: row.name,
+            unit: asText(payload.defaultUnit, "ADET"),
+            barcode: asText(payload.barcode),
+            imageUrl: asText(payload.imageUrl),
+            vatRate: asNumber(payload.vatRate, 20),
+            stock: stockMap.get(row.id) ?? 0,
+            expiryDate: asText(payload.expiryDate),
+            lockedForSale: Boolean(payload.lockedForSale),
+            prices: [p1, p2, p3, p4],
+          } satisfies ProductRow;
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+
+      const quick = customerRows
+        .map((row) => ({ code: asText(row.code), name: asText(row.name) }))
+        .filter((row) => row.code && row.name)
+        .slice(0, 3);
+
+      setProducts(normalizedProducts);
+      setQuickCustomers(quick);
+      setPosParameters(parsePosParameters(settingsRow.payload));
+      const companyPayload = asRecord(companySettings.payload);
+      setCompanyName(asText(companyPayload.companyName, "Bulut ERP"));
+      setBranchName(asText(companyPayload.branchName, "MERKEZ"));
+      setCurrencyCode(asText(companyPayload.currencyCode, "TRY"));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Veriler yüklenemedi.");
+    } finally {
+      setLoadingProducts(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadSessionPermissions() {
+      try {
+        const data = await requestApi<SessionData>("/api/auth/session");
+        if (cancelled) {
+          return;
+        }
+        const nextPermissionKeys =
+          Array.isArray(data.permissionKeys) && data.permissionKeys.length > 0
+            ? data.permissionKeys
+            : ["sale:pos"];
+        const nextCatalog = Array.isArray(data.permissionCatalog) ? data.permissionCatalog : [];
+        setUserPermissionKeys(nextPermissionKeys);
+        setPermissionCatalog(nextCatalog);
+        setCashierName(data.email || "Kasiyer");
+      } catch {
+        if (cancelled) {
+          return;
+        }
+        // Oturum izinleri yüklenemezse POS temel yetkisiyle devam edilir.
+        setUserPermissionKeys(["sale:pos"]);
+      }
+    }
+
+    void loadSessionPermissions();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const loadCariCustomers = React.useCallback(async (query: string) => {
+    setLoadingCariCustomers(true);
+    try {
+      const search = query.trim();
+      const rows = await requestApi<CustomerApiRow[]>(
+        `/api/tenant/customers?includeFinancial=1&limit=120${search ? `&q=${encodeURIComponent(search)}` : ""}`,
+      );
+
+      const mapped = rows
+        .map((row, index) => {
+          const payload = asRecord(row.payload);
+          const riskLimit = asNumber(row.riskLimit, 0);
+          const maturityDays = Math.max(0, Math.floor(asNumber(row.maturityDays, 0)));
+          const currentBalance = asNumber(row.currentBalance, 0);
+          const availableRisk = asNumber(row.availableRisk, Math.max(0, riskLimit - currentBalance));
+          const riskUsageRate = riskLimit > 0 ? currentBalance / riskLimit : 0;
+          const riskStatusRaw = asText(row.riskStatus);
+          const riskStatus =
+            riskStatusRaw === "over_limit" || riskStatusRaw === "warning" || riskStatusRaw === "ok" || riskStatusRaw === "no_limit"
+              ? riskStatusRaw
+              : riskLimit <= 0
+                ? "no_limit"
+                : currentBalance > riskLimit
+                  ? "over_limit"
+                  : riskUsageRate >= 0.8
+                    ? "warning"
+                    : "ok";
+
+          return {
+            id: row.id || `${asText(row.code)}-${index}`,
+            code: asText(row.code),
+            name: asText(row.name),
+            phone: asText(payload.phone),
+            email: asText(payload.email),
+            riskLimit,
+            maturityDays,
+            currentBalance,
+            availableRisk,
+            riskUsageRate,
+            riskStatus,
+          } satisfies CariCustomerRow;
+        })
+        .filter((row) => row.code && row.name)
+        .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+
+      setCariCustomers(mapped);
+      const preferred = mapped.find((row) => row.code === customerCode) ?? mapped[0];
+      setSelectedCariCustomerId(preferred?.id ?? "");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Cari müşteri listesi yüklenemedi.");
+    } finally {
+      setLoadingCariCustomers(false);
+    }
+  }, [customerCode]);
+
+  React.useEffect(() => {
+    if (!showCariCustomerModal) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void loadCariCustomers(cariCustomerQuery);
+    }, 180);
+
+    return () => window.clearTimeout(timer);
+  }, [showCariCustomerModal, cariCustomerQuery, loadCariCustomers]);
+
+  React.useEffect(() => {
+    if (!showCariCustomerModal && !confirmDialog.open) {
+      return;
+    }
+
+    function onEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (confirmDialog.open) {
+        closeConfirmDialog(false);
+        return;
+      }
+      if (showCariCustomerModal) {
+        setShowCariCustomerModal(false);
+      }
+    }
+
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [showCariCustomerModal, confirmDialog.open, closeConfirmDialog]);
+
+  const persistCurrentTabSnapshot = React.useCallback(() => {
+    const activeId = activeSaleTabRef.current;
+    setSaleTabs((prev) =>
+      prev.map((tab) =>
+        tab.id === activeId
+          ? {
+              ...tab,
+              cartLines: cart,
+              customerCode,
+              customerName,
+              partialAmount,
+              cartNote,
+            }
+          : tab,
+      ),
+    );
+  }, [cart, cartNote, customerCode, customerName, partialAmount]);
+
+  React.useEffect(() => {
+    persistCurrentTabSnapshot();
+  }, [persistCurrentTabSnapshot, cart, selectedLineId]);
+
+  function switchSaleTab(tabId: string) {
+    const currentId = activeSaleTabRef.current;
+    if (tabId === currentId) {
+      return;
+    }
+
+    const currentTab = saleTabsRef.current.find((tab) => tab.id === currentId);
+    if (currentTab) {
+      currentTab.cartLines = cart;
+      currentTab.customerCode = customerCode;
+      currentTab.customerName = customerName;
+      currentTab.partialAmount = partialAmount;
+      currentTab.cartNote = cartNote;
+    }
+
+    const target = saleTabsRef.current.find((tab) => tab.id === tabId);
+    if (!target) {
+      return;
+    }
+
+    setActiveSaleTabId(tabId);
+    setCustomerCode(target.customerCode || "");
+    setCustomerName(target.customerName || "");
+    setPartialAmount(target.partialAmount || "0");
+    setCartNote(target.cartNote || "");
+    setCart(target.cartLines ?? []);
+    setSelectedLineId(null);
+    setExchangeTargetId(null);
+    setMessage(`${target.label} açıldı.`);
+    setError(null);
+  }
+
+  function createSaleTab() {
+    if (saleTabs.length >= 8) {
+      setError("En fazla 8 aktif satış sekmesi açabilirsiniz.");
+      return;
+    }
+    const nextIndex = saleTabs.length + 1;
+    const next: SaleTabSnapshot = {
+      id: `tab-${Date.now()}`,
+      label: `Satış ${nextIndex}`,
+      cartLines: [],
+      customerCode: "",
+      customerName: "",
+      partialAmount: "0",
+      cartNote: "",
+    };
+    setSaleTabs((prev) => {
+      const updated = [...prev, next];
+      saleTabsRef.current = updated;
+      return updated;
+    });
+    setActiveSaleTabId(next.id);
+    setCart([]);
+    setCustomerCode("");
+    setCustomerName("");
+    setPartialAmount("0");
+    setCartNote("");
+    setSelectedLineId(null);
+    setExchangeTargetId(null);
+    setMessage(`${next.label} oluşturuldu.`);
+    setError(null);
+  }
+
+  function openCariCustomerModal() {
+    if (cart.length === 0) {
+      setError("Cari satış için sepete ürün ekleyin.");
+      return;
+    }
+    setError(null);
+    setMessage(null);
+    setCariCustomerQuery("");
+    setShowCariCustomerModal(true);
+  }
+
+  const stopCameraScanner = React.useCallback(() => {
+    if (cameraScanIntervalRef.current !== null) {
+      window.clearInterval(cameraScanIntervalRef.current);
+      cameraScanIntervalRef.current = null;
+    }
+    const stream = cameraStreamRef.current;
+    if (stream) {
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
+    }
+    cameraStreamRef.current = null;
+    setTorchEnabled(false);
+  }, []);
+
+  const openCameraScanner = React.useCallback(() => {
+    setShowCameraScanner(true);
+    setCameraBusy(true);
+    setError(null);
+  }, []);
+
+  const toggleCameraTorch = React.useCallback(async () => {
+    const stream = cameraStreamRef.current;
+    const track = stream?.getVideoTracks()[0];
+    if (!track) {
+      return;
+    }
+    try {
+      const advanced = [{ torch: !torchEnabled }] as unknown as MediaTrackConstraintSet[];
+      await track.applyConstraints({ advanced });
+      setTorchEnabled((prev) => !prev);
+    } catch {
+      setError("Fener desteği bu cihazda kullanılamıyor.");
+    }
+  }, [torchEnabled]);
+
+  React.useEffect(() => {
+    if (!showCameraScanner) {
+      return;
+    }
+
+    let cancelled = false;
+    const BarcodeDetectorClass = (window as Window & { BarcodeDetector?: BarcodeDetectorClassLike }).BarcodeDetector;
+
+    async function start() {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error("Kamera erişimi desteklenmiyor.");
+        }
+        if (!BarcodeDetectorClass) {
+          throw new Error("Tarayıcı barkod algılama desteği sunmuyor.");
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
+        if (cancelled) {
+          for (const track of stream.getTracks()) {
+            track.stop();
+          }
+          return;
+        }
+        cameraStreamRef.current = stream;
+
+        const video = cameraVideoRef.current;
+        if (!video) {
+          throw new Error("Kamera görüntüsü başlatılamadı.");
+        }
+
+        video.srcObject = stream;
+        await video.play();
+
+        const detector = new BarcodeDetectorClass({
+          formats: ["ean_13", "ean_8", "code_128", "upc_a", "upc_e", "qr_code"],
+        });
+
+        cameraScanIntervalRef.current = window.setInterval(async () => {
+          if (!cameraVideoRef.current) {
+            return;
+          }
+          try {
+            const results = await detector.detect(cameraVideoRef.current);
+            const value = results[0]?.rawValue?.trim();
+            if (!value) {
+              return;
+            }
+            const scanned = tryScanAdd(value);
+            if (scanned) {
+              setSearchText("");
+              setNumpadBuffer("");
+              setShowCameraScanner(false);
+              stopCameraScanner();
+              setMessage(`Barkod okundu: ${value}`);
+            }
+          } catch {
+            // Tarama hataları geçici olabilir, döngüyü kesmeden devam edilir.
+          }
+        }, 180);
+      } catch (requestError) {
+        setError(requestError instanceof Error ? requestError.message : "Kamera açılamadı.");
+        setShowCameraScanner(false);
+        stopCameraScanner();
+      } finally {
+        setCameraBusy(false);
+      }
+    }
+
+    void start();
+
+    return () => {
+      cancelled = true;
+      stopCameraScanner();
+    };
+  }, [showCameraScanner, stopCameraScanner]);
+
+  function ensureOperationPermission(permissionKey: "sale:return" | "sale:discount", operationLabel: string): boolean {
+    if (canUsePermission(permissionKey)) {
+      return true;
+    }
+    setError(`${operationLabel} için yetkiniz yok.`);
+    setMessage(null);
+    return false;
+  }
+
+  const filteredProducts = React.useMemo(() => {
+    const q = searchText.trim().toLocaleLowerCase("tr");
+    if (!q) {
+      return products;
+    }
+
+    return products.filter((product) => {
+      const inName = product.name.toLocaleLowerCase("tr").includes(q);
+      const inCode = product.code.toLocaleLowerCase("tr").includes(q);
+      const inBarcode = product.barcode?.toLocaleLowerCase("tr").includes(q) ?? false;
+      return inName || inCode || inBarcode;
+    });
+  }, [products, searchText]);
+
+  const totals = React.useMemo(() => {
+    const subTotal = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+    const taxTotal = cart.reduce((sum, line) => sum + (line.quantity * line.unitPrice * line.taxRate) / 100, 0);
+    const grandTotal = subTotal + taxTotal;
+    const totalQuantity = cart.reduce((sum, line) => sum + line.quantity, 0);
+
+    return {
+      subTotal,
+      taxTotal,
+      grandTotal: Math.round(grandTotal * 100) / 100,
+      totalQuantity,
+    };
+  }, [cart]);
+
+  React.useEffect(() => {
+    setPartialAmount(totals.grandTotal.toFixed(2));
+  }, [totals.grandTotal]);
+
+  const paymentPreview = React.useMemo(() => {
+    const collected = Math.max(0, asNumber(partialAmount, totals.grandTotal));
+    const remaining = Math.max(0, roundCurrency(totals.grandTotal - collected));
+    const change = Math.max(0, roundCurrency(collected - totals.grandTotal));
+    return { collected, remaining, change };
+  }, [partialAmount, totals.grandTotal]);
+
+  const buildCustomerScreenState = React.useCallback((): CustomerScreenState => {
+    return {
+      registerName,
+      customerName: customerName || "Perakende",
+      total: totals.grandTotal,
+      totalQuantity: totals.totalQuantity,
+      lines: cart.map((line) => ({
+        id: line.productId,
+        name: line.productName,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        total: line.quantity * line.unitPrice * (1 + line.taxRate / 100),
+      })),
+      updatedAt: new Date().toISOString(),
+    };
+  }, [cart, customerName, registerName, totals.grandTotal, totals.totalQuantity]);
+
+  const publishCustomerScreen = React.useCallback(
+    (payload?: CustomerScreenState) => {
+      const data = payload ?? buildCustomerScreenState();
+      customerScreenStateRef.current = data;
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("pos:customer-screen", JSON.stringify(data));
+      }
+
+      customerScreenChannelRef.current?.postMessage({
+        type: "state",
+        payload: data,
+      });
+    },
+    [buildCustomerScreenState],
+  );
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") {
+      return;
+    }
+
+    const channel = new BroadcastChannel("pos-customer-screen");
+    customerScreenChannelRef.current = channel;
+
+    const onMessage = (event: MessageEvent) => {
+      const packet = asRecord(event.data);
+      const packetType = asText(packet.type);
+      if (packetType === "request-state") {
+        const fallback = customerScreenStateRef.current ?? buildCustomerScreenState();
+        publishCustomerScreen(fallback);
+      }
+    };
+
+    channel.addEventListener("message", onMessage);
+    return () => {
+      channel.removeEventListener("message", onMessage);
+      channel.close();
+      customerScreenChannelRef.current = null;
+    };
+  }, [buildCustomerScreenState, publishCustomerScreen]);
+
+  React.useEffect(() => {
+    publishCustomerScreen();
+  }, [publishCustomerScreen]);
+
+  function openCustomerScreen() {
+    const popup = window.open("/pos/musteri-ekrani", "_blank", "noopener,noreferrer,width=1280,height=720");
+    if (!popup) {
+      setError("Müşteri ekranı açılamadı. Tarayıcı popup engeli olabilir.");
+      return;
+    }
+    publishCustomerScreen();
+    setMessage("Müşteri ekranı açıldı ve canlı veri aktarımı başlatıldı.");
+  }
+
+  function calcLineTotal(line: PosSaleItem): number {
+    return line.quantity * line.unitPrice * (1 + line.taxRate / 100);
+  }
+
+  function roundCurrency(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
+  function escapeHtml(input: string): string {
+    return input
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function printSaleReceipt(sale: PosSaleHistoryRow) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const popup = window.open("", "_blank", "noopener,noreferrer,width=420,height=760");
+    if (!popup) {
+      setError("Yazdırma penceresi açılamadı. Popup engelini kontrol edin.");
+      return;
+    }
+
+    const rowsHtml = sale.items
+      .map(
+        (line) => `
+          <tr>
+            <td>${escapeHtml(line.productName)}</td>
+            <td style="text-align:right">${line.quantity.toFixed(2)}</td>
+            <td style="text-align:right">${formatTry(line.unitPrice)}</td>
+            <td style="text-align:right">${formatTry(calcLineTotal(line))}</td>
+          </tr>
+        `,
+      )
+      .join("");
+
+    const paymentsHtml = sale.payments
+      .map(
+        (payment) => `<li>${escapeHtml(payment.method.toUpperCase())}: <strong>${formatTry(payment.amount)}</strong></li>`,
+      )
+      .join("");
+
+    const printRegisterName = sale.registerName || registerName;
+    const paperWidthMm = posParameters.infoReceiptSize === "80" ? 80 : 58;
+    popup.document.write(`<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fiş - ${escapeHtml(sale.saleCode)}</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 8px auto; color: #111; width: ${paperWidthMm}mm; }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      p { margin: 2px 0; font-size: 12px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+      th, td { border-bottom: 1px dashed #aaa; padding: 6px 2px; }
+      th { text-align: left; }
+      .total { margin-top: 10px; font-size: 16px; font-weight: 700; text-align: right; }
+      .muted { color: #444; }
+      @media print { body { margin: 0; } }
+    </style>
+  </head>
+  <body>
+    <h1>${escapeHtml(printRegisterName)}</h1>
+    <p class="muted">Fiş No: ${escapeHtml(sale.saleCode)}</p>
+    <p class="muted">Tarih: ${new Date(sale.occurredAt).toLocaleString("tr-TR")}</p>
+    <p class="muted">Müşteri: ${escapeHtml(sale.customerName || "Perakende")}</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Ürün</th>
+          <th>Miktar</th>
+          <th>Birim</th>
+          <th>Tutar</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <div class="total">Toplam: ${formatTry(sale.total)}</div>
+    <ul>${paymentsHtml}</ul>
+  </body>
+</html>`);
+    popup.document.close();
+    popup.focus();
+    popup.print();
+  }
+
+  async function handlePostSaleReceiptFlow(sale: PosSaleHistoryRow) {
+    if (posParameters.infoReceiptPrintMode === "never") {
+      return;
+    }
+    if (posParameters.infoReceiptPrintMode === "always") {
+      printSaleReceipt(sale);
+      return;
+    }
+    const wantsPrint = await openConfirmDialog({
+      title: "Bilgi Fişi",
+      description: "Bilgi fişi yazdırmak istiyor musunuz?",
+      confirmLabel: "Yazdır",
+      cancelLabel: "Yazdırma",
+      tone: "info",
+    });
+    if (wantsPrint) {
+      printSaleReceipt(sale);
+    }
+  }
+
+  async function loadSuspendedCarts() {
+    setLoadingOperations(true);
+    try {
+      const rows = await requestApi<SuspendedCartRow[]>(
+        `/api/tenant/pos/suspended?registerId=${encodeURIComponent(registerId)}&limit=80`,
+      );
+      setSuspendedCarts(rows);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Askı sepetler yüklenemedi.");
+    } finally {
+      setLoadingOperations(false);
+    }
+  }
+
+  React.useEffect(() => {
+    const focus = focusParam;
+    if (!focus || focusHandledRef.current === focus) {
+      return;
+    }
+
+    if (focus === "askidaki-sepetler" || focus === "iade-islemleri" || focus === "oturum-ve-kasa" || focus === "odeme-akislari") {
+      focusHandledRef.current = focus;
+      setShowOperations(true);
+      void loadSuspendedCarts();
+
+      if (focus === "askidaki-sepetler") {
+        setMessage("Askı sepet operasyon ekranı açıldı.");
+      } else if (focus === "iade-islemleri") {
+        setMessage("Fiş bazlı iade operasyon ekranı açıldı.");
+      } else if (focus === "oturum-ve-kasa") {
+        setMessage("Oturum ve kasa operasyon ekranı açıldı.");
+      } else if (focus === "odeme-akislari") {
+        setMessage("Ödeme ve fiş operasyon ekranı açıldı.");
+      }
+    }
+  }, [focusParam, loadSuspendedCarts]);
+
+  async function toggleOperationsPanel() {
+    const next = !showOperations;
+    setShowOperations(next);
+    if (next) {
+      await loadSuspendedCarts();
+    }
+  }
+
+  async function recallSuspendedCart(suspendedSaleId: string) {
+    if (cart.length > 0) {
+      const accepted = await openConfirmDialog({
+        title: "Askı Sepet Geri Çağırma",
+        description: "Mevcut sepet temizlenip askı sepet geri çağrılsın mı?",
+        confirmLabel: "Evet, Geri Çağır",
+        cancelLabel: "Vazgeç",
+        tone: "danger",
+      });
+      if (!accepted) {
+        return;
+      }
+    }
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await requestApi<SuspendedRestoreResult>("/api/tenant/pos/suspended/restore", {
+        method: "POST",
+        body: JSON.stringify({ suspendedSaleId }),
+      });
+
+      setCart(
+        result.items.map((line) => ({
+          productId: line.productId,
+          productCode: line.productCode ?? "",
+          productName: line.productName,
+          quantity: line.quantity,
+          unit: "ADET",
+          unitPrice: line.unitPrice,
+          taxRate: line.taxRate,
+        })),
+      );
+      setCustomerCode(result.customerCode ?? "");
+      setCustomerName(result.customerName ?? "");
+      setSelectedLineId(result.items[0]?.productId ?? null);
+      setExchangeTargetId(null);
+      setShowOperations(false);
+      setMessage("Askı sepet geri çağrıldı.");
+      await loadData();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Askı sepet geri çağrılamadı.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function findSaleByCode() {
+    const code = saleLookupCode.trim();
+    if (!code) {
+      setError("Fiş araması için satış kodu girin.");
+      return;
+    }
+
+    setLoadingOperations(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const rows = await requestApi<PosSaleHistoryRow[]>(
+        `/api/tenant/pos/sales?saleCode=${encodeURIComponent(code)}&limit=20`,
+      );
+      const found = rows.find((item) => item.saleCode === code) ?? rows[0] ?? null;
+      if (!found) {
+        setSaleLookupResult(null);
+        setError("Satış fişi bulunamadı.");
+        return;
+      }
+      setSaleLookupResult(found);
+      const returnable = found.items.reduce((sum, item) => sum + Math.max(0, item.remainingQuantity ?? item.quantity), 0);
+      if (returnable <= 0) {
+        setMessage(`Fiş bulundu: ${found.saleCode} (Bu fişte iade edilebilir miktar kalmadı)`);
+      } else {
+        setMessage(`Fiş bulundu: ${found.saleCode}`);
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Fiş bilgisi alınamadı.");
+    } finally {
+      setLoadingOperations(false);
+    }
+  }
+
+  React.useEffect(() => {
+    if (!saleLookupResult) {
+      setReturnLines([]);
+      return;
+    }
+
+    setReturnLines(
+      saleLookupResult.items.map((item, index) => ({
+        key: `${saleLookupResult.id}-${item.productId}-${index}`,
+        productId: item.productId,
+        productCode: item.productCode,
+        productName: item.productName,
+        soldQuantity: item.quantity,
+        maxReturnQuantity: Math.max(0, item.remainingQuantity ?? item.quantity),
+        returnQuantity: Math.max(0, item.remainingQuantity ?? item.quantity),
+        unitPrice: item.unitPrice,
+        taxRate: item.taxRate,
+        warehouseId: item.warehouseId,
+        selected: Math.max(0, item.remainingQuantity ?? item.quantity) > 0,
+      })),
+    );
+  }, [saleLookupResult]);
+
+  function updateReturnLineSelection(key: string, selected: boolean) {
+    setReturnLines((prev) => prev.map((line) => (line.key === key ? { ...line, selected } : line)));
+  }
+
+  function updateReturnLineQuantity(key: string, rawValue: string) {
+    const parsed = asNumber(rawValue, 0);
+    setReturnLines((prev) =>
+      prev.map((line) =>
+        line.key === key
+          ? { ...line, returnQuantity: Math.max(0, Math.min(line.maxReturnQuantity, parsed)) }
+          : line,
+      ),
+    );
+  }
+
+  function selectAllReturnLines(selected: boolean) {
+    setReturnLines((prev) => prev.map((line) => ({ ...line, selected: selected && line.maxReturnQuantity > 0 })));
+  }
+
+  const selectedReturnLines = React.useMemo(
+    () => returnLines.filter((line) => line.selected && line.returnQuantity > 0 && line.maxReturnQuantity > 0),
+    [returnLines],
+  );
+  const selectedReturnTotal = React.useMemo(
+    () =>
+      roundCurrency(
+        selectedReturnLines.reduce(
+          (sum, line) => sum + line.returnQuantity * line.unitPrice * (1 + line.taxRate / 100),
+          0,
+        ),
+      ),
+    [selectedReturnLines],
+  );
+  const selectedCariCustomer = React.useMemo(
+    () => cariCustomers.find((row) => row.id === selectedCariCustomerId) ?? null,
+    [cariCustomers, selectedCariCustomerId],
+  );
+  const selectedCariRisk = React.useMemo(() => {
+    if (!selectedCariCustomer) {
+      return null;
+    }
+
+    const projectedBalance = roundCurrency(selectedCariCustomer.currentBalance + totals.grandTotal);
+    const riskLimit = selectedCariCustomer.riskLimit;
+    const projectedUsageRate = riskLimit > 0 ? projectedBalance / riskLimit : 0;
+    const willExceedLimit = riskLimit > 0 && projectedBalance > riskLimit + 0.000001;
+    const willReachWarning = riskLimit > 0 && !willExceedLimit && projectedUsageRate >= 0.8;
+
+    return {
+      projectedBalance,
+      projectedUsageRate,
+      willExceedLimit,
+      willReachWarning,
+    };
+  }, [selectedCariCustomer, totals.grandTotal]);
+  const selectedCariBlockedByRisk = selectedCariRisk?.willExceedLimit ?? false;
+  const activeSaleTabLabel = React.useMemo(
+    () => saleTabs.find((tab) => tab.id === activeSaleTabId)?.label ?? "Satış",
+    [saleTabs, activeSaleTabId],
+  );
+
+  async function createReturnFromLookup() {
+    if (!ensureOperationPermission("sale:return", "Fiş iade")) {
+      return;
+    }
+
+    if (!saleLookupResult) {
+      setError("Önce fiş arayıp satış seçin.");
+      return;
+    }
+    if (selectedReturnLines.length === 0) {
+      setError("Fişte iade edilecek ürün bulunamadı.");
+      return;
+    }
+    if (selectedReturnTotal <= 0) {
+      setError("İade toplamı 0'dan büyük olmalıdır.");
+      return;
+    }
+    const confirmed = await openConfirmDialog({
+      title: "Fiş İade Onayı",
+      description: `${saleLookupResult.saleCode} için seçili satırlar iade edilsin mi?`,
+      confirmLabel: "İadeyi Onayla",
+      cancelLabel: "Vazgeç",
+      tone: "danger",
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    setProcessingReturn(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await requestApi<{ returnCode: string; refundTotal: number }>("/api/tenant/pos/returns", {
+        method: "POST",
+        body: JSON.stringify({
+          registerId,
+          registerName,
+          originalSaleId: saleLookupResult.id,
+          customerCode: saleLookupResult.customerCode || undefined,
+          customerName: saleLookupResult.customerName || undefined,
+          reason: returnReason || undefined,
+          items: selectedReturnLines.map((item) => ({
+            productId: item.productId,
+            productCode: item.productCode,
+            productName: item.productName,
+            quantity: item.returnQuantity,
+            unitPrice: item.unitPrice,
+            taxRate: item.taxRate,
+            warehouseId: item.warehouseId || undefined,
+          })),
+          refundPayments: [{ method: returnRefundMethod, amount: selectedReturnTotal }],
+        }),
+      });
+
+      setMessage(`Fiş iadesi tamamlandı. Belge: ${result.returnCode} | Tutar: ${formatTry(result.refundTotal)}`);
+      setReturnReason("");
+      await loadData();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Fiş iadesi oluşturulamadı.");
+    } finally {
+      setProcessingReturn(false);
+    }
+  }
+
+  function addProductToCart(product: ProductRow, quantity = 1): boolean {
+    if (priceCheckMode) {
+      const activePrice = getProductPrice(product, priceTier);
+      setMessage(`Fiyat Gör | ${product.name} | ${formatTry(activePrice)} | Stok: ${product.stock.toFixed(0)} | KDV: %${product.vatRate}`);
+      setError(null);
+      return true;
+    }
+
+    if (product.lockedForSale) {
+      setError(`${product.name} satışa kapalı.`);
+      return false;
+    }
+
+    if (posParameters.preventExpiredProductSale && isExpired(product.expiryDate)) {
+      setError(`${product.name} için son kullanım tarihi geçmiş.`);
+      return false;
+    }
+
+    const sourceQty = Math.max(1, Math.floor(quantity));
+    if (posParameters.preventOutOfStockSale && !exchangeTargetId) {
+      const currentQty = cart.find((line) => line.productId === product.id)?.quantity ?? 0;
+      if (currentQty + sourceQty > Math.max(0, product.stock)) {
+        setError(`${product.name} için stok yetersiz. Mevcut: ${Math.max(0, product.stock).toFixed(0)}`);
+        return false;
+      }
+    }
+
+    const unitPrice = getProductPrice(product, priceTier);
+    setShowMissingBarcodeActions(false);
+    setMissingBarcode("");
+
+    setCart((prev) => {
+      if (exchangeTargetId) {
+        const exchangeLine = prev.find((line) => line.productId === exchangeTargetId);
+        const targetQty = exchangeLine?.quantity ?? sourceQty;
+        const cleaned = prev.filter((line) => line.productId !== exchangeTargetId);
+
+        const existingInCleaned = cleaned.find((line) => line.productId === product.id);
+        if (existingInCleaned) {
+          return cleaned.map((line) =>
+            line.productId === product.id
+              ? { ...line, quantity: line.quantity + targetQty, unitPrice, taxRate: product.vatRate }
+              : line,
+          );
+        }
+
+        return [
+          ...cleaned,
+          {
+            productId: product.id,
+            productCode: product.code,
+            productName: product.name,
+            quantity: targetQty,
+            unit: product.unit,
+            unitPrice,
+            taxRate: product.vatRate,
+          },
+        ];
+      }
+
+      const existing = prev.find((line) => line.productId === product.id);
+      if (existing) {
+        return prev.map((line) =>
+          line.productId === product.id ? { ...line, quantity: line.quantity + sourceQty, unitPrice, taxRate: product.vatRate } : line,
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          productId: product.id,
+          productCode: product.code,
+          productName: product.name,
+          quantity: sourceQty,
+          unit: product.unit,
+          unitPrice,
+          taxRate: product.vatRate,
+        },
+      ];
+    });
+
+    playTone("barcode");
+
+    if (exchangeTargetId) {
+      setMessage("Ürün değişimi tamamlandı.");
+      setExchangeTargetId(null);
+    }
+
+    return true;
+  }
+
+  function addCustomLine() {
+    const unitPrice = asNumber(customPrice, 0);
+    const taxRate = asNumber(customVatRate, 20);
+
+    if (!customName.trim()) {
+      setError("Muhtelif satır için ürün adı girmelisiniz.");
+      return;
+    }
+    if (unitPrice <= 0) {
+      setError("Muhtelif satır için fiyat 0'dan büyük olmalıdır.");
+      return;
+    }
+
+    const manualId = `MHTL-${Date.now()}`;
+    setCart((prev) => [
+      ...prev,
+      {
+        productId: manualId,
+        productCode: "MUHTELIF",
+        productName: customName.trim(),
+        quantity: 1,
+        unit: "ADET",
+        unitPrice,
+        taxRate,
+      },
+    ]);
+
+    setSelectedLineId(manualId);
+    setShowCustomPanel(false);
+    setMessage("Muhtelif satır sepete eklendi.");
+    setError(null);
+  }
+
+  function tryScanAdd(input: string) {
+    const q = input.trim().toLocaleLowerCase("tr");
+    if (!q) {
+      return false;
+    }
+
+    const scaleParsed = parseScaleBarcode(input.trim());
+    if (scaleParsed) {
+      const weightedProduct = products.find(
+        (product) =>
+          product.code.toLocaleLowerCase("tr") === scaleParsed.productCode.toLocaleLowerCase("tr") ||
+          (product.barcode ?? "").toLocaleLowerCase("tr") === scaleParsed.productCode.toLocaleLowerCase("tr"),
+      );
+      if (weightedProduct) {
+        setShowMissingBarcodeActions(false);
+        return addProductToCart(weightedProduct, scaleParsed.quantity);
+      }
+    }
+
+    const exact = products.find((product) => {
+      const code = product.code.toLocaleLowerCase("tr");
+      const barcode = (product.barcode ?? "").toLocaleLowerCase("tr");
+      return code === q || barcode === q;
+    });
+
+    if (exact) {
+      if (priceCheckMode) {
+        const activePrice = getProductPrice(exact, priceTier);
+        setMessage(
+          `Fiyat Gör | ${exact.name} | ${formatTry(activePrice)} | Stok: ${exact.stock.toFixed(0)} | KDV: %${exact.vatRate}`,
+        );
+        setError(null);
+        return true;
+      }
+      setShowMissingBarcodeActions(false);
+      return addProductToCart(exact);
+    }
+
+    if (filteredProducts.length === 1) {
+      if (priceCheckMode) {
+        const exactSingle = filteredProducts[0];
+        const activePrice = getProductPrice(exactSingle, priceTier);
+        setMessage(
+          `Fiyat Gör | ${exactSingle.name} | ${formatTry(activePrice)} | Stok: ${exactSingle.stock.toFixed(0)} | KDV: %${exactSingle.vatRate}`,
+        );
+        setError(null);
+        return true;
+      }
+      setShowMissingBarcodeActions(false);
+      return addProductToCart(filteredProducts[0]);
+    }
+
+    setMissingBarcode(input.trim());
+    setShowMissingBarcodeActions(true);
+    setError(`Barkod bulunamadı: ${input.trim()}`);
+    return false;
+  }
+
+  function handleMissingBarcodeAction(action: "new_product" | "manual_line" | "retry") {
+    if (action === "new_product") {
+      const encoded = encodeURIComponent(missingBarcode);
+      window.location.href = `/panel/urunler?focus=new-product&barcode=${encoded}`;
+      return;
+    }
+    if (action === "manual_line") {
+      setShowCustomPanel(true);
+      setCustomName(`Barkod(${missingBarcode}) Manuel Satış`);
+      setCustomPrice("0");
+      setSearchText("");
+      setMessage("Manuel satış satırı paneli açıldı.");
+      return;
+    }
+    searchInputRef.current?.focus();
+    setMessage("Barkodu tekrar okutabilirsiniz.");
+  }
+
+  function handleNumpadKey(key: string) {
+    if (key === "clear") {
+      setNumpadBuffer("");
+      return;
+    }
+    if (key === "backspace") {
+      setNumpadBuffer((prev) => prev.slice(0, -1));
+      return;
+    }
+    if (key === "enter") {
+      if (numpadMode === "barcode") {
+        if (numpadBuffer.trim()) {
+          const scanned = tryScanAdd(numpadBuffer);
+          if (scanned) {
+            setSearchText("");
+            setNumpadBuffer("");
+          }
+        }
+        return;
+      }
+      if (numpadMode === "quantity") {
+        if (!selectedLine) {
+          setError("Miktar için önce sepet satırı seçin.");
+          return;
+        }
+        const qty = Math.max(1, Math.floor(asNumber(numpadBuffer, selectedLine.quantity)));
+        updateQuantity(selectedLine.productId, qty);
+        setNumpadBuffer("");
+        return;
+      }
+      const amount = asNumber(numpadBuffer, 0);
+      if (amount > 0) {
+        setPartialAmount(amount.toFixed(2));
+      }
+      setNumpadBuffer("");
+      return;
+    }
+
+    const appendValue = key === "," ? "." : key;
+    setNumpadBuffer((prev) => `${prev}${appendValue}`);
+    if (numpadMode === "barcode") {
+      setSearchText((prev) => `${prev}${key}`);
+    }
+  }
+
+  const openMixedPaymentModal = React.useCallback(() => {
+    if (cart.length === 0) {
+      setError("Karma ödeme için sepete ürün ekleyin.");
+      return;
+    }
+    setMixedPaymentRows([{ id: `pay-${Date.now()}`, method: "nakit", amount: totals.grandTotal.toFixed(2), reference: "" }]);
+    setShowMixedPaymentModal(true);
+  }, [cart.length, totals.grandTotal]);
+
+  function addMixedPaymentRow() {
+    setMixedPaymentRows((prev) => [
+      ...prev,
+      {
+        id: `pay-${Date.now()}-${prev.length}`,
+        method: "kart",
+        amount: "0",
+        reference: "",
+      },
+    ]);
+  }
+
+  function removeMixedPaymentRow(id: string) {
+    setMixedPaymentRows((prev) => (prev.length <= 1 ? prev : prev.filter((row) => row.id !== id)));
+  }
+
+  function updateMixedPaymentRow(id: string, field: "method" | "amount" | "reference", value: string) {
+    setMixedPaymentRows((prev) =>
+      prev.map((row) =>
+        row.id === id
+          ? {
+              ...row,
+              [field]: value,
+            }
+          : row,
+      ),
+    );
+  }
+
+  async function completeMixedPaymentSale() {
+    const parsed = mixedPaymentRows
+      .map((row) => ({
+        method: row.method,
+        amount: asNumber(row.amount, 0),
+        reference: row.reference.trim() || undefined,
+      }))
+      .filter((row) => row.amount > 0);
+    if (parsed.length === 0) {
+      setError("En az bir ödeme satırı girin.");
+      return;
+    }
+    const totalPayment = parsed.reduce((sum, row) => sum + row.amount, 0);
+    if (totalPayment + 0.000001 < totals.grandTotal) {
+      setError(`Karma ödemede tahsil edilen tutar yetersiz. Kalan: ${formatTry(totals.grandTotal - totalPayment)}`);
+      return;
+    }
+    if (totalPayment > totals.grandTotal + 0.000001 && !parsed.some((row) => row.method === "nakit")) {
+      setError("Para üstü oluşacak işlemlerde en az bir nakit ödeme satırı olmalıdır.");
+      return;
+    }
+
+    await submitSale({
+      modeLabel: "Karma ödeme satışı",
+      payments: parsed,
+      amount: totalPayment,
+    });
+    setShowMixedPaymentModal(false);
+  }
+
+  function updateQuantity(productId: string, quantity: number) {
+    const nextQuantity = Math.max(1, Math.floor(quantity));
+    setCart((prev) => prev.map((line) => (line.productId === productId ? { ...line, quantity: nextQuantity } : line)));
+  }
+
+  function removeLine(productId: string) {
+    setCart((prev) => prev.filter((line) => line.productId !== productId));
+    if (selectedLineId === productId) {
+      setSelectedLineId(null);
+    }
+  }
+
+  function applyQuickCustomer(index: number) {
+    const row = quickCustomers[index];
+    if (!row) {
+      setError("Hızlı müşteri kaydı bulunamadı.");
+      return;
+    }
+
+    setCustomerCode(row.code);
+    setCustomerName(row.name);
+    setMessage(`${row.name} seçildi.`);
+    setError(null);
+  }
+
+  function showSelectedLinePrice() {
+    if (!selectedLine) {
+      setError("Önce sepetten bir satır seçin.");
+      return;
+    }
+
+    const gross = selectedLine.unitPrice * (1 + selectedLine.taxRate / 100);
+    setMessage(`${selectedLine.productName} | Birim: ${formatTry(selectedLine.unitPrice)} | KDV Dahil: ${formatTry(gross)}`);
+    setError(null);
+  }
+
+  function quickReturnSelectedLine() {
+    if (!ensureOperationPermission("sale:return", "Hızlı iade")) {
+      return;
+    }
+
+    if (!selectedLine) {
+      setError("Hızlı iade için sepetten bir satır seçin.");
+      return;
+    }
+
+    if (selectedLine.quantity <= 1) {
+      removeLine(selectedLine.productId);
+    } else {
+      updateQuantity(selectedLine.productId, selectedLine.quantity - 1);
+    }
+
+    setMessage("Seçili satır için iade düşümü uygulandı.");
+    setError(null);
+  }
+
+  function quickExchangeSelectedLine() {
+    if (!selectedLine) {
+      setError("Hızlı değişim için sepetten bir satır seçin.");
+      return;
+    }
+
+    setExchangeTargetId(selectedLine.productId);
+    setSearchText(selectedLine.productName);
+    searchInputRef.current?.focus();
+    setMessage("Değişim modu aktif: Sağdan yeni ürünü seçin.");
+    setError(null);
+  }
+
+  function setActivePriceTier(tier: 1 | 2 | 3 | 4) {
+    setPriceTier(tier);
+
+    if (!selectedLine) {
+      return;
+    }
+
+    const product = products.find((item) => item.id === selectedLine.productId);
+    if (!product) {
+      return;
+    }
+
+    const nextPrice = getProductPrice(product, tier);
+    if (nextPrice < selectedLine.unitPrice && !ensureOperationPermission("sale:discount", "İndirimli fiyat uygulama")) {
+      return;
+    }
+
+    setCart((prev) => prev.map((line) => (line.productId === selectedLine.productId ? { ...line, unitPrice: nextPrice } : line)));
+    setMessage(`Seçili satır Fiyat ${tier} listesine güncellendi.`);
+  }
+
+  function applyLineDiscount(percent: number) {
+    if (!selectedLine) {
+      setError("İskonto için sepetten satır seçin.");
+      return;
+    }
+    if (!ensureOperationPermission("sale:discount", "İskonto")) {
+      return;
+    }
+    const ratio = Math.max(0, Math.min(100, percent)) / 100;
+    const nextPrice = roundCurrency(selectedLine.unitPrice * (1 - ratio));
+    setCart((prev) =>
+      prev.map((line) => (line.productId === selectedLine.productId ? { ...line, unitPrice: nextPrice } : line)),
+    );
+    setMessage(`Seçili satıra %${percent} iskonto uygulandı.`);
+    setError(null);
+  }
+
+  async function ensurePosSession() {
+    if (sessionReady) {
+      return;
+    }
+
+    try {
+      await requestApi("/api/tenant/pos/session/open", {
+        method: "POST",
+        body: JSON.stringify({ registerId, registerName, openingCash: 0 }),
+      });
+      setSessionReady(true);
+    } catch (sessionError) {
+      const text = sessionError instanceof Error ? sessionError.message : "POS oturumu açılamadı.";
+      if (text.toLocaleLowerCase("tr").includes("zaten açık")) {
+        setSessionReady(true);
+        return;
+      }
+      throw sessionError;
+    }
+  }
+
+  function buildSaleItems(): PosSaleItem[] {
+    return cart.map((line) => ({
+      productId: line.productId,
+      productCode: line.productCode,
+      productName: line.productName,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      taxRate: line.taxRate,
+    }));
+  }
+
+  async function submitSale(params: {
+    paymentMethod?: "nakit" | "kart" | "havale_eft" | "cari";
+    amount?: number;
+    modeLabel: string;
+    payments?: Array<{ method: "nakit" | "kart" | "havale_eft" | "cari"; amount: number; reference?: string }>;
+    customerOverride?: { code: string; name: string };
+  }) {
+    if (cart.length === 0) {
+      setError("Sepette ürün yok.");
+      return;
+    }
+
+    const resolvedCustomerCode = params.customerOverride?.code ?? customerCode;
+    const resolvedCustomerName = params.customerOverride?.name ?? customerName;
+
+    const resolvedPayments =
+      params.payments && params.payments.length > 0
+        ? params.payments
+        : [{ method: params.paymentMethod ?? "nakit", amount: params.amount ?? totals.grandTotal }];
+
+    if (resolvedPayments.some((row) => row.method === "cari") && !resolvedCustomerCode.trim()) {
+      setError("Cari satış için müşteri kodu girmelisiniz.");
+      return;
+    }
+
+    const paymentAmount = resolvedPayments.reduce((sum, row) => sum + row.amount, 0);
+    if (paymentAmount <= 0) {
+      setError("Ödeme tutarı 0'dan büyük olmalıdır.");
+      return;
+    }
+    if (
+      resolvedPayments.length === 1 &&
+      resolvedPayments[0].method === "nakit" &&
+      posParameters.requireChangeFlowOnSale &&
+      paymentAmount < totals.grandTotal
+    ) {
+      setError("Para üstü zorunlu ayarında nakit tutarı genel toplamdan küçük olamaz.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      await ensurePosSession();
+      const saleItemsSnapshot = buildSaleItems();
+      const result = await requestApi<SaleResult>("/api/tenant/pos/sales", {
+        method: "POST",
+        body: JSON.stringify({
+          registerId,
+          registerName,
+          customerCode: resolvedCustomerCode || undefined,
+          customerName: resolvedCustomerName || undefined,
+          items: buildSaleItems(),
+          payments: resolvedPayments,
+          notes: cartNote || undefined,
+        }),
+      });
+
+      setMessage(`${params.modeLabel} tamamlandı. Belge: ${result.saleCode} | Ödenen: ${formatTry(result.paidTotal)} | Kalan: ${formatTry(result.outstanding)}`);
+      const receiptSnapshot: PosSaleHistoryRow = {
+        id: result.saleId,
+        saleCode: result.saleCode,
+        registerId,
+        registerName,
+        customerCode: resolvedCustomerCode || undefined,
+        customerName: resolvedCustomerName || undefined,
+        currency: "TRY",
+        total: result.netTotal,
+        occurredAt: new Date().toISOString(),
+        items: saleItemsSnapshot,
+        payments: resolvedPayments.map((row) => ({ method: row.method, amount: row.amount, reference: row.reference })),
+      };
+      setLastSaleReceipt(receiptSnapshot);
+      await handlePostSaleReceiptFlow(receiptSnapshot);
+      setCart([]);
+      setSelectedLineId(null);
+      setExchangeTargetId(null);
+      setCartNote("");
+      playTone("barcode");
+      await loadData();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Satış işlemi başarısız oldu.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitCariSaleWithSelectedCustomer() {
+    const selected = cariCustomers.find((row) => row.id === selectedCariCustomerId);
+    if (!selected) {
+      setError("Cari satış için müşteri seçin.");
+      return;
+    }
+    const projectedBalance = roundCurrency(selected.currentBalance + totals.grandTotal);
+    if (selected.riskLimit > 0 && projectedBalance > selected.riskLimit + 0.000001) {
+      setError(`Müşteri risk limiti aşılır. Yeni bakiye: ${formatTry(projectedBalance)} | Limit: ${formatTry(selected.riskLimit)}`);
+      return;
+    }
+
+    setCustomerCode(selected.code);
+    setCustomerName(selected.name);
+    setShowCariCustomerModal(false);
+    setMessage(`${selected.name} seçildi.`);
+
+    await submitSale({
+      paymentMethod: "cari",
+      amount: totals.grandTotal,
+      modeLabel: "Cari satış",
+      customerOverride: {
+        code: selected.code,
+        name: selected.name,
+      },
+    });
+  }
+
+  async function handlePartialSale() {
+    const paid = asNumber(partialAmount, 0);
+    if (!customerCode.trim()) {
+      setError("Kısmi ödeme için müşteri kodu zorunludur.");
+      return;
+    }
+    if (paid <= 0 || paid >= totals.grandTotal) {
+      setError("Kısmi ödeme tutarı 0 ile genel toplam arasında olmalıdır.");
+      return;
+    }
+
+    await submitSale({ paymentMethod: "nakit", amount: paid, modeLabel: "Kısmi ödeme satışı" });
+  }
+
+  async function suspendCart() {
+    if (cart.length === 0) {
+      setError("Askıya almak için sepete ürün ekleyin.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await ensurePosSession();
+      await requestApi("/api/tenant/pos/suspended", {
+        method: "POST",
+        body: JSON.stringify({
+          registerId,
+          registerName,
+          customerCode: customerCode || undefined,
+          customerName: customerName || undefined,
+          note: cartNote || undefined,
+          items: buildSaleItems(),
+        }),
+      });
+
+      setMessage("Sepet askıya alındı.");
+      setCart([]);
+      setSelectedLineId(null);
+      setExchangeTargetId(null);
+      setCartNote("");
+      if (showOperations) {
+        await loadSuspendedCarts();
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Sepet askıya alınamadı.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function clearCart() {
+    setCart([]);
+    setSelectedLineId(null);
+    setExchangeTargetId(null);
+    setCartNote("");
+    setShowMissingBarcodeActions(false);
+    setMissingBarcode("");
+    setMessage("Sepet iptal edildi.");
+    setError(null);
+  }
+
+  async function requestClearCart() {
+    if (busy) {
+      return;
+    }
+
+    if (cart.length === 0) {
+      clearCart();
+      return;
+    }
+
+    const accepted = await openConfirmDialog({
+      title: "Sepet İptal Onayı",
+      description: "Mevcut sepet tamamen temizlenecek. Devam etmek istiyor musunuz?",
+      confirmLabel: "Sepeti İptal Et",
+      cancelLabel: "Vazgeç",
+      tone: "danger",
+    });
+
+    if (!accepted) {
+      return;
+    }
+
+    clearCart();
+  }
+
+  React.useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.ctrlKey || event.altKey || event.metaKey) {
+        return;
+      }
+      if (event.repeat) {
+        return;
+      }
+      if (showCariCustomerModal || confirmDialog.open) {
+        return;
+      }
+      if (isInputLikeElement(event.target)) {
+        return;
+      }
+
+      if (event.key === "F1") {
+        event.preventDefault();
+        if (busy) {
+          return;
+        }
+        void submitSale({ paymentMethod: "nakit", amount: totals.grandTotal, modeLabel: "Nakit satış" });
+      }
+      if (event.key === "F2") {
+        event.preventDefault();
+        if (busy) {
+          return;
+        }
+        void submitSale({ paymentMethod: "kart", amount: totals.grandTotal, modeLabel: "POS satış" });
+      }
+      if (event.key === "F3") {
+        event.preventDefault();
+        if (busy) {
+          return;
+        }
+        void handlePartialSale();
+      }
+      if (event.key === "F4") {
+        event.preventDefault();
+        if (busy) {
+          return;
+        }
+        openCariCustomerModal();
+      }
+      if (event.key === "F5") {
+        event.preventDefault();
+        void requestClearCart();
+      }
+      if (event.key === "F6") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (event.key === "F7") {
+        event.preventDefault();
+        if (busy) {
+          return;
+        }
+        openMixedPaymentModal();
+      }
+      if (event.key === "F8") {
+        event.preventDefault();
+        setPriceCheckMode((prev) => !prev);
+      }
+      if (event.key === "F9") {
+        event.preventDefault();
+        openCameraScanner();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    busy,
+    cart.length,
+    confirmDialog.open,
+    customerCode,
+    customerName,
+    handlePartialSale,
+    openCariCustomerModal,
+    openCameraScanner,
+    openMixedPaymentModal,
+    partialAmount,
+    posParameters.requireChangeFlowOnSale,
+    priceTier,
+    requestClearCart,
+    selectedLineId,
+    showCariCustomerModal,
+    totals.grandTotal,
+  ]);
+
+  return (
+    <div className="space-y-2 pb-20 md:pb-2">
+      {showAdvancedPos ? (
+        <>
+          <PosTopStatusBar
+            companyName={companyName}
+            branchName={branchName}
+            registerName={registerName}
+            cashierName={cashierName}
+            activeTabLabel={activeSaleTabLabel}
+            customerName={customerName}
+            currencyCode={currencyCode}
+            connectionOnline={connectionOnline}
+            clock={clock}
+          />
+          <PosSaleTabs tabs={saleTabs} activeTabId={activeSaleTabId} onSelect={switchSaleTab} onCreate={createSaleTab} />
+        </>
+      ) : null}
+
+      <div className="rounded-xl border border-emerald-950/40 bg-gradient-to-r from-emerald-950 via-emerald-800 to-emerald-900 px-3 py-2 text-white shadow-md">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" className="h-9 border border-emerald-200/60 bg-emerald-900 text-white hover:bg-emerald-950" onClick={() => setSearchText("")}>Hızlı Satış</Button>
+            <Button size="sm" className="h-9 border border-emerald-200/60 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => void loadData()} disabled={loadingProducts}>Yenile</Button>
+            <Button size="sm" className="h-9 border border-cyan-300/70 bg-sky-700 text-white hover:bg-sky-600" onClick={openCustomerScreen}>Müşteri Ekranı</Button>
+            {showAdvancedPos ? (
+              <>
+                <Button size="sm" className="h-9 border border-cyan-300/70 bg-sky-700 text-white hover:bg-sky-600" onClick={openCameraScanner}>Kamera Barkod</Button>
+                <Button
+                  size="sm"
+                  className={`h-9 border ${priceCheckMode ? "border-lime-300/80 bg-lime-400 text-emerald-950 hover:bg-lime-300" : "border-emerald-200/60 bg-emerald-700 text-white hover:bg-emerald-600"}`}
+                  onClick={() => setPriceCheckMode((prev) => !prev)}
+                >
+                  {priceCheckMode ? "Fiyat Gör Açık" : "Fiyat Gör Modu"}
+                </Button>
+              </>
+            ) : null}
+            <Button size="sm" className="h-9 border border-amber-300/70 bg-amber-500 text-slate-900 hover:bg-amber-400" onClick={() => (lastSaleReceipt ? printSaleReceipt(lastSaleReceipt) : setError("Yazdırmak için önce satış tamamlayın."))}>Fiş Yazdır</Button>
+            <Button
+              size="sm"
+              className={`h-9 border ${showAdvancedPos ? "border-lime-300/70 bg-lime-400 text-emerald-950 hover:bg-lime-300" : "border-slate-300/70 bg-slate-100 text-slate-900 hover:bg-slate-200"}`}
+              onClick={() => setShowAdvancedPos((prev) => !prev)}
+            >
+              {showAdvancedPos ? "Yalın Mod" : "Gelişmiş Mod"}
+            </Button>
+            <Button size="sm" className="h-9 border border-lime-300/70 bg-lime-400 text-emerald-950 hover:bg-lime-300" onClick={() => setMessage("Bilgi paneli aktif.")}>Bilgi</Button>
+          </div>
+
+          <div className="rounded-md border border-emerald-200/50 bg-emerald-950/90 px-4 py-1 text-right">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300">Genel Toplam</p>
+            <p className="text-3xl font-black tracking-tight text-lime-400">{formatTry(totals.grandTotal)}</p>
+          </div>
+        </div>
+
+        <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_1fr_1.2fr]">
+          <div className="rounded-md bg-white/10 px-2 py-1.5 text-xs">
+            <p className="font-semibold text-emerald-200">Kasa</p>
+            <div className="mt-1 grid grid-cols-2 gap-1">
+              <input value={registerId} onChange={(event) => setRegisterId(event.target.value)} className="h-8 rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70" placeholder="Kasa kodu" />
+              <input value={registerName} onChange={(event) => setRegisterName(event.target.value)} className="h-8 rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70" placeholder="Kasa adı" />
+            </div>
+          </div>
+
+          <div className="rounded-md bg-white/10 px-2 py-1.5 text-xs">
+            <p className="font-semibold text-emerald-200">Müşteri</p>
+            <div className="mt-1 grid grid-cols-2 gap-1">
+              <input value={customerCode} onChange={(event) => setCustomerCode(event.target.value)} className="h-8 rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70" placeholder="Kod" />
+              <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} className="h-8 rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70" placeholder="Ad" />
+            </div>
+          </div>
+
+          <div className="rounded-md bg-white/10 px-2 py-1.5 text-xs">
+            <p className="font-semibold text-emerald-200">
+              {posParameters.requireChangeFlowOnSale ? "Nakit / Para Üstü" : "Kısmi Ödeme"}
+            </p>
+            <input value={partialAmount} onChange={(event) => setPartialAmount(event.target.value)} className="mt-1 h-8 w-full rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70" placeholder="0,00" inputMode="decimal" />
+          </div>
+
+          <div className="rounded-md bg-white/10 px-2 py-1.5 text-xs">
+            <p className="font-semibold text-emerald-200">Saat</p>
+            <p className="mt-1 text-sm font-bold text-white">
+              {clock.toLocaleDateString("tr-TR")} {clock.toLocaleTimeString("tr-TR")}
+            </p>
+          </div>
+
+          {showAdvancedPos ? (
+            <div className="rounded-md bg-white/10 px-2 py-1.5 text-xs">
+              <p className="font-semibold text-emerald-200">Sepet Notu</p>
+              <input
+                value={cartNote}
+                onChange={(event) => setCartNote(event.target.value)}
+                className="mt-1 h-8 w-full rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70"
+                placeholder="Fiş notu / müşteri notu"
+              />
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="grid gap-2 xl:grid-cols-[1.06fr_1fr]">
+        <div className="flex min-h-[74vh] flex-col overflow-hidden rounded-xl border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] shadow-sm">
+          <div className="space-y-1 border-b border-[color:var(--mx-border)] bg-emerald-800/95 p-2">
+            <div className="grid gap-1 md:grid-cols-7">
+              <Button size="sm" className="h-9 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
+              <Button size="sm" className="h-9 bg-emerald-700 text-white hover:bg-emerald-600" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
+              <Button size="sm" className="h-9 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => setShowCustomPanel((prev) => !prev)}>Muhtelif</Button>
+              <Button size="sm" className={`h-9 ${priceTier === 1 ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
+              <Button size="sm" className={`h-9 ${priceTier === 2 ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
+              <Button size="sm" className={`h-9 ${priceTier === 3 ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
+              <Button size="sm" className={`h-9 ${priceTier === 4 ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
+            </div>
+
+            <div className="grid gap-1 md:grid-cols-[1fr_repeat(5,minmax(0,1fr))]">
+              <div className="flex items-center gap-1 rounded-md bg-white/95 p-1">
+                <button type="button" className="inline-flex h-9 w-10 items-center justify-center rounded-md bg-sky-700 text-white" onClick={openCameraScanner}>📷</button>
+                <input
+                  ref={searchInputRef}
+                  value={searchText}
+                  onChange={(event) => setSearchText(event.target.value)}
+                  placeholder="Barkod / Ürün adı / Ürün kodu"
+                  className="h-9 flex-1 rounded border border-slate-300 px-2 text-sm"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      if (tryScanAdd(searchText)) {
+                        setSearchText("");
+                      }
+                    }
+                  }}
+                />
+                <button type="button" className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-rose-300 bg-rose-50 text-rose-700" onClick={() => setSearchText("")}>✕</button>
+              </div>
+
+              <Button size="sm" className="h-11 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => applyQuickCustomer(0)}>{quickCustomers[0]?.name ?? "Müşteri 1"}</Button>
+              <Button size="sm" className="h-11 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => applyQuickCustomer(1)}>{quickCustomers[1]?.name ?? "Müşteri 2"}</Button>
+              <Button size="sm" className="h-11 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => applyQuickCustomer(2)}>{quickCustomers[2]?.name ?? "Müşteri 3"}</Button>
+              <Button
+                size="sm"
+                className="h-11 bg-emerald-700 text-white hover:bg-emerald-600"
+                onClick={quickReturnSelectedLine}
+                disabled={!canReturnOperations}
+                title={!canReturnOperations ? "Hızlı iade için yetkiniz yok." : undefined}
+              >
+                H.İade
+              </Button>
+              <Button size="sm" className={`h-11 ${exchangeTargetId ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={quickExchangeSelectedLine}>H.Değşm</Button>
+            </div>
+
+            {showMissingBarcodeActions ? (
+              <div className="grid gap-2 rounded-md border border-amber-300/50 bg-amber-100/90 p-2 text-slate-900 md:grid-cols-[1fr_auto_auto_auto]">
+                <p className="self-center text-sm font-semibold">
+                  Barkod bulunamadı: <span className="font-black">{missingBarcode}</span>
+                </p>
+                <Button size="sm" className="h-9 bg-slate-800 text-white hover:bg-slate-700" onClick={() => handleMissingBarcodeAction("new_product")}>
+                  Ürün Oluştur
+                </Button>
+                <Button size="sm" className="h-9 bg-slate-800 text-white hover:bg-slate-700" onClick={() => handleMissingBarcodeAction("manual_line")}>
+                  Manuel Satır
+                </Button>
+                <Button size="sm" className="h-9 bg-slate-800 text-white hover:bg-slate-700" onClick={() => handleMissingBarcodeAction("retry")}>
+                  Tekrar Dene
+                </Button>
+              </div>
+            ) : null}
+
+            {showCustomPanel ? (
+              <div className="grid gap-1 rounded-md bg-white/10 p-1.5 md:grid-cols-[1fr_160px_120px_auto]">
+                <input value={customName} onChange={(event) => setCustomName(event.target.value)} className="h-9 rounded border border-white/20 bg-white/90 px-2" placeholder="Muhtelif ürün adı" />
+                <input value={customPrice} onChange={(event) => setCustomPrice(event.target.value)} className="h-9 rounded border border-white/20 bg-white/90 px-2" inputMode="decimal" placeholder="Fiyat" />
+                <input value={customVatRate} onChange={(event) => setCustomVatRate(event.target.value)} className="h-9 rounded border border-white/20 bg-white/90 px-2" inputMode="decimal" placeholder="KDV %" />
+                <Button size="sm" className="h-9 bg-lime-400 text-emerald-950 hover:bg-lime-300" onClick={addCustomLine}>Satıra Ekle</Button>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex-1 overflow-auto bg-[color:var(--mx-surface)]">
+            <table className="min-w-full text-sm">
+              <thead className="sticky top-0 z-10 bg-emerald-800 text-white">
+                <tr>
+                  <th className="w-14 px-2 py-2 text-left">Sıra</th>
+                  <th className="w-40 px-2 py-2 text-left">Ürün Kodu</th>
+                  <th className="px-2 py-2 text-left">Ürün Adı</th>
+                  <th className="w-24 px-2 py-2 text-left">Miktar</th>
+                  <th className="w-20 px-2 py-2 text-left">Birim</th>
+                  <th className="w-28 px-2 py-2 text-left">Fiyat</th>
+                  <th className="w-28 px-2 py-2 text-left">Tutar</th>
+                  <th className="w-16 px-2 py-2 text-left">#</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cart.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="h-[44vh] px-3 py-8 text-center text-[color:var(--mx-text-muted)]">Sepet boş. Sağ taraftan ürün seçin veya barkod okutun.</td>
+                  </tr>
+                ) : (
+                  cart.map((line, index) => {
+                    const rowTotal = line.quantity * line.unitPrice * (1 + line.taxRate / 100);
+                    const isSelected = selectedLineId === line.productId;
+                    return (
+                      <tr key={line.productId} className={`border-b border-[color:var(--mx-border)] ${isSelected ? "bg-lime-100" : "hover:bg-emerald-50/60"}`} onClick={() => setSelectedLineId(line.productId)}>
+                        <td className="px-2 py-2">{index + 1}</td>
+                        <td className="px-2 py-2">{line.productCode}</td>
+                        <td className="px-2 py-2 font-medium">{line.productName}</td>
+                        <td className="px-2 py-2">
+                          <div className="inline-flex items-center gap-1 rounded border border-[color:var(--mx-border)] bg-white px-1 py-0.5">
+                            <button type="button" className="h-6 w-6 rounded bg-slate-100" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity - 1); }}>-</button>
+                            <span className="min-w-8 text-center font-semibold">{line.quantity}</span>
+                            <button type="button" className="h-6 w-6 rounded bg-slate-100" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity + 1); }}>+</button>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2">{line.unit}</td>
+                        <td className="px-2 py-2">{formatTry(line.unitPrice)}</td>
+                        <td className="px-2 py-2 font-semibold">{formatTry(rowTotal)}</td>
+                        <td className="px-2 py-2">
+                          <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded bg-emerald-700 text-white hover:bg-emerald-600" onClick={(event) => { event.stopPropagation(); removeLine(line.productId); }}>✕</button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="space-y-2 border-t border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] p-2">
+            <div className="grid gap-2 md:grid-cols-8">
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Toplam Miktar</p><p className="font-bold">{totals.totalQuantity}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Genel İskonto</p><p className="font-bold">{formatTry(0)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Tahsil Edilen</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Para Üstü</p><p className="font-bold text-indigo-700">{formatTry(paymentPreview.change)}</p></div>
+              <div className="rounded border border-emerald-700 bg-emerald-800 px-2 py-1.5 text-sm text-white"><p className="text-xs text-emerald-100">Genel Toplam</p><p className="font-extrabold">{formatTry(totals.grandTotal)}</p></div>
+            </div>
+
+            <div className="grid gap-2 md:grid-cols-8">
+              <Button onClick={() => void submitSale({ paymentMethod: "nakit", amount: totals.grandTotal, modeLabel: "Nakit satış" })} disabled={busy} className="h-12 bg-emerald-700 text-white hover:bg-emerald-600">Nakit Satış (F1)</Button>
+              <Button onClick={() => void submitSale({ paymentMethod: "kart", amount: totals.grandTotal, modeLabel: "POS satış" })} disabled={busy} className="h-12 bg-emerald-700 text-white hover:bg-emerald-600">POS Satış (F2)</Button>
+              <Button onClick={openMixedPaymentModal} disabled={busy} className="h-12 bg-indigo-700 text-white hover:bg-indigo-600">Karma Ödeme</Button>
+              <Button onClick={() => void handlePartialSale()} disabled={busy} className="h-12 bg-emerald-700 text-white hover:bg-emerald-600">Kısmi Ödeme (F3)</Button>
+              <Button onClick={openCariCustomerModal} disabled={busy} className="h-12 bg-emerald-700 text-white hover:bg-emerald-600">Cari Satış (F4)</Button>
+              <Button onClick={() => void suspendCart()} disabled={busy} className="h-12 bg-sky-700 text-white hover:bg-sky-600">Beklemeye Al</Button>
+              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-12 bg-slate-700 text-white hover:bg-slate-600">{showOperations ? "İşlemleri Gizle" : "İşlemler"}</Button>
+              <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-12">Sepet İptal (F5)</Button>
+            </div>
+
+            {showOperations ? (
+              <div className="space-y-3 rounded-lg border border-[color:var(--mx-border)] bg-white p-3">
+                <div className="grid gap-3 xl:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold">Askıdaki Sepetler</p>
+                      <Button size="sm" variant="secondary" onClick={() => void loadSuspendedCarts()} disabled={loadingOperations}>
+                        Yenile
+                      </Button>
+                    </div>
+                    <div className="max-h-52 overflow-auto rounded border border-[color:var(--mx-border)]">
+                      <table className="min-w-full text-xs">
+                        <thead className="bg-[color:var(--mx-surface-soft)]">
+                          <tr>
+                            <th className="px-2 py-2 text-left">Belge</th>
+                            <th className="px-2 py-2 text-left">Müşteri</th>
+                            <th className="px-2 py-2 text-left">İşlem</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {suspendedCarts.length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="px-2 py-4 text-center text-[color:var(--mx-text-muted)]">
+                                {loadingOperations ? "Yükleniyor..." : "Askıda sepet bulunamadı."}
+                              </td>
+                            </tr>
+                          ) : (
+                            suspendedCarts.map((row) => {
+                              const payload = asRecord(row.payload);
+                              const customer = asText(payload.customerName, "Perakende");
+                              return (
+                                <tr key={row.id} className="border-t border-[color:var(--mx-border)]">
+                                  <td className="px-2 py-2">{row.code ?? row.id}</td>
+                                  <td className="px-2 py-2">{customer}</td>
+                                  <td className="px-2 py-2">
+                                    <Button size="sm" onClick={() => void recallSuspendedCart(row.id)} disabled={busy}>
+                                      Geri Çağır
+                                    </Button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-bold">Fiş Bazlı İşlemler</p>
+                    {!canReturnOperations ? (
+                      <p className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
+                        İade işlemleri için yetkiniz bulunmuyor.
+                      </p>
+                    ) : null}
+                    <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                      <input
+                        value={saleLookupCode}
+                        onChange={(event) => setSaleLookupCode(event.target.value)}
+                        placeholder="Satış kodu (örn: SAT-...)"
+                      />
+                      <Button onClick={() => void findSaleByCode()} disabled={loadingOperations}>
+                        Fiş Bul
+                      </Button>
+                    </div>
+
+                    {saleLookupResult ? (
+                      <div className="space-y-2 rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] p-2">
+                        <p className="text-xs font-semibold">
+                          {saleLookupResult.saleCode} - {new Date(saleLookupResult.occurredAt).toLocaleString("tr-TR")}
+                        </p>
+                        <p className="text-xs text-[color:var(--mx-text-muted)]">
+                          Müşteri: {saleLookupResult.customerName || "Perakende"} | Toplam: {formatTry(saleLookupResult.total)}
+                        </p>
+                        <div className="max-h-44 overflow-auto rounded border border-[color:var(--mx-border)] bg-white">
+                          <table className="min-w-full text-xs">
+                            <thead className="bg-[color:var(--mx-surface-soft)]">
+                              <tr>
+                                <th className="px-2 py-2 text-left">Seç</th>
+                                <th className="px-2 py-2 text-left">Ürün</th>
+                                <th className="px-2 py-2 text-left">Satılan</th>
+                                <th className="px-2 py-2 text-left">Kalan</th>
+                                <th className="px-2 py-2 text-left">İade Miktar</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {returnLines.map((line) => (
+                                <tr key={line.key} className="border-t border-[color:var(--mx-border)]">
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="checkbox"
+                                      className="h-4 w-4"
+                                      checked={line.selected}
+                                      onChange={(event) => updateReturnLineSelection(line.key, event.target.checked)}
+                                      disabled={!canReturnOperations}
+                                    />
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <p className="font-semibold">{line.productName}</p>
+                                    <p className="text-[10px] text-[color:var(--mx-text-muted)]">
+                                      {line.productCode || line.productId}
+                                    </p>
+                                  </td>
+                                  <td className="px-2 py-2">{line.soldQuantity.toFixed(2)}</td>
+                                  <td className="px-2 py-2">{line.maxReturnQuantity.toFixed(2)}</td>
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={line.maxReturnQuantity}
+                                      step="0.01"
+                                      value={line.returnQuantity}
+                                      onChange={(event) => updateReturnLineQuantity(line.key, event.target.value)}
+                                      className="h-8 w-24"
+                                      disabled={!canReturnOperations}
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <div className="flex flex-wrap gap-2">
+                            <Button size="sm" variant="secondary" onClick={() => selectAllReturnLines(true)} disabled={!canReturnOperations}>
+                              Tümünü Seç
+                            </Button>
+                            <Button size="sm" variant="secondary" onClick={() => selectAllReturnLines(false)} disabled={!canReturnOperations}>
+                              Seçimi Kaldır
+                            </Button>
+                          </div>
+                          <p className="font-semibold">
+                            Seçili Satır: {selectedReturnLines.length} | İade Toplamı: {formatTry(selectedReturnTotal)}
+                          </p>
+                        </div>
+                        <div className="grid gap-2 md:grid-cols-[1fr_160px]">
+                          <input
+                            value={returnReason}
+                            onChange={(event) => setReturnReason(event.target.value)}
+                            placeholder="İade nedeni (opsiyonel)"
+                            disabled={!canReturnOperations}
+                          />
+                          <select
+                            value={returnRefundMethod}
+                            onChange={(event) => setReturnRefundMethod(event.target.value as "nakit" | "kart" | "havale_eft" | "cari")}
+                            disabled={!canReturnOperations}
+                          >
+                            <option value="nakit">Nakit İade</option>
+                            <option value="kart">Kart İade</option>
+                            <option value="havale_eft">Havale/EFT İade</option>
+                            <option value="cari">Cari İade</option>
+                          </select>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            className="bg-slate-700 text-white hover:bg-slate-600"
+                            onClick={() => printSaleReceipt(saleLookupResult)}
+                          >
+                            Tekrar Yazdır
+                          </Button>
+                          <Button
+                            variant="danger"
+                            onClick={() => void createReturnFromLookup()}
+                            disabled={processingReturn || selectedReturnLines.length === 0 || !canReturnOperations}
+                          >
+                            {processingReturn ? "İade İşleniyor..." : "Kısmi / Tam İade"}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-[color:var(--mx-text-muted)]">
+                        Fiş kodu ile arama yapıp iade veya tekrar yazdırma işlemi başlatabilirsiniz.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {message ? <p className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
+            {error ? <p className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
+          </div>
+        </div>
+
+        <div className="flex min-h-[74vh] flex-col overflow-hidden rounded-xl border border-[color:var(--mx-border)] bg-[#f5f2fa] shadow-sm">
+          <div className="flex items-center gap-2 border-b border-[color:var(--mx-border)] bg-white p-2">
+            <select className="h-10 flex-1 rounded border border-[color:var(--mx-border)] bg-white px-2 text-sm font-semibold">
+              <option>Market & Tekel Büfe</option>
+            </select>
+            <Button size="sm" className="h-10 bg-emerald-700 text-white hover:bg-emerald-600">Yeni Kısayol</Button>
+          </div>
+
+          {showAdvancedPos ? (
+            <div className="space-y-2 border-b border-[color:var(--mx-border)] bg-white p-2">
+            <div className="grid gap-2 md:grid-cols-2">
+              <Button size="sm" className="h-11 bg-emerald-700 text-white hover:bg-emerald-600" onClick={openCariCustomerModal}>
+                Müşteri Seç
+              </Button>
+              <Button size="sm" className="h-11 bg-indigo-700 text-white hover:bg-indigo-600" onClick={openMixedPaymentModal}>
+                Karma Ödeme
+              </Button>
+              <Button
+                size="sm"
+                className={`h-11 ${priceCheckMode ? "bg-lime-400 text-emerald-950" : "bg-slate-700 text-white hover:bg-slate-600"}`}
+                onClick={() => setPriceCheckMode((prev) => !prev)}
+              >
+                {priceCheckMode ? "Fiyat Gör Açık" : "Fiyat Gör"}
+              </Button>
+              <Button size="sm" className="h-11 bg-sky-700 text-white hover:bg-sky-600" onClick={openCameraScanner}>
+                Kamera ile Oku
+              </Button>
+            </div>
+            <PosNumpad mode={numpadMode} buffer={numpadBuffer} onModeChange={setNumpadMode} onKey={handleNumpadKey} />
+            <div className="grid grid-cols-4 gap-2">
+              <Button size="sm" className="h-10 bg-slate-700 text-white hover:bg-slate-600" onClick={() => applyLineDiscount(5)} disabled={!canDiscountOperations}>
+                %5 İsk.
+              </Button>
+              <Button size="sm" className="h-10 bg-slate-700 text-white hover:bg-slate-600" onClick={() => applyLineDiscount(10)} disabled={!canDiscountOperations}>
+                %10 İsk.
+              </Button>
+              <Button size="sm" className="h-10 bg-slate-700 text-white hover:bg-slate-600" onClick={() => applyLineDiscount(20)} disabled={!canDiscountOperations}>
+                %20 İsk.
+              </Button>
+              <Button size="sm" className="h-10 bg-slate-700 text-white hover:bg-slate-600" onClick={() => applyLineDiscount(50)} disabled={!canDiscountOperations}>
+                %50 İsk.
+              </Button>
+            </div>
+            </div>
+          ) : null}
+
+          <div className="flex-1 overflow-auto p-2">
+            {loadingProducts ? (
+              <p className="rounded-md border border-[color:var(--mx-border)] bg-white px-3 py-8 text-center text-sm text-[color:var(--mx-text-muted)]">Ürünler yükleniyor...</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                {filteredProducts.map((product) => {
+                  const expiryDayCount = daysUntilExpiry(product.expiryDate);
+                  const nearExpiry =
+                    expiryDayCount !== null &&
+                    expiryDayCount >= 0 &&
+                    expiryDayCount <= Math.max(0, posParameters.expiryWarningDays);
+                  const blockedByStock = posParameters.preventOutOfStockSale && product.stock <= 0;
+                  const blockedByExpiry = posParameters.preventExpiredProductSale && isExpired(product.expiryDate);
+                  const isBlocked = product.lockedForSale || blockedByStock || blockedByExpiry;
+
+                  return (
+                    <button
+                      type="button"
+                      key={product.id}
+                      onClick={() => addProductToCart(product)}
+                      disabled={isBlocked}
+                      className={`rounded-xl border border-violet-200 bg-white p-2 text-left transition ${
+                        isBlocked
+                          ? "cursor-not-allowed opacity-60"
+                          : "hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-sm"
+                      }`}
+                    >
+                      {product.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={product.imageUrl} alt={product.name} className="mb-2 h-28 w-full rounded object-contain" />
+                      ) : (
+                        <div
+                          className="mb-2 grid h-28 place-items-center rounded text-xl font-black text-white"
+                          style={{ background: hashColor(product.name) }}
+                        >
+                          {productInitials(product.name)}
+                        </div>
+                      )}
+                      <p className="line-clamp-2 text-xs font-semibold text-slate-800">{product.name}</p>
+                      <div className="mt-1 flex items-center justify-between text-xs">
+                        <span className="font-bold text-emerald-700">{formatTry(getProductPrice(product, priceTier))}</span>
+                        <span className="text-slate-500">Stok: {product.stock.toFixed(0)}</span>
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1 text-[10px] font-semibold">
+                        {product.lockedForSale ? (
+                          <span className="rounded bg-rose-100 px-1.5 py-0.5 text-rose-700">Satışa Kapalı</span>
+                        ) : null}
+                        {blockedByExpiry ? (
+                          <span className="rounded bg-rose-100 px-1.5 py-0.5 text-rose-700">SKT Geçti</span>
+                        ) : null}
+                        {nearExpiry ? (
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700">
+                            SKT {expiryDayCount} gün
+                          </span>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {confirmDialog.open ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/65 p-3">
+          <div className="w-full max-w-md rounded-xl border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] p-4 shadow-2xl">
+            <div className="mb-3">
+              <p className="text-base font-bold">{confirmDialog.title}</p>
+              <p className="mt-1 text-sm text-[color:var(--mx-text-muted)]">{confirmDialog.description}</p>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="secondary" onClick={() => closeConfirmDialog(false)}>
+                {confirmDialog.cancelLabel}
+              </Button>
+              <Button
+                variant={confirmDialog.tone === "danger" ? "danger" : "default"}
+                onClick={() => closeConfirmDialog(true)}
+              >
+                {confirmDialog.confirmLabel}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showCariCustomerModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3">
+          <div className="w-full max-w-4xl rounded-xl border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[color:var(--mx-border)] px-4 py-3">
+              <div>
+                <p className="text-base font-bold">Cari Müşteri Seçimi</p>
+                <p className="text-xs text-[color:var(--mx-text-muted)]">
+                  Cari satış için müşteri seçin. Satış tutarı: <span className="font-semibold text-[color:var(--mx-text)]">{formatTry(totals.grandTotal)}</span>
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowCariCustomerModal(false)}
+              >
+                Kapat
+              </Button>
+            </div>
+
+            <div className="space-y-3 p-4">
+              <div className="grid gap-2 md:grid-cols-[1fr_auto_auto]">
+                <input
+                  value={cariCustomerQuery}
+                  onChange={(event) => setCariCustomerQuery(event.target.value)}
+                  placeholder="Cari kodu veya adı ile ara"
+                  autoFocus
+                />
+                <Button
+                  variant="secondary"
+                  onClick={() => void loadCariCustomers(cariCustomerQuery)}
+                  disabled={loadingCariCustomers}
+                >
+                  Yenile
+                </Button>
+                <Button
+                  onClick={() => void submitCariSaleWithSelectedCustomer()}
+                  disabled={busy || loadingCariCustomers || !selectedCariCustomer || selectedCariBlockedByRisk}
+                >
+                  Seçiliyle Cari Satış
+                </Button>
+              </div>
+
+              <div className="max-h-[52vh] overflow-auto rounded-lg border border-[color:var(--mx-border)]">
+                <table className="min-w-full text-sm">
+                  <thead className="sticky top-0 bg-[color:var(--mx-surface-soft)]">
+                    <tr>
+                      <th className="px-2 py-2 text-left">Kod</th>
+                      <th className="px-2 py-2 text-left">Cari Adı</th>
+                      <th className="px-2 py-2 text-left">Bakiye</th>
+                      <th className="px-2 py-2 text-left">Risk</th>
+                      <th className="px-2 py-2 text-left">Vade</th>
+                      <th className="px-2 py-2 text-left">Kullanım</th>
+                      <th className="px-2 py-2 text-left">Telefon</th>
+                      <th className="px-2 py-2 text-left">E-posta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cariCustomers.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-2 py-8 text-center text-[color:var(--mx-text-muted)]">
+                          {loadingCariCustomers ? "Cari müşteriler yükleniyor..." : "Cari müşteri bulunamadı."}
+                        </td>
+                      </tr>
+                    ) : (
+                      cariCustomers.map((row) => {
+                        const active = row.id === selectedCariCustomerId;
+                        const usagePercent = row.riskLimit > 0 ? Math.round((row.currentBalance / row.riskLimit) * 100) : 0;
+                        const usageTone =
+                          row.riskStatus === "over_limit"
+                            ? "text-rose-700"
+                            : row.riskStatus === "warning"
+                              ? "text-amber-700"
+                              : "text-emerald-700";
+                        return (
+                          <tr
+                            key={row.id}
+                            onClick={() => setSelectedCariCustomerId(row.id)}
+                            onDoubleClick={() => void submitCariSaleWithSelectedCustomer()}
+                            className={`cursor-pointer border-t border-[color:var(--mx-border)] ${active ? "bg-emerald-100/70" : "hover:bg-emerald-50/60"}`}
+                          >
+                            <td className="px-2 py-2 font-semibold">{row.code}</td>
+                            <td className="px-2 py-2">{row.name}</td>
+                            <td className="px-2 py-2 font-semibold">{formatTry(row.currentBalance)}</td>
+                            <td className="px-2 py-2">{row.riskLimit > 0 ? formatTry(row.riskLimit) : "Sınırsız"}</td>
+                            <td className="px-2 py-2">{row.maturityDays > 0 ? `${row.maturityDays} gün` : "-"}</td>
+                            <td className={`px-2 py-2 font-semibold ${usageTone}`}>
+                              {row.riskLimit > 0 ? `%${usagePercent}` : "-"}
+                            </td>
+                            <td className="px-2 py-2">{row.phone || "-"}</td>
+                            <td className="px-2 py-2">{row.email || "-"}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="space-y-1 text-sm text-[color:var(--mx-text-muted)]">
+                  <p>
+                    Seçili Cari:{" "}
+                    <span className="font-semibold text-[color:var(--mx-text)]">
+                      {selectedCariCustomer ? `${selectedCariCustomer.code} - ${selectedCariCustomer.name}` : "Yok"}
+                    </span>
+                  </p>
+                  {selectedCariCustomer && selectedCariRisk ? (
+                    <p
+                      className={`text-xs font-semibold ${
+                        selectedCariRisk.willExceedLimit
+                          ? "text-rose-700"
+                          : selectedCariRisk.willReachWarning
+                            ? "text-amber-700"
+                            : "text-emerald-700"
+                      }`}
+                    >
+                      Mevcut bakiye: {formatTry(selectedCariCustomer.currentBalance)} | Satış sonrası: {formatTry(selectedCariRisk.projectedBalance)}
+                      {selectedCariCustomer.riskLimit > 0
+                        ? ` | Limit: ${formatTry(selectedCariCustomer.riskLimit)} | Kullanım: %${Math.round(selectedCariRisk.projectedUsageRate * 100)}`
+                        : " | Risk limiti: Sınırsız"}
+                      {selectedCariCustomer.maturityDays > 0 ? ` | Vade: ${selectedCariCustomer.maturityDays} gün` : ""}
+                    </p>
+                  ) : null}
+                  {selectedCariBlockedByRisk ? (
+                    <p className="text-xs font-semibold text-rose-700">Bu satış risk limitini aştığı için tamamlanamaz.</p>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" onClick={() => setShowCariCustomerModal(false)}>
+                    İptal
+                  </Button>
+                  <Button onClick={() => void submitCariSaleWithSelectedCustomer()} disabled={busy || !selectedCariCustomer || selectedCariBlockedByRisk}>
+                    Cari Satışı Tamamla
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <PosMixedPaymentModal
+        open={showMixedPaymentModal}
+        totalAmount={totals.grandTotal}
+        rows={mixedPaymentRows}
+        busy={busy}
+        onClose={() => setShowMixedPaymentModal(false)}
+        onAddRow={addMixedPaymentRow}
+        onRemoveRow={removeMixedPaymentRow}
+        onChangeRow={updateMixedPaymentRow}
+        onSubmit={() => void completeMixedPaymentSale()}
+      />
+
+      <PosCameraScannerModal
+        open={showCameraScanner}
+        busy={cameraBusy}
+        torchEnabled={torchEnabled}
+        videoRef={cameraVideoRef}
+        onClose={() => {
+          setShowCameraScanner(false);
+          stopCameraScanner();
+        }}
+        onToggleTorch={() => void toggleCameraTorch()}
+      />
+
+      <PosMobileActionBar
+        onSearchFocus={() => searchInputRef.current?.focus()}
+        onCameraScan={openCameraScanner}
+        onCashSale={() => void submitSale({ paymentMethod: "nakit", amount: totals.grandTotal, modeLabel: "Nakit satış" })}
+        onCardSale={() => void submitSale({ paymentMethod: "kart", amount: totals.grandTotal, modeLabel: "POS satış" })}
+        onMixedPayment={openMixedPaymentModal}
+        busy={busy}
+      />
+    </div>
+  );
+}

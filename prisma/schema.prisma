@@ -1,0 +1,5678 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELLED
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  LOCKED
+  DISABLED
+}
+
+enum RoleScope {
+  TENANT
+  BRANCH
+  WAREHOUSE
+  REGISTER
+}
+
+enum SeverityLevel {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model Tenant {
+  id                         String                       @id @default(cuid())
+  slug                       String                       @unique @db.VarChar(80)
+  legalName                  String                       @db.VarChar(255)
+  tradeName                  String?                      @db.VarChar(255)
+  taxNumber                  String                       @unique @db.VarChar(20)
+  mersisNumber               String?                      @db.VarChar(20)
+  locale                     String                       @default("tr-TR") @db.VarChar(10)
+  timezone                   String                       @default("Europe/Istanbul") @db.VarChar(100)
+  currency                   String                       @default("TRY") @db.VarChar(3)
+  status                     TenantStatus                 @default(TRIALING)
+  trialEndsAt                DateTime?
+  activeUntil                DateTime?
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime                     @updatedAt
+  deletedAt                  DateTime?
+  users                      User[]
+  roles                      Role[]
+  sessions                   Session[]
+  refreshTokens              RefreshToken[]
+  modules                    TenantModule[]
+  entitlements               TenantModuleEntitlement[]
+  usageCounters              TenantUsageCounter[]
+  apiKeys                    TenantApiKey[]
+  webhooks                   TenantWebhook[]
+  auditLogs                  AuditLog[]
+  TenantWebhookDelivery      TenantWebhookDelivery[]
+  TenantDomains              TenantDomains[]
+  TenantBrands               TenantBrands[]
+  TenantStatusHistory        TenantStatusHistory[]
+  TenantSettings             TenantSettings[]
+  TenantLocales              TenantLocales[]
+  TenantTimezones            TenantTimezones[]
+  TenantFeatureFlags         TenantFeatureFlags[]
+  TenantSubscriptions        TenantSubscriptions[]
+  SubscriptionItems          SubscriptionItems[]
+  SubscriptionUsageRecords   SubscriptionUsageRecords[]
+  BillingCustomers           BillingCustomers[]
+  BillingAddresses           BillingAddresses[]
+  BillingInvoices            BillingInvoices[]
+  BillingInvoiceItems        BillingInvoiceItems[]
+  BillingPayments            BillingPayments[]
+  BillingRefunds             BillingRefunds[]
+  BillingCreditNotes         BillingCreditNotes[]
+  TrialPeriods               TrialPeriods[]
+  CouponDefinitions          CouponDefinitions[]
+  CouponRedemptions          CouponRedemptions[]
+  UserProfiles               UserProfiles[]
+  UserEmails                 UserEmails[]
+  UserPhones                 UserPhones[]
+  UserPasswords              UserPasswords[]
+  PasswordResetTokens        PasswordResetTokens[]
+  EmailVerificationTokens    EmailVerificationTokens[]
+  MfaMethods                 MfaMethods[]
+  MfaRecoveryCodes           MfaRecoveryCodes[]
+  LoginAttempts              LoginAttempts[]
+  DeviceSessions             DeviceSessions[]
+  IpAccessLogs               IpAccessLogs[]
+  UserInvitations            UserInvitations[]
+  UserPermissionOverrides    UserPermissionOverrides[]
+  Branches                   Branches[]
+  BranchUsers                BranchUsers[]
+  Warehouses                 Warehouses[]
+  WarehouseUsers             WarehouseUsers[]
+  CashRegisters              CashRegisters[]
+  RegisterUsers              RegisterUsers[]
+  Departments                Departments[]
+  Teams                      Teams[]
+  SalesReps                  SalesReps[]
+  Products                   Products[]
+  ProductTypes               ProductTypes[]
+  ProductStatuses            ProductStatuses[]
+  ProductGroups              ProductGroups[]
+  ProductSubgroups           ProductSubgroups[]
+  Brands                     Brands[]
+  Units                      Units[]
+  UnitConversions            UnitConversions[]
+  ProductBarcodes            ProductBarcodes[]
+  ProductQrcodes             ProductQrcodes[]
+  ProductImages              ProductImages[]
+  ProductFiles               ProductFiles[]
+  ProductTags                ProductTags[]
+  ProductTagRelations        ProductTagRelations[]
+  ProductAttributes          ProductAttributes[]
+  ProductAttributeValues     ProductAttributeValues[]
+  ProductVariants            ProductVariants[]
+  ProductVariantValues       ProductVariantValues[]
+  ProductSerialProfiles      ProductSerialProfiles[]
+  ProductLotProfiles         ProductLotProfiles[]
+  ProductShelfLocations      ProductShelfLocations[]
+  ProductNotes               ProductNotes[]
+  ProductLocks               ProductLocks[]
+  PriceLists                 PriceLists[]
+  PriceListItems             PriceListItems[]
+  ProductPrices              ProductPrices[]
+  CustomerSpecificPrices     CustomerSpecificPrices[]
+  SupplierSpecificPrices     SupplierSpecificPrices[]
+  BulkPricingRules           BulkPricingRules[]
+  DiscountRules              DiscountRules[]
+  PromotionRules             PromotionRules[]
+  CampaignRules              CampaignRules[]
+  ExchangeRates              ExchangeRates[]
+  StockBalances              StockBalances[]
+  StockMovements             StockMovements[]
+  InventoryDocuments         InventoryDocuments[]
+  InventoryDocumentItems     InventoryDocumentItems[]
+  StockCounts                StockCounts[]
+  StockCountItems            StockCountItems[]
+  StockAdjustments           StockAdjustments[]
+  StockTransfers             StockTransfers[]
+  StockTransferItems         StockTransferItems[]
+  LotBatches                 LotBatches[]
+  SerialNumbers              SerialNumbers[]
+  InventoryReservations      InventoryReservations[]
+  ReorderRules               ReorderRules[]
+  ExpiryTrackingRecords      ExpiryTrackingRecords[]
+  Customers                  Customers[]
+  CustomerGroups             CustomerGroups[]
+  CustomerSubgroups          CustomerSubgroups[]
+  CustomerAddresses          CustomerAddresses[]
+  CustomerContacts           CustomerContacts[]
+  CustomerNotes              CustomerNotes[]
+  CustomerLimits             CustomerLimits[]
+  CustomerRiskProfiles       CustomerRiskProfiles[]
+  CustomerBalances           CustomerBalances[]
+  CustomerStatements         CustomerStatements[]
+  CustomerDocuments          CustomerDocuments[]
+  CustomerTags               CustomerTags[]
+  Suppliers                  Suppliers[]
+  SupplierGroups             SupplierGroups[]
+  SupplierSubgroups          SupplierSubgroups[]
+  SupplierAddresses          SupplierAddresses[]
+  SupplierContacts           SupplierContacts[]
+  SupplierNotes              SupplierNotes[]
+  SupplierLimits             SupplierLimits[]
+  SupplierBalances           SupplierBalances[]
+  SupplierStatements         SupplierStatements[]
+  SupplierDocuments          SupplierDocuments[]
+  SupplierTags               SupplierTags[]
+  CurrentAccounts            CurrentAccounts[]
+  CurrentAccountTypes        CurrentAccountTypes[]
+  CurrentAccountMovements    CurrentAccountMovements[]
+  BalanceSnapshots           BalanceSnapshots[]
+  DueSchedules               DueSchedules[]
+  Collections                Collections[]
+  CollectionItems            CollectionItems[]
+  PaymentsOut                PaymentsOut[]
+  PaymentOutItems            PaymentOutItems[]
+  Sales                      Sales[]
+  SaleItems                  SaleItems[]
+  SaleItemTaxes              SaleItemTaxes[]
+  SaleItemDiscounts          SaleItemDiscounts[]
+  SalePayments               SalePayments[]
+  SaleRegisterSessions       SaleRegisterSessions[]
+  SuspendedSales             SuspendedSales[]
+  SuspendedSaleItems         SuspendedSaleItems[]
+  SaleReceipts               SaleReceipts[]
+  ReceiptTemplates           ReceiptTemplates[]
+  CartEvents                 CartEvents[]
+  PriceCheckLogs             PriceCheckLogs[]
+  PromoSaleRecords           PromoSaleRecords[]
+  SalesReturns               SalesReturns[]
+  SalesReturnItems           SalesReturnItems[]
+  RefundTransactions         RefundTransactions[]
+  CancellationRecords        CancellationRecords[]
+  CancelledCartItems         CancelledCartItems[]
+  VoidedSales                VoidedSales[]
+  PurchaseOrders             PurchaseOrders[]
+  PurchaseOrderItems         PurchaseOrderItems[]
+  GoodsReceipts              GoodsReceipts[]
+  GoodsReceiptItems          GoodsReceiptItems[]
+  PurchaseInvoices           PurchaseInvoices[]
+  PurchaseInvoiceItems       PurchaseInvoiceItems[]
+  PurchaseCostAllocations    PurchaseCostAllocations[]
+  SupplierReturnNotes        SupplierReturnNotes[]
+  SupplierReturnItems        SupplierReturnItems[]
+  Invoices                   Invoices[]
+  InvoiceItems               InvoiceItems[]
+  DispatchNotes              DispatchNotes[]
+  DispatchNoteItems          DispatchNoteItems[]
+  InvoiceSequences           InvoiceSequences[]
+  DocumentNumberSeries       DocumentNumberSeries[]
+  PrintTemplates             PrintTemplates[]
+  DocumentAttachments        DocumentAttachments[]
+  CashAccounts               CashAccounts[]
+  CashTransactions           CashTransactions[]
+  DailyCashClosings          DailyCashClosings[]
+  CashOpeningRecords         CashOpeningRecords[]
+  CashTransferRecords        CashTransferRecords[]
+  BankAccounts               BankAccounts[]
+  BankTransactions           BankTransactions[]
+  BankReconciliations        BankReconciliations[]
+  BankPosDevices             BankPosDevices[]
+  BankVirtualPosProfiles     BankVirtualPosProfiles[]
+  ExpenseGroups              ExpenseGroups[]
+  Expenses                   Expenses[]
+  ExpenseDocuments           ExpenseDocuments[]
+  RecurringExpenses          RecurringExpenses[]
+  PaymentProviderConfigs     PaymentProviderConfigs[]
+  PaymentCustomers           PaymentCustomers[]
+  PaymentLinks               PaymentLinks[]
+  PaymentLinkEvents          PaymentLinkEvents[]
+  PaymentTransactions        PaymentTransactions[]
+  PaymentTransactionAttempts PaymentTransactionAttempts[]
+  PaymentRefunds             PaymentRefunds[]
+  PaymentWebhookLogs         PaymentWebhookLogs[]
+  PayoutRecords              PayoutRecords[]
+  EInvoiceProviderConfigs    EInvoiceProviderConfigs[]
+  EInvoiceSenderUnits        EInvoiceSenderUnits[]
+  EInvoiceReceivers          EInvoiceReceivers[]
+  EInvoiceDocuments          EInvoiceDocuments[]
+  EInvoiceDocumentItems      EInvoiceDocumentItems[]
+  EInvoiceXmlArchives        EInvoiceXmlArchives[]
+  EInvoiceStatusLogs         EInvoiceStatusLogs[]
+  EInvoiceSendAttempts       EInvoiceSendAttempts[]
+  EInvoiceWebhookLogs        EInvoiceWebhookLogs[]
+  EArchiveDocuments          EArchiveDocuments[]
+  GibAliasRecords            GibAliasRecords[]
+  OutboundDocumentQueues     OutboundDocumentQueues[]
+  InboundDocumentRecords     InboundDocumentRecords[]
+  Files                      Files[]
+  FileFolders                FileFolders[]
+  FileAccessLogs             FileAccessLogs[]
+  DocumentTags               DocumentTags[]
+  DocumentRelations          DocumentRelations[]
+  Notifications              Notifications[]
+  NotificationTemplates      NotificationTemplates[]
+  NotificationDeliveries     NotificationDeliveries[]
+  EmailLogs                  EmailLogs[]
+  SmsLogs                    SmsLogs[]
+  InAppNotifications         InAppNotifications[]
+  AuditLogItems              AuditLogItems[]
+  SecurityEvents             SecurityEvents[]
+  AccessPolicies             AccessPolicies[]
+  ApiAccessLogs              ApiAccessLogs[]
+  SuspiciousActivityLogs     SuspiciousActivityLogs[]
+  DataExportLogs             DataExportLogs[]
+  DataDeletionLogs           DataDeletionLogs[]
+  BranchSettings             BranchSettings[]
+  PosSettings                PosSettings[]
+  InvoiceSettings            InvoiceSettings[]
+  EInvoiceSettings           EInvoiceSettings[]
+  PaymentSettings            PaymentSettings[]
+  ReportSettings             ReportSettings[]
+  PrinterSettings            PrinterSettings[]
+  UiSettings                 UiSettings[]
+  ApprovalFlows              ApprovalFlows[]
+  ApprovalSteps              ApprovalSteps[]
+  ApprovalRequests           ApprovalRequests[]
+  ApprovalRequestItems       ApprovalRequestItems[]
+  WorkflowEvents             WorkflowEvents[]
+  DashboardSnapshots         DashboardSnapshots[]
+  ReportRuns                 ReportRuns[]
+  KpiSnapshots               KpiSnapshots[]
+  DailySalesAggregates       DailySalesAggregates[]
+  MonthlySalesAggregates     MonthlySalesAggregates[]
+  StockValuationSnapshots    StockValuationSnapshots[]
+  JobRuns                    JobRuns[]
+  QueueFailures              QueueFailures[]
+  IntegrationLogs            IntegrationLogs[]
+  ExternalSyncStates         ExternalSyncStates[]
+  WebhookRetries             WebhookRetries[]
+  SupportTickets             SupportTickets[]
+  SupportTicketMessages      SupportTicketMessages[]
+  SupportSessions            SupportSessions[]
+
+  @@map("tenants")
+}
+
+model PlatformUser {
+  id           String    @id @default(cuid())
+  email        String    @unique @db.VarChar(255)
+  fullName     String    @db.VarChar(255)
+  passwordHash String    @db.VarChar(255)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("platform_users")
+}
+
+model PlatformRole {
+  id          String   @id @default(cuid())
+  code        String   @unique @db.VarChar(80)
+  name        String   @db.VarChar(120)
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("platform_roles")
+}
+
+model PlatformPermission {
+  id          String   @id @default(cuid())
+  key         String   @unique @db.VarChar(160)
+  module      String   @db.VarChar(80)
+  action      String   @db.VarChar(80)
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("platform_permissions")
+}
+
+model PlatformRolePermission {
+  id                   String   @id @default(cuid())
+  platformRoleId       String
+  platformPermissionId String
+  createdAt            DateTime @default(now())
+
+  @@unique([platformRoleId, platformPermissionId])
+  @@index([platformRoleId])
+  @@index([platformPermissionId])
+  @@map("platform_role_permissions")
+}
+
+model User {
+  id                 String         @id @default(cuid())
+  tenantId           String
+  email              String         @db.VarChar(255)
+  username           String?        @db.VarChar(80)
+  firstName          String         @db.VarChar(80)
+  lastName           String         @db.VarChar(80)
+  phone              String?        @db.VarChar(30)
+  passwordHash       String         @db.VarChar(255)
+  status             UserStatus     @default(INVITED)
+  lastLoginAt        DateTime?
+  mustChangePassword Boolean        @default(false)
+  isMfaEnabled       Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  deletedAt          DateTime?
+  tenant             Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  roles              UserRole[]
+  sessions           Session[]
+  refreshTokens      RefreshToken[]
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, username])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  tenantId    String
+  code        String           @db.VarChar(80)
+  name        String           @db.VarChar(120)
+  scope       RoleScope        @default(TENANT)
+  isSystem    Boolean          @default(false)
+  description String?          @db.Text
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@unique([tenantId, code])
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id @default(cuid())
+  key             String           @unique @db.VarChar(160)
+  module          String           @db.VarChar(80)
+  action          String           @db.VarChar(80)
+  screen          String?          @db.VarChar(80)
+  description     String?          @db.Text
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  rolePermissions RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  contextKey   String     @default("global") @db.VarChar(120)
+  createdAt    DateTime   @default(now())
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+
+  @@unique([roleId, permissionId, contextKey])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id         String   @id @default(cuid())
+  userId     String
+  roleId     String
+  assignedBy String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  tenantId  String
+  userId    String
+  tokenHash String    @unique @db.VarChar(255)
+  ipAddress String?   @db.VarChar(64)
+  userAgent String?   @db.VarChar(500)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tenantId  String
+  userId    String
+  tokenHash String    @unique @db.VarChar(255)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model TenantModule {
+  id        String   @id @default(cuid())
+  tenantId  String
+  code      String   @db.VarChar(80)
+  name      String   @db.VarChar(120)
+  isEnabled Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("tenant_modules")
+}
+
+model TenantModuleEntitlement {
+  id               String   @id @default(cuid())
+  tenantId         String
+  moduleCode       String   @db.VarChar(80)
+  entitlementKey   String   @db.VarChar(120)
+  entitlementValue String   @db.VarChar(255)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, moduleCode, entitlementKey])
+  @@index([tenantId])
+  @@map("tenant_module_entitlements")
+}
+
+model TenantUsageCounter {
+  id          String   @id @default(cuid())
+  tenantId    String
+  metricKey   String   @db.VarChar(120)
+  metricValue Decimal  @default(0) @db.Decimal(18, 2)
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, metricKey, periodStart, periodEnd])
+  @@index([tenantId, metricKey])
+  @@map("tenant_usage_counters")
+}
+
+model TenantApiKey {
+  id         String    @id @default(cuid())
+  tenantId   String
+  name       String    @db.VarChar(120)
+  keyPrefix  String    @db.VarChar(20)
+  keyHash    String    @unique @db.VarChar(255)
+  scopes     Json?
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@map("tenant_api_keys")
+}
+
+model TenantWebhook {
+  id          String                  @id @default(cuid())
+  tenantId    String
+  eventKey    String                  @db.VarChar(120)
+  endpointUrl String                  @db.VarChar(500)
+  secretHash  String                  @db.VarChar(255)
+  isActive    Boolean                 @default(true)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  tenant      Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  deliveries  TenantWebhookDelivery[]
+
+  @@index([tenantId])
+  @@map("tenant_webhooks")
+}
+
+model TenantWebhookDelivery {
+  id           String        @id @default(cuid())
+  tenantId     String
+  webhookId    String
+  eventId      String        @db.VarChar(120)
+  statusCode   Int?
+  success      Boolean       @default(false)
+  requestBody  Json?
+  responseBody Json?
+  attemptedAt  DateTime      @default(now())
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  webhook      TenantWebhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([webhookId])
+  @@map("tenant_webhook_deliveries")
+}
+
+model AuditLog {
+  id         String        @id @default(cuid())
+  tenantId   String
+  userId     String?
+  module     String        @db.VarChar(80)
+  entityName String        @db.VarChar(120)
+  entityId   String?       @db.VarChar(120)
+  action     String        @db.VarChar(80)
+  severity   SeverityLevel @default(INFO)
+  ipAddress  String?       @db.VarChar(64)
+  userAgent  String?       @db.VarChar(500)
+  payload    Json?
+  createdAt  DateTime      @default(now())
+  tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, module])
+  @@map("audit_logs")
+}
+
+model IdempotencyKey {
+  id           String    @id @default(cuid())
+  tenantId     String
+  endpoint     String    @db.VarChar(255)
+  requestKey   String    @db.VarChar(120)
+  requestHash  String    @db.VarChar(255)
+  responseCode Int?
+  responseBody Json?
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime?
+
+  @@unique([tenantId, endpoint, requestKey])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+model TenantDomains {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("tenant_domains")
+}
+
+model TenantBrands {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("tenant_brands")
+}
+
+model TenantStatusHistory {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("tenant_status_history")
+}
+
+model TenantSettings {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("tenant_settings")
+}
+
+model TenantLocales {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("tenant_locales")
+}
+
+model TenantTimezones {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("tenant_timezones")
+}
+
+model TenantFeatureFlags {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("tenant_feature_flags")
+}
+
+model SubscriptionPlans {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("subscription_plans")
+}
+
+model SubscriptionPlanVersions {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("subscription_plan_versions")
+}
+
+model SubscriptionPlanFeatures {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("subscription_plan_features")
+}
+
+model SubscriptionPlanLimits {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("subscription_plan_limits")
+}
+
+model TenantSubscriptions {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("tenant_subscriptions")
+}
+
+model SubscriptionItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("subscription_items")
+}
+
+model SubscriptionUsageRecords {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("subscription_usage_records")
+}
+
+model BillingCustomers {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("billing_customers")
+}
+
+model BillingAddresses {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("billing_addresses")
+}
+
+model BillingInvoices {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("billing_invoices")
+}
+
+model BillingInvoiceItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("billing_invoice_items")
+}
+
+model BillingPayments {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("billing_payments")
+}
+
+model BillingRefunds {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("billing_refunds")
+}
+
+model BillingCreditNotes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("billing_credit_notes")
+}
+
+model TrialPeriods {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("trial_periods")
+}
+
+model CouponDefinitions {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("coupon_definitions")
+}
+
+model CouponRedemptions {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("coupon_redemptions")
+}
+
+model TaxProfiles {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("tax_profiles")
+}
+
+model UserProfiles {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("user_profiles")
+}
+
+model UserEmails {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("user_emails")
+}
+
+model UserPhones {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("user_phones")
+}
+
+model UserPasswords {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("user_passwords")
+}
+
+model PasswordResetTokens {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationTokens {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("email_verification_tokens")
+}
+
+model MfaMethods {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("mfa_methods")
+}
+
+model MfaRecoveryCodes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("mfa_recovery_codes")
+}
+
+model LoginAttempts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("login_attempts")
+}
+
+model DeviceSessions {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("device_sessions")
+}
+
+model IpAccessLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("ip_access_logs")
+}
+
+model UserInvitations {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("user_invitations")
+}
+
+model UserPermissionOverrides {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("user_permission_overrides")
+}
+
+model PermissionGroups {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("permission_groups")
+}
+
+model Branches {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("branches")
+}
+
+model BranchUsers {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("branch_users")
+}
+
+model Warehouses {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("warehouses")
+}
+
+model WarehouseUsers {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("warehouse_users")
+}
+
+model CashRegisters {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("cash_registers")
+}
+
+model RegisterUsers {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("register_users")
+}
+
+model Departments {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("departments")
+}
+
+model Teams {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("teams")
+}
+
+model SalesReps {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sales_reps")
+}
+
+model Products {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("products")
+}
+
+model ProductTypes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_types")
+}
+
+model ProductStatuses {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_statuses")
+}
+
+model ProductGroups {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_groups")
+}
+
+model ProductSubgroups {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_subgroups")
+}
+
+model Brands {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("brands")
+}
+
+model Units {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("units")
+}
+
+model UnitConversions {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("unit_conversions")
+}
+
+model ProductBarcodes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_barcodes")
+}
+
+model ProductQrcodes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_qrcodes")
+}
+
+model ProductImages {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_images")
+}
+
+model ProductFiles {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_files")
+}
+
+model ProductTags {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_tags")
+}
+
+model ProductTagRelations {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_tag_relations")
+}
+
+model ProductAttributes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_attributes")
+}
+
+model ProductAttributeValues {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_attribute_values")
+}
+
+model ProductVariants {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_variants")
+}
+
+model ProductVariantValues {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_variant_values")
+}
+
+model ProductSerialProfiles {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_serial_profiles")
+}
+
+model ProductLotProfiles {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_lot_profiles")
+}
+
+model ProductShelfLocations {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_shelf_locations")
+}
+
+model ProductNotes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_notes")
+}
+
+model ProductLocks {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_locks")
+}
+
+model PriceLists {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("price_lists")
+}
+
+model PriceListItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("price_list_items")
+}
+
+model ProductPrices {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("product_prices")
+}
+
+model CustomerSpecificPrices {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_specific_prices")
+}
+
+model SupplierSpecificPrices {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_specific_prices")
+}
+
+model BulkPricingRules {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("bulk_pricing_rules")
+}
+
+model DiscountRules {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("discount_rules")
+}
+
+model PromotionRules {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("promotion_rules")
+}
+
+model CampaignRules {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("campaign_rules")
+}
+
+model CurrencyDefinitions {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("currency_definitions")
+}
+
+model ExchangeRates {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("exchange_rates")
+}
+
+model TaxRates {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("tax_rates")
+}
+
+model StockBalances {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("stock_balances")
+}
+
+model StockMovements {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("stock_movements")
+}
+
+model StockMovementTypes {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("stock_movement_types")
+}
+
+model InventoryDocuments {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("inventory_documents")
+}
+
+model InventoryDocumentItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("inventory_document_items")
+}
+
+model StockCounts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("stock_counts")
+}
+
+model StockCountItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("stock_count_items")
+}
+
+model StockAdjustments {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("stock_adjustments")
+}
+
+model StockTransfers {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("stock_transfers")
+}
+
+model StockTransferItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("stock_transfer_items")
+}
+
+model LotBatches {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("lot_batches")
+}
+
+model SerialNumbers {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("serial_numbers")
+}
+
+model InventoryReservations {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("inventory_reservations")
+}
+
+model ReorderRules {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("reorder_rules")
+}
+
+model ExpiryTrackingRecords {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("expiry_tracking_records")
+}
+
+model Customers {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customers")
+}
+
+model CustomerGroups {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_groups")
+}
+
+model CustomerSubgroups {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_subgroups")
+}
+
+model CustomerAddresses {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_addresses")
+}
+
+model CustomerContacts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_contacts")
+}
+
+model CustomerNotes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_notes")
+}
+
+model CustomerLimits {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_limits")
+}
+
+model CustomerRiskProfiles {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_risk_profiles")
+}
+
+model CustomerBalances {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_balances")
+}
+
+model CustomerStatements {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_statements")
+}
+
+model CustomerDocuments {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_documents")
+}
+
+model CustomerTags {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("customer_tags")
+}
+
+model Suppliers {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("suppliers")
+}
+
+model SupplierGroups {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_groups")
+}
+
+model SupplierSubgroups {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_subgroups")
+}
+
+model SupplierAddresses {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_addresses")
+}
+
+model SupplierContacts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_contacts")
+}
+
+model SupplierNotes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_notes")
+}
+
+model SupplierLimits {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_limits")
+}
+
+model SupplierBalances {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_balances")
+}
+
+model SupplierStatements {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_statements")
+}
+
+model SupplierDocuments {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_documents")
+}
+
+model SupplierTags {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_tags")
+}
+
+model CurrentAccounts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("current_accounts")
+}
+
+model CurrentAccountTypes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("current_account_types")
+}
+
+model CurrentAccountMovements {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("current_account_movements")
+}
+
+model MovementSources {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("movement_sources")
+}
+
+model BalanceSnapshots {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("balance_snapshots")
+}
+
+model DueSchedules {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("due_schedules")
+}
+
+model Collections {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("collections")
+}
+
+model CollectionItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("collection_items")
+}
+
+model PaymentsOut {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payments_out")
+}
+
+model PaymentOutItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payment_out_items")
+}
+
+model Sales {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sales")
+}
+
+model SaleItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sale_items")
+}
+
+model SaleItemTaxes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sale_item_taxes")
+}
+
+model SaleItemDiscounts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sale_item_discounts")
+}
+
+model SalePayments {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sale_payments")
+}
+
+model SaleRegisterSessions {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sale_register_sessions")
+}
+
+model SuspendedSales {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("suspended_sales")
+}
+
+model SuspendedSaleItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("suspended_sale_items")
+}
+
+model SaleReceipts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sale_receipts")
+}
+
+model ReceiptTemplates {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("receipt_templates")
+}
+
+model CartEvents {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("cart_events")
+}
+
+model PriceCheckLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("price_check_logs")
+}
+
+model PromoSaleRecords {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("promo_sale_records")
+}
+
+model SalesReturns {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sales_returns")
+}
+
+model SalesReturnItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sales_return_items")
+}
+
+model RefundTransactions {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("refund_transactions")
+}
+
+model CancellationRecords {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("cancellation_records")
+}
+
+model CancelledCartItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("cancelled_cart_items")
+}
+
+model VoidedSales {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("voided_sales")
+}
+
+model PurchaseOrders {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("purchase_order_items")
+}
+
+model GoodsReceipts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("goods_receipt_items")
+}
+
+model PurchaseInvoices {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("purchase_invoices")
+}
+
+model PurchaseInvoiceItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("purchase_invoice_items")
+}
+
+model PurchaseCostAllocations {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("purchase_cost_allocations")
+}
+
+model SupplierReturnNotes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_return_notes")
+}
+
+model SupplierReturnItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("supplier_return_items")
+}
+
+model Invoices {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("invoices")
+}
+
+model InvoiceItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("invoice_items")
+}
+
+model DispatchNotes {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("dispatch_notes")
+}
+
+model DispatchNoteItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("dispatch_note_items")
+}
+
+model InvoiceSequences {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("invoice_sequences")
+}
+
+model DocumentNumberSeries {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("document_number_series")
+}
+
+model PrintTemplates {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("print_templates")
+}
+
+model DocumentAttachments {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("document_attachments")
+}
+
+model CashAccounts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("cash_accounts")
+}
+
+model CashTransactions {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("cash_transactions")
+}
+
+model CashTransactionTypes {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("cash_transaction_types")
+}
+
+model DailyCashClosings {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("daily_cash_closings")
+}
+
+model CashOpeningRecords {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("cash_opening_records")
+}
+
+model CashTransferRecords {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("cash_transfer_records")
+}
+
+model BankAccounts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("bank_accounts")
+}
+
+model BankTransactions {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("bank_transactions")
+}
+
+model BankReconciliations {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("bank_reconciliations")
+}
+
+model BankPosDevices {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("bank_pos_devices")
+}
+
+model BankVirtualPosProfiles {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("bank_virtual_pos_profiles")
+}
+
+model ExpenseGroups {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("expense_groups")
+}
+
+model Expenses {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("expenses")
+}
+
+model ExpenseDocuments {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("expense_documents")
+}
+
+model RecurringExpenses {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("recurring_expenses")
+}
+
+model PaymentProviders {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("payment_providers")
+}
+
+model PaymentProviderConfigs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payment_provider_configs")
+}
+
+model PaymentCustomers {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payment_customers")
+}
+
+model PaymentLinks {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payment_links")
+}
+
+model PaymentLinkEvents {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payment_link_events")
+}
+
+model PaymentTransactions {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payment_transactions")
+}
+
+model PaymentTransactionAttempts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payment_transaction_attempts")
+}
+
+model PaymentRefunds {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payment_refunds")
+}
+
+model PaymentWebhookLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payment_webhook_logs")
+}
+
+model PayoutRecords {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payout_records")
+}
+
+model EInvoiceProviders {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("e_invoice_providers")
+}
+
+model EInvoiceProviderConfigs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("e_invoice_provider_configs")
+}
+
+model EInvoiceSenderUnits {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("e_invoice_sender_units")
+}
+
+model EInvoiceReceivers {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("e_invoice_receivers")
+}
+
+model EInvoiceDocuments {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("e_invoice_documents")
+}
+
+model EInvoiceDocumentItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("e_invoice_document_items")
+}
+
+model EInvoiceXmlArchives {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("e_invoice_xml_archives")
+}
+
+model EInvoiceStatusLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("e_invoice_status_logs")
+}
+
+model EInvoiceSendAttempts {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("e_invoice_send_attempts")
+}
+
+model EInvoiceWebhookLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("e_invoice_webhook_logs")
+}
+
+model EArchiveDocuments {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("e_archive_documents")
+}
+
+model GibAliasRecords {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("gib_alias_records")
+}
+
+model InvoiceScenarios {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("invoice_scenarios")
+}
+
+model InvoiceProfiles {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("invoice_profiles")
+}
+
+model OutboundDocumentQueues {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("outbound_document_queues")
+}
+
+model InboundDocumentRecords {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("inbound_document_records")
+}
+
+model Files {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("files")
+}
+
+model FileFolders {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("file_folders")
+}
+
+model FileAccessLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("file_access_logs")
+}
+
+model DocumentTags {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("document_tags")
+}
+
+model DocumentRelations {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("document_relations")
+}
+
+model Notifications {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("notifications")
+}
+
+model NotificationTemplates {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("notification_templates")
+}
+
+model NotificationChannels {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("notification_channels")
+}
+
+model NotificationDeliveries {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("notification_deliveries")
+}
+
+model EmailLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("email_logs")
+}
+
+model SmsLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("sms_logs")
+}
+
+model InAppNotifications {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("in_app_notifications")
+}
+
+model AuditLogItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("audit_log_items")
+}
+
+model SecurityEvents {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("security_events")
+}
+
+model AccessPolicies {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("access_policies")
+}
+
+model ApiAccessLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("api_access_logs")
+}
+
+model SuspiciousActivityLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("suspicious_activity_logs")
+}
+
+model DataExportLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("data_export_logs")
+}
+
+model DataDeletionLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("data_deletion_logs")
+}
+
+model AppSettings {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("app_settings")
+}
+
+model BranchSettings {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("branch_settings")
+}
+
+model PosSettings {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("pos_settings")
+}
+
+model InvoiceSettings {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("invoice_settings")
+}
+
+model EInvoiceSettings {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("e_invoice_settings")
+}
+
+model PaymentSettings {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("payment_settings")
+}
+
+model ReportSettings {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("report_settings")
+}
+
+model PrinterSettings {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("printer_settings")
+}
+
+model UiSettings {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("ui_settings")
+}
+
+model ApprovalFlows {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("approval_flows")
+}
+
+model ApprovalSteps {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("approval_steps")
+}
+
+model ApprovalRequests {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("approval_requests")
+}
+
+model ApprovalRequestItems {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("approval_request_items")
+}
+
+model WorkflowEvents {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("workflow_events")
+}
+
+model DashboardSnapshots {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("dashboard_snapshots")
+}
+
+model ReportDefinitions {
+  id          String    @id @default(cuid())
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([status])
+  @@map("report_definitions")
+}
+
+model ReportRuns {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("report_runs")
+}
+
+model KpiSnapshots {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("kpi_snapshots")
+}
+
+model DailySalesAggregates {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("daily_sales_aggregates")
+}
+
+model MonthlySalesAggregates {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("monthly_sales_aggregates")
+}
+
+model StockValuationSnapshots {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("stock_valuation_snapshots")
+}
+
+model JobRuns {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("job_runs")
+}
+
+model QueueFailures {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("queue_failures")
+}
+
+model IntegrationLogs {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("integration_logs")
+}
+
+model ExternalSyncStates {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("external_sync_states")
+}
+
+model WebhookRetries {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("webhook_retries")
+}
+
+model SupportTickets {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("support_tickets")
+}
+
+model SupportTicketMessages {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("support_ticket_messages")
+}
+
+model SupportSessions {
+  id          String    @id @default(cuid())
+  tenantId    String
+  externalId  String?   @db.VarChar(191)
+  code        String?   @db.VarChar(100)
+  name        String?   @db.VarChar(255)
+  description String?   @db.Text
+  status      String    @default("active") @db.VarChar(50)
+  payload     Json?
+  occurredAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("support_sessions")
+}
