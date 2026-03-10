@@ -13,7 +13,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bey360 - Bulut ERP / POS",
+  title: "Bey360 ERP / POS",
   description: "Türkiye odaklı çok kiracılı SaaS ERP, POS ve ticari otomasyon platformu",
 };
 

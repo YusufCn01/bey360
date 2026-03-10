@@ -70,7 +70,7 @@ const features = [
   "Çoklu şube ve depo yapısı ile ölçeklenebilir kullanım",
   "Dokunmatik kasalara uygun modern POS altyapısı",
   "e-Fatura, e-Arşiv ve raporlama süreçlerinde hazır akışlar",
-  "Bulutta güvenli çalışma, rol bazlı yetki ve audit kayıtları",
+  "Rol bazlı yetki ve güvenli audit altyapısı",
 ];
 
 function readApiErrorMessage(raw: unknown, fallback: string): string {
@@ -201,6 +201,7 @@ export function LoginForm() {
 
   const submitLogin = loginForm.handleSubmit(async (values) => {
     setLoginError(null);
+
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: {
@@ -354,15 +355,18 @@ export function LoginForm() {
                 </div>
               </div>
 
-              <h2 className="max-w-md text-4xl font-black leading-tight text-white">Bulutta hızlı, sahada güçlü ticari operasyon</h2>
+              <h2 className="max-w-md text-4xl font-black leading-tight text-white">Hızlı, güvenli ve profesyonel ticari operasyon</h2>
               <p className="mt-4 max-w-md text-sm font-semibold leading-6 text-[#aec0ff]">
-                Perakende, market ve ön muhasebe süreçlerinizi tek marka altında yönetin. Bey360 ile satıştan raporlamaya kadar tüm
-                süreçler tek panelde.
+                Perakende, market ve ön muhasebe süreçlerinizi tek panelde yönetin. Bey360 ile satıştan raporlamaya kadar tüm
+                operasyonlarınız gerçek zamanlı kontrol altında.
               </p>
 
               <ul className="mt-8 space-y-3">
                 {features.map((item) => (
-                  <li key={item} className="flex items-start gap-3 rounded-xl border border-[#3a4d97] bg-[#101947]/55 px-3 py-2 text-sm text-[#e4ebff]">
+                  <li
+                    key={item}
+                    className="flex items-start gap-3 rounded-xl border border-[#3a4d97] bg-[#101947]/55 px-3 py-2 text-sm text-[#e4ebff]"
+                  >
                     <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-400/20 text-emerald-300">
                       ✓
                     </span>
