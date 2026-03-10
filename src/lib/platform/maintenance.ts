@@ -28,13 +28,36 @@ function asBoolean(value: unknown, fallback = false): boolean {
 }
 
 export async function getPlatformMaintenanceState(): Promise<PlatformMaintenanceState> {
-  const row = await prisma.appSettings.findFirst({
-    where: {
-      deletedAt: null,
-      code: MAINTENANCE_SCOPE,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  // Build or CI environments can intentionally omit DATABASE_URL.
+  // In that case, return a safe default instead of crashing prerender.
+  if (!process.env.DATABASE_URL || process.env.DATABASE_URL.trim().length === 0) {
+    return {
+      enabled: false,
+      message: DEFAULT_MESSAGE,
+      updatedAt: null,
+      updatedBy: null,
+      startedAt: null,
+    };
+  }
+
+  let row: Awaited<ReturnType<typeof prisma.appSettings.findFirst>>;
+  try {
+    row = await prisma.appSettings.findFirst({
+      where: {
+        deletedAt: null,
+        code: MAINTENANCE_SCOPE,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch {
+    return {
+      enabled: false,
+      message: DEFAULT_MESSAGE,
+      updatedAt: null,
+      updatedBy: null,
+      startedAt: null,
+    };
+  }
 
   if (!row) {
     return {

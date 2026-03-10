@@ -4,6 +4,8 @@ import { FullscreenToggleButton } from "@/app/pos/fullscreen-toggle-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { getPlatformMaintenanceState } from "@/lib/platform/maintenance";
 
+export const dynamic = "force-dynamic";
+
 export default async function FullscreenPosPage() {
   const maintenance = await getPlatformMaintenanceState();
 
