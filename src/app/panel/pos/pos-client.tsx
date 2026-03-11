@@ -240,6 +240,32 @@ function asText(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+function roundQuantity(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+function normalizeQuantity(value: number, min = 0.001): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.max(min, roundQuantity(value));
+}
+
+function formatQuantity(value: number): string {
+  return new Intl.NumberFormat("tr-TR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  }).format(roundQuantity(value));
+}
+
+function getQuantityStep(unit?: string): number {
+  const normalized = (unit ?? "").trim().toLocaleUpperCase("tr");
+  if (["KG", "KİLO", "KILO", "GR", "GRAM", "LT", "L", "LİTRE", "LITRE"].includes(normalized)) {
+    return 0.001;
+  }
+  return 1;
+}
+
 function toDateOnly(value: string): Date | null {
   if (!value) {
     return null;
@@ -279,17 +305,61 @@ function daysUntilExpiry(dateText?: string): number | null {
   return Math.floor(diff / (24 * 60 * 60 * 1000));
 }
 
-function parseScaleBarcode(raw: string): { productCode: string; quantity: number } | null {
+type ScaleBarcodeParseResult = {
+  productCode: string;
+  quantity?: number;
+  encodedAmount?: number;
+  mode: "weight" | "price";
+};
+
+function parseScaleBarcode(raw: string): ScaleBarcodeParseResult | null {
   const digits = raw.replace(/\D/g, "");
-  if (!/^28\d{11}$/.test(digits)) {
+  if (!/^(27|28|29)\d{11}$/.test(digits)) {
     return null;
   }
+
+  const prefix = digits.slice(0, 2);
   const productCode = digits.slice(2, 7);
-  const quantity = Number(digits.slice(7, 12)) / 1000;
-  if (!Number.isFinite(quantity) || quantity <= 0) {
+  const encodedValue = Number(digits.slice(7, 12));
+  if (!Number.isFinite(encodedValue) || encodedValue <= 0) {
     return null;
   }
-  return { productCode, quantity };
+
+  if (prefix === "28") {
+    const quantity = roundQuantity(encodedValue / 1000);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      return null;
+    }
+    return { productCode, quantity, mode: "weight" };
+  }
+
+  const encodedAmount = Math.round((encodedValue / 100) * 100) / 100;
+  return { productCode, encodedAmount, mode: "price" };
+}
+
+function matchesScaleProductCode(product: ProductRow, scaleProductCode: string): boolean {
+  const targetText = scaleProductCode.toLocaleLowerCase("tr");
+  const targetDigits = scaleProductCode.replace(/\D/g, "");
+
+  const match = (candidate: string) => {
+    if (!candidate) {
+      return false;
+    }
+
+    const text = candidate.toLocaleLowerCase("tr");
+    if (text === targetText) {
+      return true;
+    }
+
+    const digits = candidate.replace(/\D/g, "");
+    if (!digits || !targetDigits) {
+      return false;
+    }
+
+    return digits === targetDigits || digits.endsWith(targetDigits);
+  };
+
+  return match(product.code) || match(product.barcode ?? "");
 }
 
 function hashColor(input: string): string {
@@ -1493,11 +1563,11 @@ export function PosClient() {
       return false;
     }
 
-    const sourceQty = Math.max(1, Math.floor(quantity));
+    const sourceQty = normalizeQuantity(quantity, getQuantityStep(product.unit));
     if (posParameters.preventOutOfStockSale && !exchangeTargetId) {
       const currentQty = cart.find((line) => line.productId === product.id)?.quantity ?? 0;
-      if (currentQty + sourceQty > Math.max(0, product.stock)) {
-        setError(`${product.name} için stok yetersiz. Mevcut: ${Math.max(0, product.stock).toFixed(0)}`);
+      if (currentQty + sourceQty > Math.max(0, product.stock) + 0.000001) {
+        setError(`${product.name} için stok yetersiz. Mevcut: ${formatQuantity(Math.max(0, product.stock))}`);
         return false;
       }
     }
@@ -1516,7 +1586,7 @@ export function PosClient() {
         if (existingInCleaned) {
           return cleaned.map((line) =>
             line.productId === product.id
-              ? { ...line, quantity: line.quantity + targetQty, unitPrice, taxRate: product.vatRate }
+              ? { ...line, quantity: roundQuantity(line.quantity + targetQty), unitPrice, taxRate: product.vatRate }
               : line,
           );
         }
@@ -1538,7 +1608,9 @@ export function PosClient() {
       const existing = prev.find((line) => line.productId === product.id);
       if (existing) {
         return prev.map((line) =>
-          line.productId === product.id ? { ...line, quantity: line.quantity + sourceQty, unitPrice, taxRate: product.vatRate } : line,
+          line.productId === product.id
+            ? { ...line, quantity: roundQuantity(line.quantity + sourceQty), unitPrice, taxRate: product.vatRate }
+            : line,
         );
       }
 
@@ -1607,14 +1679,25 @@ export function PosClient() {
 
     const scaleParsed = parseScaleBarcode(input.trim());
     if (scaleParsed) {
-      const weightedProduct = products.find(
-        (product) =>
-          product.code.toLocaleLowerCase("tr") === scaleParsed.productCode.toLocaleLowerCase("tr") ||
-          (product.barcode ?? "").toLocaleLowerCase("tr") === scaleParsed.productCode.toLocaleLowerCase("tr"),
-      );
+      const weightedProduct = products.find((product) => matchesScaleProductCode(product, scaleParsed.productCode));
       if (weightedProduct) {
         setShowMissingBarcodeActions(false);
-        return addProductToCart(weightedProduct, scaleParsed.quantity);
+        if (scaleParsed.mode === "weight" && scaleParsed.quantity) {
+          return addProductToCart(weightedProduct, scaleParsed.quantity);
+        }
+
+        const encodedAmount = scaleParsed.encodedAmount ?? 0;
+        const unitPrice = getProductPrice(weightedProduct, priceTier);
+        if (unitPrice <= 0) {
+          setError(`${weightedProduct.name} için fiyat tanımlı değil. Terazi barkodu çözümlenemedi.`);
+          return false;
+        }
+        const quantityFromAmount = roundQuantity(encodedAmount / unitPrice);
+        if (!Number.isFinite(quantityFromAmount) || quantityFromAmount <= 0) {
+          setError("Terazi barkodu çözümlendi fakat miktar hesaplanamadı.");
+          return false;
+        }
+        return addProductToCart(weightedProduct, quantityFromAmount);
       }
     }
 
@@ -1700,7 +1783,7 @@ export function PosClient() {
           setError("Miktar için önce sepet satırı seçin.");
           return;
         }
-        const qty = Math.max(1, Math.floor(asNumber(numpadBuffer, selectedLine.quantity)));
+        const qty = normalizeQuantity(asNumber(numpadBuffer, selectedLine.quantity), getQuantityStep(selectedLine.unit));
         updateQuantity(selectedLine.productId, qty);
         setNumpadBuffer("");
         return;
@@ -1789,7 +1872,9 @@ export function PosClient() {
   }
 
   function updateQuantity(productId: string, quantity: number) {
-    const nextQuantity = Math.max(1, Math.floor(quantity));
+    const line = cart.find((row) => row.productId === productId);
+    const step = getQuantityStep(line?.unit);
+    const nextQuantity = normalizeQuantity(quantity, step);
     setCart((prev) => prev.map((line) => (line.productId === productId ? { ...line, quantity: nextQuantity } : line)));
   }
 
@@ -1834,10 +1919,11 @@ export function PosClient() {
       return;
     }
 
-    if (selectedLine.quantity <= 1) {
+    const step = getQuantityStep(selectedLine.unit);
+    if (selectedLine.quantity <= step + 0.000001) {
       removeLine(selectedLine.productId);
     } else {
-      updateQuantity(selectedLine.productId, selectedLine.quantity - 1);
+      updateQuantity(selectedLine.productId, selectedLine.quantity - step);
     }
 
     setMessage("Seçili satır için iade düşümü uygulandı.");
@@ -2419,6 +2505,7 @@ export function PosClient() {
                   cart.map((line, index) => {
                     const rowTotal = line.quantity * line.unitPrice * (1 + line.taxRate / 100);
                     const isSelected = selectedLineId === line.productId;
+                    const quantityStep = getQuantityStep(line.unit);
                     return (
                       <tr key={line.productId} className={`border-b border-[color:var(--mx-border)] ${isSelected ? "bg-lime-100" : "hover:bg-emerald-50/60"}`} onClick={() => setSelectedLineId(line.productId)}>
                         <td className="px-2 py-2">{index + 1}</td>
@@ -2426,9 +2513,9 @@ export function PosClient() {
                         <td className="px-2 py-2 font-medium">{line.productName}</td>
                         <td className="px-2 py-2">
                           <div className="inline-flex items-center gap-1 rounded border border-[color:var(--mx-border)] bg-white px-1 py-0.5">
-                            <button type="button" className="h-6 w-6 rounded bg-slate-100" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity - 1); }}>-</button>
-                            <span className="min-w-8 text-center font-semibold">{line.quantity}</span>
-                            <button type="button" className="h-6 w-6 rounded bg-slate-100" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity + 1); }}>+</button>
+                            <button type="button" className="h-6 w-6 rounded bg-slate-100" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity - quantityStep); }}>-</button>
+                            <span className="min-w-8 text-center font-semibold">{formatQuantity(line.quantity)}</span>
+                            <button type="button" className="h-6 w-6 rounded bg-slate-100" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity + quantityStep); }}>+</button>
                           </div>
                         </td>
                         <td className="px-2 py-2">{line.unit}</td>
@@ -2447,7 +2534,7 @@ export function PosClient() {
 
           <div className="space-y-2 border-t border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] p-2">
             <div className="grid gap-2 md:grid-cols-8">
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Toplam Miktar</p><p className="font-bold">{totals.totalQuantity}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Toplam Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
               <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
               <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
               <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Genel İskonto</p><p className="font-bold">{formatTry(0)}</p></div>
