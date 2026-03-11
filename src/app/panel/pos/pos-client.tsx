@@ -1213,6 +1213,18 @@ export function PosClient() {
     return { collected, remaining, change };
   }, [partialAmount, totals.grandTotal]);
 
+  const paymentShortcutValues = React.useMemo(() => {
+    const presets = [5, 10, 20, 50, 100, 200, 500];
+    const unique = new Set<number>();
+    for (const value of presets) {
+      if (value <= Math.max(500, totals.grandTotal * 2)) {
+        unique.add(value);
+      }
+    }
+    unique.add(roundCurrency(totals.grandTotal));
+    return Array.from(unique.values()).sort((a, b) => a - b);
+  }, [totals.grandTotal]);
+
   const buildCustomerScreenState = React.useCallback((): CustomerScreenState => {
     return {
       registerName,
@@ -1935,6 +1947,28 @@ export function PosClient() {
     setShowMixedPaymentModal(true);
   }, [cart.length, totals.grandTotal]);
 
+  function applyCashExactMixedPayment() {
+    setMixedPaymentRows([
+      {
+        id: `pay-${Date.now()}`,
+        method: "nakit",
+        amount: totals.grandTotal.toFixed(2),
+        reference: "",
+      },
+    ]);
+  }
+
+  function applyCardExactMixedPayment() {
+    setMixedPaymentRows([
+      {
+        id: `pay-${Date.now()}`,
+        method: "kart",
+        amount: totals.grandTotal.toFixed(2),
+        reference: "",
+      },
+    ]);
+  }
+
   function addMixedPaymentRow() {
     setMixedPaymentRows((prev) => [
       ...prev,
@@ -1962,6 +1996,12 @@ export function PosClient() {
           : row,
       ),
     );
+  }
+
+  function applyQuickPartialAmount(amount: number) {
+    setPartialAmount(Math.max(0, roundCurrency(amount)).toFixed(2));
+    setMessage(`Hızlı ödeme tutarı: ${formatTry(amount)}`);
+    setError(null);
   }
 
   async function completeMixedPaymentSale() {
@@ -2581,6 +2621,18 @@ export function PosClient() {
               {posParameters.requireChangeFlowOnSale ? "Nakit / Para Üstü" : "Kısmi Ödeme"}
             </p>
             <input value={partialAmount} onChange={(event) => setPartialAmount(event.target.value)} className="mt-1 h-8 w-full rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70" placeholder="0,00" inputMode="decimal" />
+            <div className="mt-1 flex flex-wrap gap-1">
+              {paymentShortcutValues.slice(0, 4).map((amount) => (
+                <button
+                  key={`top-shortcut-${amount}`}
+                  type="button"
+                  onClick={() => applyQuickPartialAmount(amount)}
+                  className="h-6 rounded border border-white/25 bg-white/15 px-1.5 text-[11px] font-semibold text-white hover:bg-white/25"
+                >
+                  {amount === roundCurrency(totals.grandTotal) ? "Tam" : `${amount}`}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="rounded-md bg-white/10 px-2 py-1.5 text-xs">
@@ -2740,6 +2792,33 @@ export function PosClient() {
               <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
               <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Para Üstü</p><p className="font-bold text-indigo-700">{formatTry(paymentPreview.change)}</p></div>
               <div className="rounded border border-emerald-700 bg-emerald-800 px-2 py-1.5 text-sm text-white"><p className="text-xs text-emerald-100">Genel Toplam</p><p className="font-extrabold">{formatTry(totals.grandTotal)}</p></div>
+            </div>
+
+            <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xs font-semibold text-[color:var(--mx-text-muted)]">Hızlı Tutar:</p>
+                {paymentShortcutValues.map((amount) => (
+                  <button
+                    key={`shortcut-${amount}`}
+                    type="button"
+                    onClick={() => applyQuickPartialAmount(amount)}
+                    className={`h-8 rounded border px-2 text-xs font-bold ${
+                      amount === roundCurrency(totals.grandTotal)
+                        ? "border-indigo-300 bg-indigo-100 text-indigo-700"
+                        : "border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] text-[color:var(--mx-text)]"
+                    }`}
+                  >
+                    {amount === roundCurrency(totals.grandTotal) ? "Tam Tutar" : formatTry(amount)}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => applyQuickPartialAmount(asNumber(partialAmount, 0) + totals.grandTotal)}
+                  className="h-8 rounded border border-emerald-300 bg-emerald-100 px-2 text-xs font-bold text-emerald-700"
+                >
+                  Tutar + Toplam
+                </button>
+              </div>
             </div>
 
             <div className="grid gap-2 md:grid-cols-8">
@@ -3281,6 +3360,8 @@ export function PosClient() {
         onRemoveRow={removeMixedPaymentRow}
         onChangeRow={updateMixedPaymentRow}
         onSubmit={() => void completeMixedPaymentSale()}
+        onApplyCashExact={applyCashExactMixedPayment}
+        onApplyCardExact={applyCardExactMixedPayment}
       />
 
       <PosCameraScannerModal
