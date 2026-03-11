@@ -14,6 +14,7 @@ type ProductFormState = {
   name: string;
   description: string;
   barcode: string;
+  parallelBarcodes: string;
   purchasePrice: string;
   purchaseCurrency: string;
   salePrice1: string;
@@ -46,11 +47,19 @@ function toNumber(value: string, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function parseParallelBarcodes(input: string): string[] {
+  return input
+    .split(/[\n,;]+/g)
+    .map((value) => value.trim())
+    .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
+}
+
 const initialForm: ProductFormState = {
   code: "",
   name: "",
   description: "",
   barcode: "",
+  parallelBarcodes: "",
   purchasePrice: "0",
   purchaseCurrency: "TRY",
   salePrice1: "0",
@@ -132,6 +141,7 @@ export function NewProductCardClient() {
           name: form.name,
           description: form.description || undefined,
           barcode: form.barcode || undefined,
+          parallelBarcodes: parseParallelBarcodes(form.parallelBarcodes),
           defaultUnit: form.unit,
           purchasePrice: toNumber(form.purchasePrice, 0),
           salePrice: toNumber(form.salePrice1, 0),
@@ -223,6 +233,15 @@ export function NewProductCardClient() {
                     <label className="mb-1 block text-sm font-semibold">Barkod / QR</label>
                     <input value={form.barcode} onChange={(event) => patchField("barcode", event.target.value)} placeholder="868..." />
                   </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">Paralel Barkodlar (AD/PAKET/KUTU)</label>
+                  <input
+                    value={form.parallelBarcodes}
+                    onChange={(event) => patchField("parallelBarcodes", event.target.value)}
+                    placeholder="Virgül ile girin: 869..., 869..."
+                  />
                 </div>
 
                 <div>

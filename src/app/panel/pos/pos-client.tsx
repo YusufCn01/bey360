@@ -38,6 +38,7 @@ type ProductRow = {
   name: string;
   unit: string;
   barcode?: string;
+  parallelBarcodes: string[];
   imageUrl?: string;
   vatRate: number;
   stock: number;
@@ -240,6 +241,16 @@ function asText(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+function asTextArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item, index, arr) => item.length > 0 && arr.indexOf(item) === index);
+}
+
 function roundQuantity(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
@@ -359,7 +370,10 @@ function matchesScaleProductCode(product: ProductRow, scaleProductCode: string):
     return digits === targetDigits || digits.endsWith(targetDigits);
   };
 
-  return match(product.code) || match(product.barcode ?? "");
+  if (match(product.code) || match(product.barcode ?? "")) {
+    return true;
+  }
+  return product.parallelBarcodes.some((barcode) => match(barcode));
 }
 
 function hashColor(input: string): string {
@@ -671,6 +685,7 @@ export function PosClient() {
             name: row.name,
             unit: asText(payload.defaultUnit, "ADET"),
             barcode: asText(payload.barcode),
+            parallelBarcodes: asTextArray(payload.parallelBarcodes),
             imageUrl: asText(payload.imageUrl),
             vatRate: asNumber(payload.vatRate, 20),
             stock: stockMap.get(row.id) ?? 0,
@@ -1057,7 +1072,8 @@ export function PosClient() {
       const inName = product.name.toLocaleLowerCase("tr").includes(q);
       const inCode = product.code.toLocaleLowerCase("tr").includes(q);
       const inBarcode = product.barcode?.toLocaleLowerCase("tr").includes(q) ?? false;
-      return inName || inCode || inBarcode;
+      const inParallelBarcode = product.parallelBarcodes.some((barcode) => barcode.toLocaleLowerCase("tr").includes(q));
+      return inName || inCode || inBarcode || inParallelBarcode;
     });
   }, [products, searchText]);
 
@@ -1704,7 +1720,8 @@ export function PosClient() {
     const exact = products.find((product) => {
       const code = product.code.toLocaleLowerCase("tr");
       const barcode = (product.barcode ?? "").toLocaleLowerCase("tr");
-      return code === q || barcode === q;
+      const inParallel = product.parallelBarcodes.some((value) => value.toLocaleLowerCase("tr") === q);
+      return code === q || barcode === q || inParallel;
     });
 
     if (exact) {

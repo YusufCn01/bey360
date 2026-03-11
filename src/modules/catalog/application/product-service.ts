@@ -30,9 +30,13 @@ export async function createProduct(input: ProductCreateInput) {
     const salePrice = input.salePrice ?? 0;
     const purchasePrice = input.purchasePrice ?? 0;
     const openingStock = input.openingStock ?? 0;
+    const parallelBarcodes = (input.parallelBarcodes ?? [])
+      .map((value) => value.trim())
+      .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
 
     const productPayload = {
       barcode: input.barcode,
+      parallelBarcodes,
       description: input.description,
       defaultUnit: input.defaultUnit ?? "ADET",
       salePrice,

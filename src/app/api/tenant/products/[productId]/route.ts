@@ -11,6 +11,7 @@ const updateProductSchema = z.object({
   name: z.string().min(2).max(255).optional(),
   description: z.string().max(1000).optional(),
   barcode: z.string().max(100).optional(),
+  parallelBarcodes: z.array(z.string().max(100)).max(50).optional(),
   defaultUnit: z.string().max(40).optional(),
   salePrice: z.number().nonnegative().optional(),
   purchasePrice: z.number().nonnegative().optional(),

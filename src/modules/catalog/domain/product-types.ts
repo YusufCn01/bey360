@@ -5,6 +5,7 @@
   code?: string;
   description?: string;
   barcode?: string;
+  parallelBarcodes?: string[];
   defaultUnit?: string;
   salePrice?: number;
   purchasePrice?: number;
