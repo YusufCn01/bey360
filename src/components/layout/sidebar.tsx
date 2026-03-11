@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import Link from "next/link";
@@ -242,4 +242,5 @@ export function Sidebar({ companyName, logoUrl, className, onNavigate }: Sidebar
     </aside>
   );
 }
+
 

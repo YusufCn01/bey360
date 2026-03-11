@@ -28,8 +28,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                 const key = "mx-theme";
                 const fallback = "corporate";
                 const saved = window.localStorage.getItem(key) || fallback;
-                document.documentElement.setAttribute("data-theme", saved);
-                document.documentElement.classList.toggle("dark", saved === "dark");
+                const allowed = ["corporate", "dark", "emerald", "graphite"];
+                const theme = allowed.includes(saved) ? saved : fallback;
+                document.documentElement.setAttribute("data-theme", theme);
+                document.documentElement.classList.toggle("dark", theme === "dark");
               } catch (_) {}
             })();`,
           }}

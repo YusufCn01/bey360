@@ -1,10 +1,19 @@
 import { prisma } from "@/lib/db/prisma";
 import { asRecord, numberOrZero } from "@/lib/json";
 
-const SALES_SCAN_LIMIT = Math.max(400, Number(process.env.DASHBOARD_SALES_SCAN_LIMIT ?? "1200"));
-const SALE_ITEMS_SCAN_LIMIT = Math.max(800, Number(process.env.DASHBOARD_SALE_ITEMS_SCAN_LIMIT ?? "2000"));
-const STOCK_SCAN_LIMIT = Math.max(500, Number(process.env.DASHBOARD_STOCK_SCAN_LIMIT ?? "2000"));
-const FINANCE_SCAN_LIMIT = Math.max(400, Number(process.env.DASHBOARD_FINANCE_SCAN_LIMIT ?? "1500"));
+function parseScanLimit(raw: string | undefined, fallback: number, min: number, max: number): number {
+  const parsed = Number(raw ?? fallback);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, Math.round(parsed)));
+}
+
+const SALES_SCAN_LIMIT = parseScanLimit(process.env.DASHBOARD_SALES_SCAN_LIMIT, 320, 80, 5000);
+const SALE_ITEMS_SCAN_LIMIT = parseScanLimit(process.env.DASHBOARD_SALE_ITEMS_SCAN_LIMIT, 600, 120, 7000);
+const STOCK_SCAN_LIMIT = parseScanLimit(process.env.DASHBOARD_STOCK_SCAN_LIMIT, 700, 150, 7000);
+const FINANCE_SCAN_LIMIT = parseScanLimit(process.env.DASHBOARD_FINANCE_SCAN_LIMIT, 320, 80, 5000);
+const CUSTOMER_SCAN_LIMIT = parseScanLimit(process.env.DASHBOARD_CUSTOMER_SCAN_LIMIT, 1200, 150, 10000);
 
 function isSameDay(date: Date, target: Date) {
   return (
@@ -291,7 +300,7 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
           code: true,
           name: true,
         },
-        take: 5000,
+        take: CUSTOMER_SCAN_LIMIT,
       }),
       prisma.customerRiskProfiles.findMany({
         where: {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -22,6 +22,17 @@ type UpdateNotice = {
   publishedAt?: string;
 } | null;
 
+type TenantAnnouncement = {
+  id: string;
+  title: string;
+  message: string;
+  tone: "info" | "success" | "warning" | "danger";
+  buttonLabel?: string | null;
+  buttonUrl?: string | null;
+  publishAt?: string | null;
+  isPinned?: boolean;
+};
+
 type PanelShellProps = {
   children: React.ReactNode;
   companyName: string;
@@ -32,6 +43,7 @@ type PanelShellProps = {
   demoState: DemoState;
   maintenanceState: MaintenanceState;
   updateNotice: UpdateNotice;
+  announcements?: TenantAnnouncement[];
 };
 
 export function PanelShell({
@@ -44,6 +56,7 @@ export function PanelShell({
   demoState,
   maintenanceState,
   updateNotice,
+  announcements = [],
 }: PanelShellProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
 
@@ -69,7 +82,7 @@ export function PanelShell({
       </div>
 
       {mobileSidebarOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Panel menusu">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Panel menüsü">
           <button
             type="button"
             className="absolute inset-0 bg-slate-950/65"
@@ -97,6 +110,7 @@ export function PanelShell({
           demoState={demoState}
           maintenanceState={maintenanceState}
           updateNotice={updateNotice}
+          announcements={announcements}
           onToggleSidebar={() => setMobileSidebarOpen((prev) => !prev)}
         />
         <main className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4">{children}</main>

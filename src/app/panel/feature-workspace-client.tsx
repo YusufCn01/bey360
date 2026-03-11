@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
 import { formatTry } from "@/lib/format/currency";
 import { formatDateTr } from "@/lib/format/date";
+import { OrganizationUnitsClient } from "@/app/panel/organization-units-client";
 
 type FeatureWorkspaceClientProps = {
   moduleSegment: string;
@@ -628,6 +629,10 @@ function resolveFeature(moduleSegment: string, featureSegment: string): React.Re
   }
   if (key.startsWith("abonelik/")) {
     return <SubscriptionFeature />;
+  }
+
+  if (key === "stok/sube-tanimlari" || key === "stok/depo-tanimlari" || key === "ayarlar/sube-depo-yonetimi") {
+    return <OrganizationUnitsClient />;
   }
 
   if (key === "kasa/tahsilat-ve-odeme") {

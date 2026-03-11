@@ -104,6 +104,40 @@
   --brand-strong: var(--mx-brand-700);
 }
 
+:root[data-theme="graphite"] {
+  --mx-shell-bg: #f2f4f7;
+  --mx-surface: #ffffff;
+  --mx-surface-soft: #f8fafc;
+  --mx-border: #d2d9e3;
+  --mx-border-strong: #2d3f57;
+  --mx-text: #1c2838;
+  --mx-text-muted: #5d6e83;
+
+  --mx-brand-500: #38577a;
+  --mx-brand-600: #2e4764;
+  --mx-brand-700: #23364c;
+  --mx-accent-500: #4e6f97;
+
+  --mx-topbar-from: #1e2e43;
+  --mx-topbar-mid: #2a3f5a;
+  --mx-topbar-to: #1f2d42;
+  --mx-sidebar-from: #26384f;
+  --mx-sidebar-to: #1a293c;
+
+  --mx-danger-500: #b42339;
+  --mx-danger-600: #8b1d30;
+  --mx-success-500: #197a52;
+  --mx-warning-500: #ac6f13;
+  --mx-ghost-hover: rgba(255, 255, 255, 0.08);
+
+  --background: var(--mx-shell-bg);
+  --foreground: var(--mx-text);
+  --card: var(--mx-surface);
+  --muted: var(--mx-text-muted);
+  --brand: var(--mx-brand-500);
+  --brand-strong: var(--mx-brand-700);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -127,6 +161,7 @@ body {
     radial-gradient(1000px 500px at 100% 0%, color-mix(in srgb, var(--mx-topbar-to) 20%, transparent), transparent 58%),
     var(--background);
   color: var(--foreground);
+  transition: background-color 220ms ease, color 220ms ease;
 }
 
 .mx-panel-shell {

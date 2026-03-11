@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Bey360 Mobile",
+    "slug": "bey360-mobile",
+    "scheme": "bey360",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "package": "com.bey360.mobile"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}

@@ -2,19 +2,21 @@
 
 import * as React from "react";
 
-type ThemeKey = "corporate" | "dark" | "emerald";
+type ThemeKey = "corporate" | "dark" | "emerald" | "graphite";
 
 type ThemeOption = {
   key: ThemeKey;
   label: string;
+  shortLabel: string;
 };
 
 const THEME_STORAGE_KEY = "mx-theme";
 
 const themeOptions: ThemeOption[] = [
-  { key: "corporate", label: "Kurumsal" },
-  { key: "dark", label: "Gece" },
-  { key: "emerald", label: "Zümrüt" },
+  { key: "corporate", label: "Kurumsal", shortLabel: "K" },
+  { key: "dark", label: "Gece", shortLabel: "G" },
+  { key: "emerald", label: "Zümrüt", shortLabel: "Z" },
+  { key: "graphite", label: "Grafit", shortLabel: "F" },
 ];
 
 function applyTheme(theme: ThemeKey) {
@@ -29,31 +31,57 @@ export function ThemeToggle() {
 
   React.useEffect(() => {
     const saved = (window.localStorage.getItem(THEME_STORAGE_KEY) as ThemeKey | null) ?? "corporate";
-    setTheme(saved);
-    applyTheme(saved);
+    const fallback = themeOptions.some((option) => option.key === saved) ? saved : "corporate";
+    setTheme(fallback);
+    applyTheme(fallback);
   }, []);
 
-  function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
-    const next = event.target.value as ThemeKey;
+  function handleSelect(next: ThemeKey) {
     setTheme(next);
     applyTheme(next);
   }
 
   return (
-    <label className="inline-flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-3 py-2 text-xs font-semibold text-white">
-      <span>Tema</span>
-      <select
-        value={theme}
-        onChange={handleChange}
-        className="rounded-md border border-white/30 bg-slate-900/35 px-2 py-1 text-xs font-semibold text-white outline-none"
-        aria-label="Renk teması seç"
-      >
-        {themeOptions.map((option) => (
-          <option key={option.key} value={option.key}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div
+      className="inline-flex items-center gap-1 rounded-xl border p-1"
+      style={{
+        borderColor: "color-mix(in srgb, var(--mx-text-muted) 30%, transparent)",
+        backgroundColor: "color-mix(in srgb, var(--mx-surface-soft) 72%, transparent)",
+      }}
+      role="group"
+      aria-label="Tema seçici"
+    >
+      <span className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--mx-text-muted)]">
+        Tema
+      </span>
+      {themeOptions.map((option) => {
+        const active = theme === option.key;
+        return (
+          <button
+            key={option.key}
+            type="button"
+            onClick={() => handleSelect(option.key)}
+            className="inline-flex h-8 items-center rounded-lg px-2 text-xs font-bold transition"
+            style={{
+              minWidth: 38,
+              justifyContent: "center",
+              backgroundColor: active
+                ? "color-mix(in srgb, var(--mx-brand-500) 36%, var(--mx-surface) 64%)"
+                : "transparent",
+              color: active
+                ? "color-mix(in srgb, var(--mx-text) 84%, white 16%)"
+                : "color-mix(in srgb, var(--mx-text-muted) 92%, transparent)",
+              border: active
+                ? "1px solid color-mix(in srgb, var(--mx-brand-500) 50%, transparent)"
+                : "1px solid transparent",
+            }}
+            title={option.label}
+            aria-label={option.label}
+          >
+            {option.shortLabel}
+          </button>
+        );
+      })}
+    </div>
   );
 }

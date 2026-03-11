@@ -194,6 +194,18 @@ export const panelNavSections: PanelNavSection[] = [
         icon: "warehouse",
       },
       {
+        href: "/panel/stok/sube-tanimlari",
+        label: "Şube Tanımları",
+        description: "Şube kartlarını ekleme ve durum yönetimi.",
+        icon: "warehouse",
+      },
+      {
+        href: "/panel/stok/depo-tanimlari",
+        label: "Depo Tanımları",
+        description: "Depo kartlarını şube bazlı yönetme.",
+        icon: "warehouse",
+      },
+      {
         href: "/panel/stok/depo-bazli-bakiye",
         label: "Depo Bazlı Bakiye",
         description: "Depo kırılımında anlık stok bakiyesi.",
@@ -588,6 +600,12 @@ export const panelNavSections: PanelNavSection[] = [
         label: "Yazıcı Ayarları",
         description: "Fiş, fatura ve etiket yazdırma ayarları.",
         icon: "settings",
+      },
+      {
+        href: "/panel/ayarlar/sube-depo-yonetimi",
+        label: "Şube/Depo Yönetimi",
+        description: "Şube ve depo kartlarını tek ekrandan yönetme.",
+        icon: "warehouse",
       },
     ],
   },

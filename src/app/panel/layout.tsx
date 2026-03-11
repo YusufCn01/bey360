@@ -52,12 +52,30 @@ type TenantUpdateNotice = {
   publishedAt?: string;
 };
 
+type TenantAnnouncement = {
+  id: string;
+  title: string;
+  message: string;
+  tone: "info" | "success" | "warning" | "danger";
+  buttonLabel?: string | null;
+  buttonUrl?: string | null;
+  publishAt?: string | null;
+  isPinned?: boolean;
+};
+
+const TENANT_ANNOUNCEMENTS_SCOPE = "duyurular";
+const PLATFORM_ANNOUNCEMENTS_SCOPE = "platform_announcements";
+
 function readText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
 function readBoolean(value: unknown, fallback = false): boolean {
   return typeof value === "boolean" ? value : fallback;
+}
+
+function readTone(value: unknown): TenantAnnouncement["tone"] {
+  return value === "success" || value === "warning" || value === "danger" ? value : "info";
 }
 
 async function getCompanyUiSettings(tenantId: string): Promise<CompanyUiSettings> {
@@ -177,6 +195,98 @@ async function getTenantUpdateNotice(tenantId: string): Promise<TenantUpdateNoti
   };
 }
 
+async function getTenantAnnouncements(tenantId: string): Promise<TenantAnnouncement[]> {
+  function mapAndFilterAnnouncementItems(
+    items: unknown[],
+    tenantScope: "tenant" | "platform",
+  ): TenantAnnouncement[] {
+    const now = new Date();
+
+    return items
+      .map((item) => (typeof item === "object" && item !== null && !Array.isArray(item) ? (item as Record<string, unknown>) : null))
+      .filter((item): item is Record<string, unknown> => item !== null)
+      .filter((item) => {
+        if (!readBoolean(item.isActive, true)) {
+          return false;
+        }
+
+        const publishAtRaw = readText(item.publishAt);
+        if (publishAtRaw) {
+          const publishAt = new Date(publishAtRaw);
+          if (!Number.isNaN(publishAt.getTime()) && publishAt > now) {
+            return false;
+          }
+        }
+
+        const expiresAtRaw = readText(item.expiresAt);
+        if (expiresAtRaw) {
+          const expiresAt = new Date(expiresAtRaw);
+          if (!Number.isNaN(expiresAt.getTime()) && expiresAt < now) {
+            return false;
+          }
+        }
+
+        if (tenantScope === "platform") {
+          const targetScope = readText(item.targetScope);
+          if (targetScope === "selected") {
+            const tenantIds = Array.isArray(item.tenantIds) ? item.tenantIds : [];
+            return tenantIds.some((value) => readText(value) === tenantId);
+          }
+        }
+
+        return true;
+      })
+      .map((item) => ({
+        id: readText(item.id) || crypto.randomUUID(),
+        title: readText(item.title) || "Duyuru",
+        message: readText(item.message),
+        tone: readTone(item.tone),
+        buttonLabel: readText(item.buttonLabel) || null,
+        buttonUrl: readText(item.buttonUrl) || null,
+        publishAt: readText(item.publishAt) || null,
+        isPinned: readBoolean(item.isPinned, false),
+      }))
+      .filter((item) => item.message.length > 0)
+      .sort((a, b) => {
+        if ((a.isPinned ?? false) !== (b.isPinned ?? false)) {
+          return a.isPinned ? -1 : 1;
+        }
+        return (b.publishAt ?? "").localeCompare(a.publishAt ?? "");
+      });
+  }
+
+  const tenantRow = await prisma.tenantSettings.findFirst({
+    where: {
+      tenantId,
+      deletedAt: null,
+      code: TENANT_ANNOUNCEMENTS_SCOPE,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (tenantRow && tenantRow.payload && typeof tenantRow.payload === "object" && !Array.isArray(tenantRow.payload)) {
+    const tenantPayload = tenantRow.payload as Record<string, unknown>;
+    const tenantItems = Array.isArray(tenantPayload.items) ? tenantPayload.items : [];
+    return mapAndFilterAnnouncementItems(tenantItems, "tenant");
+  }
+
+  const platformRow = await prisma.appSettings.findFirst({
+    where: {
+      deletedAt: null,
+      code: PLATFORM_ANNOUNCEMENTS_SCOPE,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!platformRow || !platformRow.payload || typeof platformRow.payload !== "object" || Array.isArray(platformRow.payload)) {
+    return [];
+  }
+
+  const platformPayload = platformRow.payload as Record<string, unknown>;
+  const platformItems = Array.isArray(platformPayload.items) ? platformPayload.items : [];
+  return mapAndFilterAnnouncementItems(platformItems, "platform");
+}
+
 function resolveDemoState(params: {
   trialEndsAt: Date | null;
   subscriptionEndsAt: Date | null;
@@ -250,11 +360,12 @@ async function resolveTopbarUserName() {
 export default async function PanelLayout({ children }: { children: ReactNode }) {
   try {
     const [tenant, userName] = await Promise.all([getTenantContext(), resolveTopbarUserName()]);
-    const [subscription, companyUiSettings, updateNotice, maintenanceState] = await Promise.all([
+    const [subscription, companyUiSettings, updateNotice, maintenanceState, announcements] = await Promise.all([
       getCurrentSubscription(tenant.tenantId),
       getCompanyUiSettings(tenant.tenantId),
       getTenantUpdateNotice(tenant.tenantId),
       getPlatformMaintenanceState(),
+      getTenantAnnouncements(tenant.tenantId),
     ]);
     const subscriptionEndsAt = extractEndDateFromPayload(subscription?.payload);
     const demoState = resolveDemoState({
@@ -278,6 +389,7 @@ export default async function PanelLayout({ children }: { children: ReactNode })
         demoState={demoState}
         maintenanceState={maintenanceState}
         updateNotice={updateNotice}
+        announcements={announcements}
       >
         {maintenanceState.enabled ? (
           <section className="rounded-xl border border-rose-300 bg-rose-50 p-6 text-rose-900 shadow-sm">

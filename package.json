@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack --hostname 0.0.0.0 --port 3015",
+    "mobile:start": "npm --prefix apps/mobile run start",
+    "mobile:android": "npm --prefix apps/mobile run android",
+    "mobile:web": "npm --prefix apps/mobile run web",
     "build": "next build --webpack",
     "build:prod": "prisma migrate deploy && next build --webpack",
     "start": "node scripts/start.mjs",
