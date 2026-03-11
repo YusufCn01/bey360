@@ -417,7 +417,7 @@ async function requestApi<T>(url: string, init?: RequestInit): Promise<T> {
 export function PosClient() {
   const [registerId, setRegisterId] = React.useState("KASA-01");
   const [registerName, setRegisterName] = React.useState("Merkez Kasa");
-  const [companyName, setCompanyName] = React.useState("Bulut ERP");
+  const [companyName, setCompanyName] = React.useState("Bey360");
   const [branchName, setBranchName] = React.useState("MERKEZ");
   const [cashierName, setCashierName] = React.useState("Kasiyer");
   const [currencyCode, setCurrencyCode] = React.useState("TRY");
@@ -705,7 +705,7 @@ export function PosClient() {
       setQuickCustomers(quick);
       setPosParameters(parsePosParameters(settingsRow.payload));
       const companyPayload = asRecord(companySettings.payload);
-      setCompanyName(asText(companyPayload.companyName, "Bulut ERP"));
+      setCompanyName(asText(companyPayload.companyName, "Bey360"));
       setBranchName(asText(companyPayload.branchName, "MERKEZ"));
       setCurrencyCode(asText(companyPayload.currencyCode, "TRY"));
     } catch (requestError) {
