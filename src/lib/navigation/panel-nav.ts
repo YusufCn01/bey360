@@ -261,6 +261,12 @@ export const panelNavSections: PanelNavSection[] = [
         description: "Risk limiti ve vade kontrol ekranı.",
         icon: "customer",
       },
+      {
+        href: "/panel/musteriler/cagri-takip",
+        label: "Çağrı Takip",
+        description: "Arayan telefon numarasından müşteri kartını hızlı bulma.",
+        icon: "customer",
+      },
     ],
   },
   {
@@ -441,6 +447,12 @@ export const panelNavSections: PanelNavSection[] = [
         description: "Kasa, tahsilat, ödeme ve masraf raporları.",
         icon: "report",
       },
+      {
+        href: "/panel/raporlar/ozellik-matrisi",
+        label: "Özellik Matrisi",
+        description: "Sistem özelliklerinin hazır/kısmi/yeni durum görünümü.",
+        icon: "report",
+      },
     ],
   },
   {
@@ -606,6 +618,24 @@ export const panelNavSections: PanelNavSection[] = [
         label: "Şube/Depo Yönetimi",
         description: "Şube ve depo kartlarını tek ekrandan yönetme.",
         icon: "warehouse",
+      },
+      {
+        href: "/panel/ayarlar/sms-ayarlar",
+        label: "SMS Ayarları",
+        description: "Satış sonrası müşteri SMS bilgilendirme ayarları.",
+        icon: "settings",
+      },
+      {
+        href: "/panel/ayarlar/kredi-karti-takip",
+        label: "Kredi Kartı Takip",
+        description: "Kart ödemelerde hesap kesim ve ödeme günü takibi.",
+        icon: "settings",
+      },
+      {
+        href: "/panel/ayarlar/yedekleme",
+        label: "Yedekleme",
+        description: "Otomatik günlük yedekleme ve geçmiş yönetimi.",
+        icon: "settings",
       },
     ],
   },

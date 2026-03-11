@@ -30,6 +30,7 @@ tmp-*.log
 *.dump
 *.sql
 dump.err.log
+.backups/
 
 # debug
 npm-debug.log*

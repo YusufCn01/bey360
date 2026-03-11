@@ -97,7 +97,7 @@ type PosSaleItem = {
 };
 
 type PosPayment = {
-  method: "nakit" | "kart" | "havale_eft" | "cari";
+  method: "nakit" | "kart" | "havale_eft" | "cari" | "cek" | "dekont";
   amount: number;
   reference?: string;
 };
@@ -386,7 +386,7 @@ export function PosClient() {
   const [loadingOperations, setLoadingOperations] = React.useState(false);
   const [saleLookupCode, setSaleLookupCode] = React.useState("");
   const [saleLookupResult, setSaleLookupResult] = React.useState<PosSaleHistoryRow | null>(null);
-  const [returnRefundMethod, setReturnRefundMethod] = React.useState<"nakit" | "kart" | "havale_eft" | "cari">("nakit");
+  const [returnRefundMethod, setReturnRefundMethod] = React.useState<"nakit" | "kart" | "havale_eft" | "cari" | "cek" | "dekont">("nakit");
   const [returnReason, setReturnReason] = React.useState("");
   const [returnLines, setReturnLines] = React.useState<ReturnDraftLine[]>([]);
   const [processingReturn, setProcessingReturn] = React.useState(false);
@@ -1928,10 +1928,10 @@ export function PosClient() {
   }
 
   async function submitSale(params: {
-    paymentMethod?: "nakit" | "kart" | "havale_eft" | "cari";
+    paymentMethod?: "nakit" | "kart" | "havale_eft" | "cari" | "cek" | "dekont";
     amount?: number;
     modeLabel: string;
-    payments?: Array<{ method: "nakit" | "kart" | "havale_eft" | "cari"; amount: number; reference?: string }>;
+    payments?: Array<{ method: "nakit" | "kart" | "havale_eft" | "cari" | "cek" | "dekont"; amount: number; reference?: string }>;
     customerOverride?: { code: string; name: string };
   }) {
     if (cart.length === 0) {
@@ -2612,13 +2612,15 @@ export function PosClient() {
                           />
                           <select
                             value={returnRefundMethod}
-                            onChange={(event) => setReturnRefundMethod(event.target.value as "nakit" | "kart" | "havale_eft" | "cari")}
+                            onChange={(event) => setReturnRefundMethod(event.target.value as "nakit" | "kart" | "havale_eft" | "cari" | "cek" | "dekont")}
                             disabled={!canReturnOperations}
                           >
                             <option value="nakit">Nakit İade</option>
                             <option value="kart">Kart İade</option>
                             <option value="havale_eft">Havale/EFT İade</option>
                             <option value="cari">Cari İade</option>
+                            <option value="cek">Çek İade</option>
+                            <option value="dekont">Dekont İade</option>
                           </select>
                         </div>
                         <div className="flex flex-wrap gap-2">

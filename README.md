@@ -50,9 +50,14 @@ Demo tenant ve kullanici seed ile gelir:
 - `npm run worker`: BullMQ worker
 - `npm run test`: testler
 - `npm run lint`: ESLint
+- `npm run deploy:check`: production on-kontrol (env + DB + tenant)
+- `npm run deploy:prepare`: migrate + build hazirlik akisi
+- `npm run backup:daily`: gunluk JSON yedek snapshot
 - `npm run prisma:generate`: Prisma client
 - `npm run prisma:migrate`: migration
 - `npm run db:seed`: seed
 
 ## Not
 Bu commit, kurumsal ERP/POS platformunun iskeletini ve guvenlik tabanini atar. Is modullerinin detayli transaction mantigi (stok/cari/kasa entegre hareket defteri, mali kurallar, resmi e-donusum providerlari) sonraki iterasyonlarda ayni mimari sinirlarda genisletilecektir.
+
+Deploy adimlari icin: `docs/deployment-playbook.md`

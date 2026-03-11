@@ -1,4 +1,4 @@
-export type PosPaymentMethod = "nakit" | "kart" | "havale_eft" | "cari";
+export type PosPaymentMethod = "nakit" | "kart" | "havale_eft" | "cari" | "cek" | "dekont";
 
 export type PosSaleItemInput = {
   productId: string;

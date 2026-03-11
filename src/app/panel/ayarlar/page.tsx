@@ -41,6 +41,24 @@ export default function SettingsPage() {
         >
           Şube / Depo Yönetimi
         </Link>
+        <Link
+          href="/panel/ayarlar/sms-ayarlar"
+          className="rounded-md border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] px-3 py-2 text-sm font-semibold"
+        >
+          SMS Ayarları
+        </Link>
+        <Link
+          href="/panel/ayarlar/kredi-karti-takip"
+          className="rounded-md border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] px-3 py-2 text-sm font-semibold"
+        >
+          Kredi Kartı Takip
+        </Link>
+        <Link
+          href="/panel/ayarlar/yedekleme"
+          className="rounded-md border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] px-3 py-2 text-sm font-semibold"
+        >
+          Yedekleme
+        </Link>
       </div>
 
       <CompanySettingsClient />

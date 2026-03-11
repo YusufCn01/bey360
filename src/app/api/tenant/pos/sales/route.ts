@@ -19,7 +19,7 @@ const saleItemSchema = z.object({
 });
 
 const paymentSchema = z.object({
-  method: z.enum(["nakit", "kart", "havale_eft", "cari"]),
+  method: z.enum(["nakit", "kart", "havale_eft", "cari", "cek", "dekont"]),
   amount: z.number().positive(),
   reference: z.string().max(200).optional(),
 });

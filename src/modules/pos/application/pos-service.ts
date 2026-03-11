@@ -3,6 +3,7 @@ import { asRecord } from "@/lib/json";
 import { appendCashTransaction } from "@/modules/accounting/application/cash-service";
 import { appendCurrentAccountMovement, ensureCurrentAccount } from "@/modules/accounting/application/current-account-service";
 import { applyStockDelta } from "@/modules/catalog/application/stock-service";
+import { queueSaleSmsNotification, readSmsSettings } from "@/modules/notifications/application/sms-service";
 import { calculateSaleTotals } from "@/modules/pos/application/pos-calculation";
 import type { CreatePosReturnInput, CreatePosSaleInput, PosPaymentInput, SuspendCartInput } from "@/modules/pos/domain/pos-types";
 
@@ -234,10 +235,15 @@ export async function completePosSale(input: CreatePosSaleInput) {
     const saleCode = `SAT-${Date.now()}`;
     const customerCode = input.customerCode?.trim() ? input.customerCode : undefined;
     let customerName = input.customerName?.trim() || customerCode;
+    let customerPhone: string | null = null;
     let customerMaturityDays = 0;
     let customerDueDateIso: string | undefined;
+    let sendSaleSms = false;
 
     if (customerCode) {
+      const smsSettings = await readSmsSettings(tx, input.tenantId);
+      sendSaleSms = smsSettings.saleNotificationEnabled;
+
       const customer = await tx.customers.findFirst({
         where: {
           tenantId: input.tenantId,
@@ -249,6 +255,8 @@ export async function completePosSale(input: CreatePosSaleInput) {
         throw new PosValidationError("Secilen cari musteri bulunamadi.");
       }
       customerName = customer.name ?? customerName;
+      const customerPayload = asRecord(customer.payload);
+      customerPhone = readText(customerPayload.phone);
     }
 
       if (outstanding > 0) {
@@ -508,6 +516,18 @@ export async function completePosSale(input: CreatePosSaleInput) {
         occurredAt: now,
       },
     });
+
+    if (customerCode && sendSaleSms) {
+      await queueSaleSmsNotification(tx, {
+        tenantId: input.tenantId,
+        saleCode,
+        customerCode,
+        customerName,
+        phone: customerPhone,
+        netTotal: totals.netTotal,
+        outstanding: Math.max(0, outstanding),
+      });
+    }
 
     await tx.auditLog.create({
       data: {

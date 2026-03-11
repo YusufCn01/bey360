@@ -9,7 +9,7 @@ const paymentSchema = z.object({
   supplierCode: z.string().min(1).max(100),
   supplierName: z.string().min(1).max(255),
   amount: z.number().positive(),
-  method: z.enum(["nakit", "havale_eft"]),
+  method: z.enum(["nakit", "havale_eft", "kart", "dekont"]),
   currency: z.string().length(3).optional(),
   note: z.string().max(1000).optional(),
 });

@@ -69,6 +69,8 @@ export function PosMixedPaymentModal(props: Props) {
                   <option value="kart">Kart</option>
                   <option value="havale_eft">Havale/EFT</option>
                   <option value="cari">Cariye Yaz</option>
+                  <option value="cek">Alışveriş Çeki</option>
+                  <option value="dekont">Dekont</option>
                 </select>
                 <input
                   value={row.amount}
@@ -103,4 +105,3 @@ export function PosMixedPaymentModal(props: Props) {
     </div>
   );
 }
-

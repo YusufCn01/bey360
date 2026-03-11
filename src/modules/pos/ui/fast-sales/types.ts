@@ -18,7 +18,7 @@ export type SaleTabSnapshot = {
 
 export type MixedPaymentDraft = {
   id: string;
-  method: "nakit" | "kart" | "havale_eft" | "cari";
+  method: "nakit" | "kart" | "havale_eft" | "cari" | "cek" | "dekont";
   amount: string;
   reference: string;
 };

@@ -9,7 +9,7 @@ const collectionSchema = z.object({
   customerCode: z.string().min(1).max(100),
   customerName: z.string().min(1).max(255),
   amount: z.number().positive(),
-  method: z.enum(["nakit", "kart", "havale_eft"]),
+  method: z.enum(["nakit", "kart", "havale_eft", "cek", "dekont"]),
   currency: z.string().length(3).optional(),
   note: z.string().max(1000).optional(),
 });
