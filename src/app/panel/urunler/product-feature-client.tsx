@@ -849,7 +849,7 @@ function TopluEtiketYazdirFeature() {
             <div style="border:1px solid #999;padding:4px;height:40mm;display:flex;flex-direction:column;justify-content:space-between;">
               <div style="font-size:${size}px;font-weight:700;">${item.name}</div>
               <div style="font-size:${Math.max(size - 1, 9)}px;">${item.barcode || item.code}</div>
-              <div style="font-size:${size + 1}px;font-weight:700;">${item.salePrice.toFixed(2)} â‚º</div>
+              <div style="font-size:${size + 1}px;font-weight:700;">${item.salePrice.toFixed(2)} ₺</div>
             </div>`,
             )
             .join("")}
