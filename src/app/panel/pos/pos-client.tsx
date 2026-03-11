@@ -187,6 +187,13 @@ type CariCustomerRow = {
   riskStatus: "ok" | "warning" | "over_limit" | "no_limit";
 };
 
+type QuickCreateCustomerResponse = {
+  id: string;
+  code?: string;
+  name?: string;
+  payload?: Record<string, unknown>;
+};
+
 type ConfirmDialogTone = "info" | "danger";
 
 type ConfirmDialogState = {
@@ -481,6 +488,14 @@ export function PosClient() {
   const [cariCustomers, setCariCustomers] = React.useState<CariCustomerRow[]>([]);
   const [selectedCariCustomerId, setSelectedCariCustomerId] = React.useState("");
   const [loadingCariCustomers, setLoadingCariCustomers] = React.useState(false);
+  const [showQuickCariForm, setShowQuickCariForm] = React.useState(false);
+  const [creatingQuickCari, setCreatingQuickCari] = React.useState(false);
+  const [quickCariCode, setQuickCariCode] = React.useState("");
+  const [quickCariName, setQuickCariName] = React.useState("");
+  const [quickCariPhone, setQuickCariPhone] = React.useState("");
+  const [quickCariRiskLimit, setQuickCariRiskLimit] = React.useState("0");
+  const [quickCariMaturityDays, setQuickCariMaturityDays] = React.useState("0");
+  const [quickCariAutoCompleteSale, setQuickCariAutoCompleteSale] = React.useState(false);
   const [userPermissionKeys, setUserPermissionKeys] = React.useState<string[]>(["sale:pos"]);
   const [permissionCatalog, setPermissionCatalog] = React.useState<string[]>([]);
   const [confirmDialog, setConfirmDialog] = React.useState<ConfirmDialogState>({
@@ -926,6 +941,74 @@ export function PosClient() {
     setError(null);
   }
 
+  function renameSaleTab(tabId: string) {
+    const target = saleTabsRef.current.find((tab) => tab.id === tabId);
+    if (!target || typeof window === "undefined") {
+      return;
+    }
+
+    const nextLabel = window.prompt("Sekme adını girin", target.label)?.trim();
+    if (!nextLabel) {
+      return;
+    }
+
+    setSaleTabs((prev) => {
+      const updated = prev.map((tab) => (tab.id === tabId ? { ...tab, label: nextLabel } : tab));
+      saleTabsRef.current = updated;
+      return updated;
+    });
+    setMessage(`Sekme adı güncellendi: ${nextLabel}`);
+    setError(null);
+  }
+
+  async function closeSaleTab(tabId: string) {
+    const tabs = saleTabsRef.current;
+    if (tabs.length <= 1) {
+      setError("En az bir satış sekmesi açık kalmalıdır.");
+      return;
+    }
+
+    const target = tabs.find((tab) => tab.id === tabId);
+    if (!target) {
+      return;
+    }
+
+    const hasPendingData =
+      target.cartLines.length > 0 || Boolean(target.customerCode.trim()) || Boolean(target.cartNote.trim());
+
+    if (hasPendingData) {
+      const accepted = await openConfirmDialog({
+        title: `${target.label} Kapatılsın mı?`,
+        description: "Bu sekmedeki sepet ve müşteri bilgileri silinecek.",
+        confirmLabel: "Sekmeyi Kapat",
+        cancelLabel: "Vazgeç",
+        tone: "danger",
+      });
+      if (!accepted) {
+        return;
+      }
+    }
+
+    const updatedTabs = tabs.filter((tab) => tab.id !== tabId);
+    saleTabsRef.current = updatedTabs;
+    setSaleTabs(updatedTabs);
+
+    if (activeSaleTabRef.current === tabId) {
+      const fallback = updatedTabs[0];
+      setActiveSaleTabId(fallback.id);
+      setCustomerCode(fallback.customerCode || "");
+      setCustomerName(fallback.customerName || "");
+      setPartialAmount(fallback.partialAmount || "0");
+      setCartNote(fallback.cartNote || "");
+      setCart(fallback.cartLines ?? []);
+      setSelectedLineId(null);
+      setExchangeTargetId(null);
+    }
+
+    setMessage(`${target.label} kapatıldı.`);
+    setError(null);
+  }
+
   function openCariCustomerModal() {
     if (cart.length === 0) {
       setError("Cari satış için sepete ürün ekleyin.");
@@ -934,6 +1017,13 @@ export function PosClient() {
     setError(null);
     setMessage(null);
     setCariCustomerQuery("");
+    setShowQuickCariForm(false);
+    setQuickCariCode("");
+    setQuickCariName("");
+    setQuickCariPhone("");
+    setQuickCariRiskLimit("0");
+    setQuickCariMaturityDays("0");
+    setQuickCariAutoCompleteSale(false);
     setShowCariCustomerModal(true);
   }
 
@@ -1076,6 +1166,27 @@ export function PosClient() {
       return inName || inCode || inBarcode || inParallelBarcode;
     });
   }, [products, searchText]);
+
+  const exactProductLookup = React.useMemo(() => {
+    const map = new Map<string, ProductRow>();
+    const register = (value: string | undefined, product: ProductRow) => {
+      const key = (value ?? "").trim().toLocaleLowerCase("tr");
+      if (!key || map.has(key)) {
+        return;
+      }
+      map.set(key, product);
+    };
+
+    for (const product of products) {
+      register(product.code, product);
+      register(product.barcode, product);
+      for (const barcode of product.parallelBarcodes) {
+        register(barcode, product);
+      }
+    }
+
+    return map;
+  }, [products]);
 
   const totals = React.useMemo(() => {
     const subTotal = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
@@ -1717,12 +1828,7 @@ export function PosClient() {
       }
     }
 
-    const exact = products.find((product) => {
-      const code = product.code.toLocaleLowerCase("tr");
-      const barcode = (product.barcode ?? "").toLocaleLowerCase("tr");
-      const inParallel = product.parallelBarcodes.some((value) => value.toLocaleLowerCase("tr") === q);
-      return code === q || barcode === q || inParallel;
-    });
+    const exact = exactProductLookup.get(q);
 
     if (exact) {
       if (priceCheckMode) {
@@ -2147,6 +2253,73 @@ export function PosClient() {
     });
   }
 
+  async function createQuickCariCustomer() {
+    const name = quickCariName.trim();
+    if (name.length < 2) {
+      setError("Hızlı cari oluşturmak için müşteri adı girin.");
+      return;
+    }
+
+    const riskLimit = Math.max(0, asNumber(quickCariRiskLimit, 0));
+    const maturityDays = Math.max(0, Math.floor(asNumber(quickCariMaturityDays, 0)));
+
+    setCreatingQuickCari(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const created = await requestApi<QuickCreateCustomerResponse>("/api/tenant/customers", {
+        method: "POST",
+        body: JSON.stringify({
+          code: quickCariCode.trim() || undefined,
+          name,
+          phone: quickCariPhone.trim() || undefined,
+          riskLimit,
+          maturityDays,
+        }),
+      });
+
+      const createdCode = asText(created.code);
+      const createdName = asText(created.name) || name;
+      if (createdCode) {
+        setCustomerCode(createdCode);
+      }
+      setCustomerName(createdName);
+      setMessage(`Yeni cari eklendi: ${createdName}`);
+
+      const nextQuery = createdCode || name;
+      setCariCustomerQuery(nextQuery);
+      await loadCariCustomers(nextQuery);
+      if (created.id) {
+        setSelectedCariCustomerId(created.id);
+      }
+
+      setShowQuickCariForm(false);
+      setQuickCariCode("");
+      setQuickCariName("");
+      setQuickCariPhone("");
+      setQuickCariRiskLimit("0");
+      setQuickCariMaturityDays("0");
+
+      if (quickCariAutoCompleteSale && createdCode) {
+        setShowCariCustomerModal(false);
+        await submitSale({
+          paymentMethod: "cari",
+          amount: totals.grandTotal,
+          modeLabel: "Cari satış",
+          customerOverride: {
+            code: createdCode,
+            name: createdName,
+          },
+        });
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Hızlı cari oluşturulamadı.");
+    } finally {
+      setCreatingQuickCari(false);
+    }
+  }
+
   async function handlePartialSale() {
     const paid = asNumber(partialAmount, 0);
     if (!customerCode.trim()) {
@@ -2339,7 +2512,15 @@ export function PosClient() {
             connectionOnline={connectionOnline}
             clock={clock}
           />
-          <PosSaleTabs tabs={saleTabs} activeTabId={activeSaleTabId} onSelect={switchSaleTab} onCreate={createSaleTab} />
+          <PosSaleTabs
+            tabs={saleTabs}
+            activeTabId={activeSaleTabId}
+            onSelect={switchSaleTab}
+            onCreate={createSaleTab}
+            onRename={renameSaleTab}
+            onClose={(tabId) => void closeSaleTab(tabId)}
+            canCloseTabs={saleTabs.length > 1}
+          />
         </>
       ) : null}
 
@@ -2911,7 +3092,7 @@ export function PosClient() {
             </div>
 
             <div className="space-y-3 p-4">
-              <div className="grid gap-2 md:grid-cols-[1fr_auto_auto]">
+              <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto_auto]">
                 <input
                   value={cariCustomerQuery}
                   onChange={(event) => setCariCustomerQuery(event.target.value)}
@@ -2925,6 +3106,21 @@ export function PosClient() {
                 >
                   Yenile
                 </Button>
+                <Button variant="secondary" onClick={() => setShowQuickCariForm((prev) => !prev)} disabled={creatingQuickCari}>
+                  {showQuickCariForm ? "Formu Kapat" : "Hızlı Yeni Cari"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setSelectedCariCustomerId("");
+                    setCustomerCode("");
+                    setCustomerName("");
+                    setShowCariCustomerModal(false);
+                    setMessage("Perakende müşteri seçildi.");
+                  }}
+                >
+                  Perakende Satış
+                </Button>
                 <Button
                   onClick={() => void submitCariSaleWithSelectedCustomer()}
                   disabled={busy || loadingCariCustomers || !selectedCariCustomer || selectedCariBlockedByRisk}
@@ -2932,6 +3128,49 @@ export function PosClient() {
                   Seçiliyle Cari Satış
                 </Button>
               </div>
+
+              {showQuickCariForm ? (
+                <div className="rounded-lg border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] p-3">
+                  <p className="mb-2 text-sm font-bold">Hızlı Yeni Cari Kartı</p>
+                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    <input value={quickCariCode} onChange={(event) => setQuickCariCode(event.target.value)} placeholder="Cari kodu (opsiyonel)" />
+                    <input value={quickCariName} onChange={(event) => setQuickCariName(event.target.value)} placeholder="Cari adı *" />
+                    <input value={quickCariPhone} onChange={(event) => setQuickCariPhone(event.target.value)} placeholder="Telefon" />
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={quickCariRiskLimit}
+                      onChange={(event) => setQuickCariRiskLimit(event.target.value)}
+                      placeholder="Risk limiti"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step="1"
+                      value={quickCariMaturityDays}
+                      onChange={(event) => setQuickCariMaturityDays(event.target.value)}
+                      placeholder="Vade (gün)"
+                    />
+                    <label className="inline-flex items-center gap-2 rounded-lg border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={quickCariAutoCompleteSale}
+                        onChange={(event) => setQuickCariAutoCompleteSale(event.target.checked)}
+                      />
+                      Kaydedince cari satışı tamamla
+                    </label>
+                  </div>
+                  <div className="mt-3 flex items-center justify-end gap-2">
+                    <Button variant="secondary" onClick={() => setShowQuickCariForm(false)} disabled={creatingQuickCari}>
+                      Vazgeç
+                    </Button>
+                    <Button onClick={() => void createQuickCariCustomer()} disabled={creatingQuickCari}>
+                      {creatingQuickCari ? "Kaydediliyor..." : "Kaydet ve Seç"}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="max-h-[52vh] overflow-auto rounded-lg border border-[color:var(--mx-border)]">
                 <table className="min-w-full text-sm">
