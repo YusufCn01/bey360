@@ -77,6 +77,17 @@ function formatDateTime(value: string | null | undefined): string {
   }).format(date);
 }
 
+function formatNow(value: Date): string {
+  return new Intl.DateTimeFormat("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(value);
+}
+
 function AnnouncementModal({
   open,
   onClose,
@@ -109,9 +120,7 @@ function AnnouncementModal({
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div>
             <h2 className="text-base font-black text-cyan-100 sm:text-lg">Duyuru Merkezi</h2>
-            <p className="text-xs font-medium text-cyan-100/70">
-              Güncel sistem, kampanya ve operasyon bildirimleri
-            </p>
+            <p className="text-xs font-medium text-cyan-100/70">Güncel sistem, kampanya ve operasyon bildirimleri</p>
           </div>
           <button
             type="button"
@@ -172,7 +181,25 @@ export function Topbar({
   onToggleSidebar,
 }: TopbarProps) {
   const [announcementModalOpen, setAnnouncementModalOpen] = React.useState(false);
+  const [clock, setClock] = React.useState(() => new Date());
+  const [isOnline, setIsOnline] = React.useState(true);
   const announcementCount = announcements.length;
+
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setClock(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  React.useEffect(() => {
+    const updateConnectionState = () => setIsOnline(window.navigator.onLine);
+    updateConnectionState();
+    window.addEventListener("online", updateConnectionState);
+    window.addEventListener("offline", updateConnectionState);
+    return () => {
+      window.removeEventListener("online", updateConnectionState);
+      window.removeEventListener("offline", updateConnectionState);
+    };
+  }, []);
 
   return (
     <>
@@ -237,6 +264,16 @@ export function Topbar({
             <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2">{tenantSlug}</div>
             <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2">{userName}</div>
             <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2">Şube: {branchName}</div>
+            <div
+              className={`rounded-lg border px-3 py-2 ${
+                isOnline
+                  ? "border-emerald-200/40 bg-emerald-300/15 text-emerald-50"
+                  : "border-rose-200/45 bg-rose-300/20 text-rose-50"
+              }`}
+            >
+              {isOnline ? "Çevrim içi" : "Çevrim dışı"}
+            </div>
+            <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2">{formatNow(clock)}</div>
             <button
               type="button"
               onClick={() => setAnnouncementModalOpen(true)}
@@ -261,9 +298,7 @@ export function Topbar({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-cyan-200/20 bg-slate-950/35 px-3 py-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100/75">
-            Lisans ve Güncelleme
-          </span>
+          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100/75">Lisans ve Güncelleme</span>
           <div className="flex flex-wrap items-center gap-2">
             {updateNotice ? (
               <div
@@ -290,11 +325,7 @@ export function Topbar({
         </div>
       </header>
 
-      <AnnouncementModal
-        open={announcementModalOpen}
-        onClose={() => setAnnouncementModalOpen(false)}
-        items={announcements}
-      />
+      <AnnouncementModal open={announcementModalOpen} onClose={() => setAnnouncementModalOpen(false)} items={announcements} />
     </>
   );
 }

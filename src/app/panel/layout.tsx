@@ -2,6 +2,7 @@
 import { cookies } from "next/headers";
 import { PanelShell } from "@/components/layout/panel-shell";
 import { ACCESS_COOKIE } from "@/lib/auth/session";
+import { getOrSetServerCache } from "@/lib/cache/server-cache";
 import { isDatabaseConnectionError } from "@/lib/db/error-utils";
 import { prisma } from "@/lib/db/prisma";
 import { getPlatformMaintenanceState } from "@/lib/platform/maintenance";
@@ -65,6 +66,7 @@ type TenantAnnouncement = {
 
 const TENANT_ANNOUNCEMENTS_SCOPE = "duyurular";
 const PLATFORM_ANNOUNCEMENTS_SCOPE = "platform_announcements";
+const PANEL_TENANT_DATA_TTL_MS = Math.max(5_000, Number(process.env.PANEL_LAYOUT_CACHE_TTL_SECONDS ?? "20") * 1_000);
 
 function readText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -287,6 +289,35 @@ async function getTenantAnnouncements(tenantId: string): Promise<TenantAnnouncem
   return mapAndFilterAnnouncementItems(platformItems, "platform");
 }
 
+type PanelTenantData = {
+  subscription: Awaited<ReturnType<typeof getCurrentSubscription>>;
+  companyUiSettings: CompanyUiSettings;
+  updateNotice: TenantUpdateNotice | null;
+  announcements: TenantAnnouncement[];
+};
+
+async function getPanelTenantData(tenantId: string): Promise<PanelTenantData> {
+  return getOrSetServerCache({
+    key: `panel:tenant-data:${tenantId}`,
+    ttlMs: PANEL_TENANT_DATA_TTL_MS,
+    loader: async () => {
+      const [subscription, companyUiSettings, updateNotice, announcements] = await Promise.all([
+        getCurrentSubscription(tenantId),
+        getCompanyUiSettings(tenantId),
+        getTenantUpdateNotice(tenantId),
+        getTenantAnnouncements(tenantId),
+      ]);
+
+      return {
+        subscription,
+        companyUiSettings,
+        updateNotice,
+        announcements,
+      };
+    },
+  });
+}
+
 function resolveDemoState(params: {
   trialEndsAt: Date | null;
   subscriptionEndsAt: Date | null;
@@ -360,13 +391,11 @@ async function resolveTopbarUserName() {
 export default async function PanelLayout({ children }: { children: ReactNode }) {
   try {
     const [tenant, userName] = await Promise.all([getTenantContext(), resolveTopbarUserName()]);
-    const [subscription, companyUiSettings, updateNotice, maintenanceState, announcements] = await Promise.all([
-      getCurrentSubscription(tenant.tenantId),
-      getCompanyUiSettings(tenant.tenantId),
-      getTenantUpdateNotice(tenant.tenantId),
+    const [tenantData, maintenanceState] = await Promise.all([
+      getPanelTenantData(tenant.tenantId),
       getPlatformMaintenanceState(),
-      getTenantAnnouncements(tenant.tenantId),
     ]);
+    const { subscription, companyUiSettings, updateNotice, announcements } = tenantData;
     const subscriptionEndsAt = extractEndDateFromPayload(subscription?.payload);
     const demoState = resolveDemoState({
       trialEndsAt: tenant.trialEndsAt,

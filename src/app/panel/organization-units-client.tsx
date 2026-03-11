@@ -139,6 +139,38 @@ function UnitTable({
   );
 }
 
+function TextField({
+  value,
+  onChange,
+  placeholder,
+  multiline = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  multiline?: boolean;
+}) {
+  if (multiline) {
+    return (
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="min-h-24 rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
+      />
+    );
+  }
+
+  return (
+    <input
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={placeholder}
+      className="rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
+    />
+  );
+}
+
 export function OrganizationUnitsClient() {
   const [branches, setBranches] = React.useState<OrgUnit[]>([]);
   const [warehouses, setWarehouses] = React.useState<OrgUnit[]>([]);
@@ -178,11 +210,7 @@ export function OrganizationUnitsClient() {
     void load();
   }, [load]);
 
-  function patchForm(
-    target: "branch" | "warehouse",
-    key: keyof UnitFormState,
-    value: string,
-  ) {
+  function patchForm(target: UnitKind, key: keyof UnitFormState, value: string) {
     if (target === "branch") {
       setBranchForm((prev) => ({ ...prev, [key]: value }));
       return;
@@ -270,13 +298,9 @@ export function OrganizationUnitsClient() {
           </Button>
         </CardHeader>
         <CardContent>
-          {error ? (
-            <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>
-          ) : null}
+          {error ? <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
           {message ? (
-            <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              {message}
-            </p>
+            <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p>
           ) : null}
         </CardContent>
       </Card>
@@ -287,35 +311,15 @@ export function OrganizationUnitsClient() {
             <CardTitle className="text-base">Yeni Şube Ekle</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <input
-              value={branchForm.code}
-              onChange={(event) => patchForm("branch", "code", event.target.value)}
-              placeholder="Şube kodu (opsiyonel)"
-              className="rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
-            />
-            <input
-              value={branchForm.name}
-              onChange={(event) => patchForm("branch", "name", event.target.value)}
-              placeholder="Şube adı"
-              className="rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
-            />
-            <input
-              value={branchForm.phone}
-              onChange={(event) => patchForm("branch", "phone", event.target.value)}
-              placeholder="Telefon"
-              className="rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
-            />
-            <input
-              value={branchForm.address}
-              onChange={(event) => patchForm("branch", "address", event.target.value)}
-              placeholder="Adres"
-              className="rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
-            />
-            <textarea
+            <TextField value={branchForm.code} onChange={(value) => patchForm("branch", "code", value)} placeholder="Şube kodu (opsiyonel)" />
+            <TextField value={branchForm.name} onChange={(value) => patchForm("branch", "name", value)} placeholder="Şube adı" />
+            <TextField value={branchForm.phone} onChange={(value) => patchForm("branch", "phone", value)} placeholder="Telefon" />
+            <TextField value={branchForm.address} onChange={(value) => patchForm("branch", "address", value)} placeholder="Adres" />
+            <TextField
               value={branchForm.description}
-              onChange={(event) => patchForm("branch", "description", event.target.value)}
+              onChange={(value) => patchForm("branch", "description", value)}
               placeholder="Açıklama"
-              className="min-h-24 rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
+              multiline
             />
             <Button onClick={() => void createUnit("branch", branchForm)} disabled={busy}>
               Şubeyi Kaydet
@@ -340,35 +344,19 @@ export function OrganizationUnitsClient() {
                 </option>
               ))}
             </select>
-            <input
+            <TextField
               value={warehouseForm.code}
-              onChange={(event) => patchForm("warehouse", "code", event.target.value)}
+              onChange={(value) => patchForm("warehouse", "code", value)}
               placeholder="Depo kodu (opsiyonel)"
-              className="rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
             />
-            <input
-              value={warehouseForm.name}
-              onChange={(event) => patchForm("warehouse", "name", event.target.value)}
-              placeholder="Depo adı"
-              className="rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
-            />
-            <input
-              value={warehouseForm.phone}
-              onChange={(event) => patchForm("warehouse", "phone", event.target.value)}
-              placeholder="Telefon"
-              className="rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
-            />
-            <input
-              value={warehouseForm.address}
-              onChange={(event) => patchForm("warehouse", "address", event.target.value)}
-              placeholder="Adres"
-              className="rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
-            />
-            <textarea
+            <TextField value={warehouseForm.name} onChange={(value) => patchForm("warehouse", "name", value)} placeholder="Depo adı" />
+            <TextField value={warehouseForm.phone} onChange={(value) => patchForm("warehouse", "phone", value)} placeholder="Telefon" />
+            <TextField value={warehouseForm.address} onChange={(value) => patchForm("warehouse", "address", value)} placeholder="Adres" />
+            <TextField
               value={warehouseForm.description}
-              onChange={(event) => patchForm("warehouse", "description", event.target.value)}
+              onChange={(value) => patchForm("warehouse", "description", value)}
               placeholder="Açıklama"
-              className="min-h-24 rounded-lg border border-[color:var(--mx-border)] px-3 py-2 text-sm"
+              multiline
             />
             <Button onClick={() => void createUnit("warehouse", warehouseForm)} disabled={busy}>
               Depoyu Kaydet
@@ -380,12 +368,7 @@ export function OrganizationUnitsClient() {
       {loading ? <p className="text-sm text-[color:var(--mx-text-muted)]">Listeler yükleniyor...</p> : null}
 
       <div className="grid gap-4">
-        <UnitTable
-          title="Şubeler"
-          rows={branches}
-          branchNameById={branchNameById}
-          onToggleStatus={(row) => void toggleStatus("branch", row)}
-        />
+        <UnitTable title="Şubeler" rows={branches} branchNameById={branchNameById} onToggleStatus={(row) => void toggleStatus("branch", row)} />
         <UnitTable
           title="Depolar"
           rows={warehouses}

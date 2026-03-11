@@ -626,6 +626,12 @@ export const panelNavSections: PanelNavSection[] = [
         icon: "settings",
       },
       {
+        href: "/panel/ayarlar/duyuru-yonetimi",
+        label: "Duyuru Yönetimi",
+        description: "Panel duyurularını tenant bazlı planlama ve yayınlama.",
+        icon: "settings",
+      },
+      {
         href: "/panel/ayarlar/kredi-karti-takip",
         label: "Kredi Kartı Takip",
         description: "Kart ödemelerde hesap kesim ve ödeme günü takibi.",
