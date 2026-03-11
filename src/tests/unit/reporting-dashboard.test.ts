@@ -66,6 +66,27 @@ vi.mock("@/lib/db/prisma", () => {
       purchaseInvoices: {
         findMany: vi.fn(async () => []),
       },
+      saleRegisterSessions: {
+        count: vi.fn(async () => 0),
+      },
+      suspendedSales: {
+        count: vi.fn(async () => 0),
+      },
+      customers: {
+        findMany: vi.fn(async () => []),
+      },
+      user: {
+        findMany: vi.fn(async () => []),
+      },
+      branches: {
+        findMany: vi.fn(async () => []),
+      },
+      customerRiskProfiles: {
+        findMany: vi.fn(async () => []),
+      },
+      balanceSnapshots: {
+        findMany: vi.fn(async () => []),
+      },
     },
   };
 });

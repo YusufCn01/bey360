@@ -44,6 +44,10 @@ function toDateOrNull(value: unknown): Date | null {
   return null;
 }
 
+function readText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function dateAtStartOfDay(date: Date): Date {
   const normalized = new Date(date);
   normalized.setHours(0, 0, 0, 0);
@@ -61,6 +65,26 @@ export type DashboardTopProduct = {
   productId: string;
   productName: string;
   quantity: number;
+  revenue: number;
+};
+
+export type DashboardTopBrand = {
+  brand: string;
+  quantity: number;
+  revenue: number;
+};
+
+export type DashboardCashierPerformance = {
+  cashierUserId: string;
+  cashierName: string;
+  saleCount: number;
+  revenue: number;
+};
+
+export type DashboardBranchPerformance = {
+  branchId: string;
+  branchName: string;
+  saleCount: number;
   revenue: number;
 };
 
@@ -137,6 +161,9 @@ export type DashboardSummary = {
   suspendedCartCount: number;
   monthlyCashFlow: DashboardMonthlyPoint[];
   topProducts: DashboardTopProduct[];
+  topBrands: DashboardTopBrand[];
+  topCashiers: DashboardCashierPerformance[];
+  branchPerformance: DashboardBranchPerformance[];
   lastSoldItems: DashboardLastSoldItem[];
   recentSales: DashboardRecentSale[];
   lowStockProducts: DashboardLowStockProduct[];
@@ -159,6 +186,8 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
     openPosSessionCount,
     suspendedCartCount,
     customers,
+    users,
+    branches,
     customerRiskProfiles,
     balanceSnapshots,
   ] =
@@ -302,6 +331,31 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
         },
         take: CUSTOMER_SCAN_LIMIT,
       }),
+      prisma.user.findMany({
+        where: {
+          tenantId: params.tenantId,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
+        take: CUSTOMER_SCAN_LIMIT,
+      }),
+      prisma.branches.findMany({
+        where: {
+          tenantId: params.tenantId,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+        },
+        take: STOCK_SCAN_LIMIT,
+      }),
       prisma.customerRiskProfiles.findMany({
         where: {
           tenantId: params.tenantId,
@@ -344,22 +398,45 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
       code: string;
       name: string;
       minStockLevel: number;
+      brand: string;
     }
   >();
 
   for (const product of products) {
     const payload = asRecord(product.payload);
+    const productGroup = readText(payload.productGroup);
+    const brand =
+      readText(payload.brand) ||
+      productGroup ||
+      readText(payload.specialCode1) ||
+      readText(payload.brandName) ||
+      readText(product.name).split(" ")[0] ||
+      "Diğer";
     productMeta.set(product.id, {
       code: product.code ?? "-",
       name: product.name ?? "Ürün",
       minStockLevel: numberOrZero(payload.minStockLevel),
+      brand,
     });
+  }
+
+  const userNameById = new Map<string, string>();
+  for (const user of users) {
+    const fullName = `${readText(user.firstName)} ${readText(user.lastName)}`.trim();
+    userNameById.set(user.id, fullName || readText(user.email) || user.id);
+  }
+
+  const branchNameById = new Map<string, string>();
+  for (const branch of branches) {
+    branchNameById.set(branch.id, readText(branch.name) || readText(branch.code) || branch.id);
   }
 
   const salesAmounts = sales.map((sale) => {
     const payload = asRecord(sale.payload);
     const value = numberOrZero(payload.netTotal);
     const when = sale.occurredAt ?? sale.createdAt;
+    const cashierUserId = readText(payload.cashierUserId) || "unknown";
+    const branchId = readText(payload.branchId) || "main";
 
     if (isSameMonth(when, now)) {
       monthSeries[when.getDate() - 1].sales += value;
@@ -371,6 +448,10 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
       customerName: (payload.customerName as string | undefined) ?? sale.name ?? "Müşteri",
       value,
       when,
+      cashierUserId,
+      cashierName: userNameById.get(cashierUserId) ?? cashierUserId,
+      branchId,
+      branchName: branchNameById.get(branchId) ?? branchId,
     };
   });
 
@@ -490,14 +571,16 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
   }, 0);
 
   const productAgg = new Map<string, DashboardTopProduct>();
+  const brandAgg = new Map<string, DashboardTopBrand>();
   const lastSoldItems: DashboardLastSoldItem[] = [];
 
   for (const item of saleItems) {
     const payload = asRecord(item.payload);
     const productId = (payload.productId as string | undefined) ?? `unknown-${item.id}`;
     const quantity = numberOrZero(payload.quantity);
-    const revenue = numberOrZero(payload.netAmount);
     const unitPrice = numberOrZero(payload.unitPrice);
+    const revenue = numberOrZero(payload.netAmount) || quantity * unitPrice;
+    const brand = productMeta.get(productId)?.brand || "Diğer";
     const productName = item.name ?? productMeta.get(productId)?.name ?? "Ürün";
 
     const existing = productAgg.get(productId);
@@ -508,6 +591,18 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
       productAgg.set(productId, {
         productId,
         productName,
+        quantity,
+        revenue,
+      });
+    }
+
+    const brandRow = brandAgg.get(brand);
+    if (brandRow) {
+      brandRow.quantity += quantity;
+      brandRow.revenue += revenue;
+    } else {
+      brandAgg.set(brand, {
+        brand,
         quantity,
         revenue,
       });
@@ -529,6 +624,50 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
   const topProducts = Array.from(productAgg.values())
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 5);
+
+  const topBrands = Array.from(brandAgg.values())
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 6);
+
+  const cashierAgg = new Map<string, DashboardCashierPerformance>();
+  const branchAgg = new Map<string, DashboardBranchPerformance>();
+  for (const sale of salesAmounts) {
+    const cashierKey = sale.cashierUserId;
+    const cashier = cashierAgg.get(cashierKey);
+    if (cashier) {
+      cashier.saleCount += 1;
+      cashier.revenue += sale.value;
+    } else {
+      cashierAgg.set(cashierKey, {
+        cashierUserId: cashierKey,
+        cashierName: sale.cashierName,
+        saleCount: 1,
+        revenue: sale.value,
+      });
+    }
+
+    const branchKey = sale.branchId;
+    const branch = branchAgg.get(branchKey);
+    if (branch) {
+      branch.saleCount += 1;
+      branch.revenue += sale.value;
+    } else {
+      branchAgg.set(branchKey, {
+        branchId: branchKey,
+        branchName: sale.branchName,
+        saleCount: 1,
+        revenue: sale.value,
+      });
+    }
+  }
+
+  const topCashiers = Array.from(cashierAgg.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 8);
+
+  const branchPerformance = Array.from(branchAgg.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 8);
 
   const recentSales = salesAmounts
     .sort((a, b) => b.when.getTime() - a.when.getTime())
@@ -717,6 +856,9 @@ export async function getDashboardSummary(params: { tenantId: string }): Promise
     suspendedCartCount,
     monthlyCashFlow: monthSeries,
     topProducts,
+    topBrands,
+    topCashiers,
+    branchPerformance,
     lastSoldItems,
     recentSales,
     lowStockProducts: lowStockProducts.slice(0, 8),
