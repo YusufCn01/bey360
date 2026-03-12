@@ -171,6 +171,13 @@ type PosSessionCurrentResponse = {
   closingCash: number;
   todaysSalesCount: number;
   todaysSalesTotal: number;
+  lastClosureReport: null | {
+    closedAt: string | null;
+    expectedClosingCash: number;
+    countedClosingCash: number;
+    cashVariance: number;
+    varianceStatus: string;
+  };
 };
 
 type CustomerScreenLine = {
@@ -527,6 +534,7 @@ export function PosClient() {
     closingCash: 0,
     todaysSalesCount: 0,
     todaysSalesTotal: 0,
+    lastClosureReport: null,
   });
   const [loadingSessionSummary, setLoadingSessionSummary] = React.useState(false);
   const [openingCashInput, setOpeningCashInput] = React.useState("0");
@@ -809,6 +817,8 @@ export function PosClient() {
       setSessionReady(sessionOpen);
       if (sessionOpen) {
         setOpeningCashInput(String(summary.openingCash.toFixed(2)));
+      } else if (summary.lastClosureReport) {
+        setClosingCashInput(String(summary.lastClosureReport.countedClosingCash.toFixed(2)));
       }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "POS oturum özeti alınamadı.");
@@ -2348,7 +2358,7 @@ export function PosClient() {
     setError(null);
     setMessage(null);
     try {
-      await requestApi("/api/tenant/pos/session/close", {
+      const closedSession = await requestApi<{ payload?: Record<string, unknown> }>("/api/tenant/pos/session/close", {
         method: "POST",
         body: JSON.stringify({
           sessionId: activeSession.id,
@@ -2356,10 +2366,21 @@ export function PosClient() {
           note: sessionCloseNote.trim() || undefined,
         }),
       });
+      const closedPayload = asRecord(closedSession.payload);
+      const closureReport = asRecord(closedPayload.closureReport);
+      const variance = asNumber(closureReport.cashVariance, 0);
+      const expected = asNumber(closureReport.expectedClosingCash, 0);
+      const counted = asNumber(closureReport.countedClosingCash, 0);
+      const varianceText =
+        variance > 0
+          ? `+${formatTry(variance)} fazla`
+          : variance < 0
+            ? `${formatTry(Math.abs(variance))} eksik`
+            : "Fark yok";
       setSessionReady(false);
       setSessionCloseNote("");
       await loadSessionSummary();
-      setMessage("POS oturumu kapatıldı.");
+      setMessage(`POS oturumu kapatıldı. Beklenen: ${formatTry(expected)} | Sayılan: ${formatTry(counted)} | Fark: ${varianceText}`);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "POS oturumu kapatılamadı.");
     } finally {
@@ -3110,7 +3131,9 @@ export function PosClient() {
                     <div className="text-xs text-[color:var(--mx-text-muted)] self-center">
                       {sessionSummary.openSession
                         ? `Açılış: ${formatTry(sessionSummary.openingCash)} | Oturum ID: ${sessionSummary.openSession.id}`
-                        : "Açık oturum yok"}
+                        : sessionSummary.lastClosureReport
+                          ? `Son kapanış farkı: ${formatTry(sessionSummary.lastClosureReport.cashVariance)} | Beklenen: ${formatTry(sessionSummary.lastClosureReport.expectedClosingCash)} | Sayılan: ${formatTry(sessionSummary.lastClosureReport.countedClosingCash)}`
+                          : "Açık oturum yok"}
                     </div>
                   </div>
                 </div>

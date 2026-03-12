@@ -42,6 +42,10 @@ function readNumber(value: unknown): number {
   return 0;
 }
 
+function roundCurrency(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 function calculateDueDateIso(base: Date, maturityDays: number): string | undefined {
   if (!Number.isFinite(maturityDays) || maturityDays <= 0) {
     return undefined;
@@ -95,31 +99,147 @@ export async function closeRegisterSession(params: {
   closingCash?: number;
   note?: string;
 }) {
-  const session = await prisma.saleRegisterSessions.findFirst({
-    where: {
-      id: params.sessionId,
-      tenantId: params.tenantId,
-      deletedAt: null,
-      status: "open",
-    },
-  });
-
-  if (!session) {
-    throw new PosValidationError("Kapatılacak açık POS oturumu bulunamadı.");
-  }
-
-  return prisma.saleRegisterSessions.update({
-    where: { id: session.id },
-    data: {
-      status: "closed",
-      payload: {
-        ...asRecord(session.payload),
-        closedBy: params.userId,
-        closingCash: params.closingCash ?? 0,
-        note: params.note,
+  return prisma.$transaction(async (tx) => {
+    const session = await tx.saleRegisterSessions.findFirst({
+      where: {
+        id: params.sessionId,
+        tenantId: params.tenantId,
+        deletedAt: null,
+        status: "open",
       },
-      occurredAt: new Date(),
-    },
+    });
+
+    if (!session) {
+      throw new PosValidationError("Kapatilacak acik POS oturumu bulunamadi.");
+    }
+
+    const sessionPayload = asRecord(session.payload);
+    const registerId = session.code ?? readText(sessionPayload.registerId);
+    const sessionOpenedAt = session.occurredAt ?? session.createdAt ?? new Date();
+    const closedAt = new Date();
+
+    const openingCash = roundCurrency(readNumber(sessionPayload.openingCash));
+    const countedClosingCash = roundCurrency(Math.max(0, params.closingCash ?? 0));
+    const currency = readText(sessionPayload.currency) || "TRY";
+    const noteText = readText(params.note);
+
+    const sales = await tx.sales.findMany({
+      where: {
+        tenantId: params.tenantId,
+        deletedAt: null,
+        status: "completed",
+        occurredAt: {
+          gte: sessionOpenedAt,
+          lte: closedAt,
+        },
+        ...(registerId
+          ? {
+              payload: {
+                path: ["registerId"],
+                equals: registerId,
+              },
+            }
+          : {}),
+      },
+      select: {
+        payload: true,
+      },
+    });
+
+    let salesTotal = 0;
+    for (const sale of sales) {
+      const salePayload = asRecord(sale.payload);
+      salesTotal += readNumber(salePayload.netTotal);
+    }
+    salesTotal = roundCurrency(salesTotal);
+
+    let cashNetMovement = 0;
+    if (registerId) {
+      const cashMovements = await tx.cashTransactions.findMany({
+        where: {
+          tenantId: params.tenantId,
+          deletedAt: null,
+          occurredAt: {
+            gte: sessionOpenedAt,
+            lte: closedAt,
+          },
+          payload: {
+            path: ["cashAccountCode"],
+            equals: "KASA:" + registerId,
+          },
+        },
+        select: {
+          payload: true,
+        },
+      });
+
+      for (const movement of cashMovements) {
+        const movementPayload = asRecord(movement.payload);
+        const direction = readText(movementPayload.direction).toLowerCase();
+        const amount = readNumber(movementPayload.amount);
+        cashNetMovement += direction === "out" ? -amount : amount;
+      }
+    }
+
+    cashNetMovement = roundCurrency(cashNetMovement);
+    const expectedClosingCash = roundCurrency(openingCash + cashNetMovement);
+    const cashVariance = roundCurrency(countedClosingCash - expectedClosingCash);
+    const varianceStatus = cashVariance > 0 ? "surplus" : cashVariance < 0 ? "deficit" : "balanced";
+
+    const closureReport = {
+      registerId: registerId || null,
+      openedAt: sessionOpenedAt.toISOString(),
+      closedAt: closedAt.toISOString(),
+      currency,
+      openingCash,
+      expectedClosingCash,
+      countedClosingCash,
+      cashNetMovement,
+      salesCount: sales.length,
+      salesTotal,
+      cashVariance,
+      varianceStatus,
+    };
+
+    const updatedSession = await tx.saleRegisterSessions.update({
+      where: { id: session.id },
+      data: {
+        status: "closed",
+        payload: {
+          ...sessionPayload,
+          closedBy: params.userId,
+          closingCash: countedClosingCash,
+          note: noteText || undefined,
+          closureReport,
+        },
+        occurredAt: closedAt,
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        tenantId: params.tenantId,
+        userId: params.userId,
+        module: "pos",
+        entityName: "sale_register_sessions",
+        entityId: session.id,
+        action: "session.closed",
+        payload: {
+          sessionId: session.id,
+          registerId: registerId || null,
+          openingCash,
+          expectedClosingCash,
+          countedClosingCash,
+          cashVariance,
+          varianceStatus,
+          salesCount: sales.length,
+          salesTotal,
+          currency,
+        },
+      },
+    });
+
+    return updatedSession;
   });
 }
 

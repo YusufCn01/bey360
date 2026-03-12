@@ -29,6 +29,22 @@ function roundCurrency(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+function parseClosureReport(value: unknown) {
+  const payload = asRecord(value);
+  if (Object.keys(payload).length === 0) {
+    return null;
+  }
+
+  const closedAt = asText(payload.closedAt);
+  return {
+    closedAt: closedAt || null,
+    expectedClosingCash: roundCurrency(asNumber(payload.expectedClosingCash, 0)),
+    countedClosingCash: roundCurrency(asNumber(payload.countedClosingCash, 0)),
+    cashVariance: roundCurrency(asNumber(payload.cashVariance, 0)),
+    varianceStatus: asText(payload.varianceStatus) || "balanced",
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const access = await requireTenantAccess(request, "sale:pos");
@@ -51,6 +67,23 @@ export async function GET(request: NextRequest) {
     });
 
     const targetRegisterId = registerId || openSession?.code || "";
+    const lastClosedSession = await prisma.saleRegisterSessions.findFirst({
+      where: {
+        tenantId: access.tenantId,
+        deletedAt: null,
+        status: "closed",
+        ...(targetRegisterId
+          ? {
+              code: targetRegisterId,
+            }
+          : {}),
+      },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        payload: true,
+      },
+    });
+
     const saleRows = await prisma.sales.findMany({
       where: {
         tenantId: access.tenantId,
@@ -84,6 +117,8 @@ export async function GET(request: NextRequest) {
     const openPayload = asRecord(openSession?.payload);
     const openingCash = asNumber(openPayload.openingCash, 0);
     const closingCash = asNumber(openPayload.closingCash, 0);
+    const lastClosurePayload = asRecord(lastClosedSession?.payload);
+    const lastClosureReport = parseClosureReport(lastClosurePayload.closureReport);
 
     return ok({
       registerId: targetRegisterId || null,
@@ -102,6 +137,7 @@ export async function GET(request: NextRequest) {
       closingCash: roundCurrency(closingCash),
       todaysSalesCount,
       todaysSalesTotal: roundCurrency(todaysSalesTotal),
+      lastClosureReport,
     });
   } catch (error) {
     if (error instanceof AuthorizationError) {
