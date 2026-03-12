@@ -156,6 +156,23 @@ type SaleResult = {
   changeAmount: number;
 };
 
+type PosSessionCurrentResponse = {
+  registerId: string | null;
+  openSession: null | {
+    id: string;
+    code: string;
+    name: string;
+    status: string;
+    createdAt: string;
+    occurredAt?: string;
+    payload?: Record<string, unknown>;
+  };
+  openingCash: number;
+  closingCash: number;
+  todaysSalesCount: number;
+  todaysSalesTotal: number;
+};
+
 type CustomerScreenLine = {
   id: string;
   name: string;
@@ -503,6 +520,18 @@ export function PosClient() {
   const [busy, setBusy] = React.useState(false);
   const [loadingProducts, setLoadingProducts] = React.useState(true);
   const [sessionReady, setSessionReady] = React.useState(false);
+  const [sessionSummary, setSessionSummary] = React.useState<PosSessionCurrentResponse>({
+    registerId: null,
+    openSession: null,
+    openingCash: 0,
+    closingCash: 0,
+    todaysSalesCount: 0,
+    todaysSalesTotal: 0,
+  });
+  const [loadingSessionSummary, setLoadingSessionSummary] = React.useState(false);
+  const [openingCashInput, setOpeningCashInput] = React.useState("0");
+  const [closingCashInput, setClosingCashInput] = React.useState("0");
+  const [sessionCloseNote, setSessionCloseNote] = React.useState("");
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [showOperations, setShowOperations] = React.useState(false);
@@ -768,6 +797,29 @@ export function PosClient() {
   React.useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const loadSessionSummary = React.useCallback(async () => {
+    setLoadingSessionSummary(true);
+    try {
+      const summary = await requestApi<PosSessionCurrentResponse>(
+        `/api/tenant/pos/session/current?registerId=${encodeURIComponent(registerId)}`,
+      );
+      setSessionSummary(summary);
+      const sessionOpen = Boolean(summary.openSession);
+      setSessionReady(sessionOpen);
+      if (sessionOpen) {
+        setOpeningCashInput(String(summary.openingCash.toFixed(2)));
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "POS oturum özeti alınamadı.");
+    } finally {
+      setLoadingSessionSummary(false);
+    }
+  }, [registerId]);
+
+  React.useEffect(() => {
+    void loadSessionSummary();
+  }, [loadSessionSummary]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -2224,23 +2276,94 @@ export function PosClient() {
   }
 
   async function ensurePosSession() {
-    if (sessionReady) {
+    if (sessionReady && sessionSummary.openSession?.code === registerId) {
       return;
     }
 
     try {
       await requestApi("/api/tenant/pos/session/open", {
         method: "POST",
-        body: JSON.stringify({ registerId, registerName, openingCash: 0 }),
+        body: JSON.stringify({ registerId, registerName, openingCash: asNumber(openingCashInput, 0) }),
       });
       setSessionReady(true);
+      await loadSessionSummary();
     } catch (sessionError) {
       const text = sessionError instanceof Error ? sessionError.message : "POS oturumu açılamadı.";
       if (text.toLocaleLowerCase("tr").includes("zaten açık")) {
         setSessionReady(true);
+        await loadSessionSummary();
         return;
       }
       throw sessionError;
+    }
+  }
+
+  async function openPosSessionManually() {
+    if (sessionSummary.openSession) {
+      setError("Bu kasada zaten açık POS oturumu var.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await requestApi("/api/tenant/pos/session/open", {
+        method: "POST",
+        body: JSON.stringify({
+          registerId,
+          registerName,
+          openingCash: Math.max(0, asNumber(openingCashInput, 0)),
+        }),
+      });
+      await loadSessionSummary();
+      setSessionReady(true);
+      setMessage("POS oturumu açıldı.");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "POS oturumu açılamadı.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function closePosSessionManually() {
+    const activeSession = sessionSummary.openSession;
+    if (!activeSession) {
+      setError("Kapatılacak açık POS oturumu bulunamadı.");
+      return;
+    }
+
+    const accepted = await openConfirmDialog({
+      title: "POS Oturum Kapanışı",
+      description: "Kasa oturumunu kapatmak istediğinize emin misiniz?",
+      confirmLabel: "Oturumu Kapat",
+      cancelLabel: "Vazgeç",
+      tone: "danger",
+    });
+    if (!accepted) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await requestApi("/api/tenant/pos/session/close", {
+        method: "POST",
+        body: JSON.stringify({
+          sessionId: activeSession.id,
+          closingCash: Math.max(0, asNumber(closingCashInput, 0)),
+          note: sessionCloseNote.trim() || undefined,
+        }),
+      });
+      setSessionReady(false);
+      setSessionCloseNote("");
+      await loadSessionSummary();
+      setMessage("POS oturumu kapatıldı.");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "POS oturumu kapatılamadı.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -2336,7 +2459,7 @@ export function PosClient() {
       setExchangeTargetId(null);
       setCartNote("");
       playTone("barcode");
-      await loadData();
+      await Promise.all([loadData(), loadSessionSummary()]);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Satış işlemi başarısız oldu.");
     } finally {
@@ -2914,6 +3037,84 @@ export function PosClient() {
 
             {showOperations ? (
               <div className="space-y-3 rounded-lg border border-[color:var(--mx-border)] bg-white p-3">
+                <div className="rounded-lg border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] p-3">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-bold">Kasa Oturumu ve Vardiya Özeti</p>
+                    <Button size="sm" variant="secondary" onClick={() => void loadSessionSummary()} disabled={loadingSessionSummary}>
+                      {loadingSessionSummary ? "Yükleniyor..." : "Oturumu Yenile"}
+                    </Button>
+                  </div>
+
+                  <div className="grid gap-2 md:grid-cols-4">
+                    <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-xs">
+                      <p className="text-[color:var(--mx-text-muted)]">Kasa</p>
+                      <p className="font-bold">{registerId} / {registerName}</p>
+                    </div>
+                    <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-xs">
+                      <p className="text-[color:var(--mx-text-muted)]">Durum</p>
+                      <p className={`font-bold ${sessionSummary.openSession ? "text-emerald-700" : "text-rose-700"}`}>
+                        {sessionSummary.openSession ? "Açık Oturum" : "Kapalı"}
+                      </p>
+                    </div>
+                    <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-xs">
+                      <p className="text-[color:var(--mx-text-muted)]">Bugün Satış Adedi</p>
+                      <p className="font-bold">{sessionSummary.todaysSalesCount}</p>
+                    </div>
+                    <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-xs">
+                      <p className="text-[color:var(--mx-text-muted)]">Bugün Ciro</p>
+                      <p className="font-bold">{formatTry(sessionSummary.todaysSalesTotal)}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+                    <input
+                      value={openingCashInput}
+                      onChange={(event) => setOpeningCashInput(event.target.value)}
+                      placeholder="Açılış nakit tutarı"
+                      inputMode="decimal"
+                    />
+                    <input
+                      value={closingCashInput}
+                      onChange={(event) => setClosingCashInput(event.target.value)}
+                      placeholder="Kapanış nakit tutarı"
+                      inputMode="decimal"
+                      disabled={!sessionSummary.openSession}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="h-10 bg-emerald-700 text-white hover:bg-emerald-600"
+                        onClick={() => void openPosSessionManually()}
+                        disabled={busy || Boolean(sessionSummary.openSession)}
+                      >
+                        Oturumu Aç
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => void closePosSessionManually()}
+                        disabled={busy || !sessionSummary.openSession}
+                      >
+                        Oturumu Kapat
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid gap-2 md:grid-cols-[1fr_auto]">
+                    <input
+                      value={sessionCloseNote}
+                      onChange={(event) => setSessionCloseNote(event.target.value)}
+                      placeholder="Kapanış notu (opsiyonel)"
+                      disabled={!sessionSummary.openSession}
+                    />
+                    <div className="text-xs text-[color:var(--mx-text-muted)] self-center">
+                      {sessionSummary.openSession
+                        ? `Açılış: ${formatTry(sessionSummary.openingCash)} | Oturum ID: ${sessionSummary.openSession.id}`
+                        : "Açık oturum yok"}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid gap-3 xl:grid-cols-2">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
