@@ -205,6 +205,22 @@ type ConfirmDialogState = {
   tone: ConfirmDialogTone;
 };
 
+type ReceiptPrinterSettings = {
+  receiptPrinterName: string;
+  receiptPaperMm: "58" | "80";
+  receiptCopies: number;
+  autoPrintReceipt: boolean;
+  printPreviewEnabled: boolean;
+};
+
+const defaultReceiptPrinterSettings: ReceiptPrinterSettings = {
+  receiptPrinterName: "",
+  receiptPaperMm: "58",
+  receiptCopies: 1,
+  autoPrintReceipt: true,
+  printPreviewEnabled: true,
+};
+
 type BarcodeDetectorResult = { rawValue?: string };
 type BarcodeDetectorLike = { detect: (source: ImageBitmapSource) => Promise<BarcodeDetectorResult[]> };
 type BarcodeDetectorClassLike = new (options?: { formats?: string[] }) => BarcodeDetectorLike;
@@ -256,6 +272,22 @@ function asTextArray(value: unknown): string[] {
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())
     .filter((item, index, arr) => item.length > 0 && arr.indexOf(item) === index);
+}
+
+function asBoolean(value: unknown, fallback = false): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function parseReceiptPrinterSettings(value: unknown): ReceiptPrinterSettings {
+  const payload = asRecord(value);
+  const paper = asText(payload.receiptPaperMm, defaultReceiptPrinterSettings.receiptPaperMm);
+  return {
+    receiptPrinterName: asText(payload.receiptPrinterName, defaultReceiptPrinterSettings.receiptPrinterName),
+    receiptPaperMm: paper === "80" ? "80" : "58",
+    receiptCopies: Math.max(1, Math.floor(asNumber(payload.receiptCopies, defaultReceiptPrinterSettings.receiptCopies))),
+    autoPrintReceipt: asBoolean(payload.autoPrintReceipt, defaultReceiptPrinterSettings.autoPrintReceipt),
+    printPreviewEnabled: asBoolean(payload.printPreviewEnabled, defaultReceiptPrinterSettings.printPreviewEnabled),
+  };
 }
 
 function roundQuantity(value: number): number {
@@ -460,6 +492,7 @@ export function PosClient() {
   const [customPrice, setCustomPrice] = React.useState("0");
   const [customVatRate, setCustomVatRate] = React.useState("20");
   const [posParameters, setPosParameters] = React.useState<PosParameters>(defaultPosParameters);
+  const [printerSettings, setPrinterSettings] = React.useState<ReceiptPrinterSettings>(defaultReceiptPrinterSettings);
 
   const [products, setProducts] = React.useState<ProductRow[]>([]);
   const [quickCustomers, setQuickCustomers] = React.useState<Array<{ code: string; name: string }>>([]);
@@ -667,12 +700,13 @@ export function PosClient() {
     setLoadingProducts(true);
     setError(null);
     try {
-      const [productRows, stockRows, customerRows, settingsRow, companySettings] = await Promise.all([
+      const [productRows, stockRows, customerRows, settingsRow, companySettings, printerSettingsRow] = await Promise.all([
         requestApi<ProductApiRow[]>("/api/tenant/products?limit=350"),
         requestApi<StockBalanceRow[]>("/api/tenant/inventory/stock-balances?limit=2000"),
         requestApi<CustomerApiRow[]>("/api/tenant/customers?limit=3"),
         requestApi<SettingsRow>(`/api/tenant/settings?scope=${encodeURIComponent(POS_PARAMETERS_SCOPE)}`).catch(() => ({ payload: {} })),
         requestApi<SettingsRow>("/api/tenant/settings?scope=firma_ayarlari").catch(() => ({ payload: {} })),
+        requestApi<SettingsRow>("/api/tenant/settings?scope=printer_settings").catch(() => ({ payload: {} })),
       ]);
 
       const stockMap = new Map<string, number>();
@@ -719,6 +753,7 @@ export function PosClient() {
       setProducts(normalizedProducts);
       setQuickCustomers(quick);
       setPosParameters(parsePosParameters(settingsRow.payload));
+      setPrinterSettings(parseReceiptPrinterSettings(printerSettingsRow.payload));
       const companyPayload = asRecord(companySettings.payload);
       setCompanyName(asText(companyPayload.companyName, "Bey360"));
       setBranchName(asText(companyPayload.branchName, "MERKEZ"));
@@ -1315,7 +1350,7 @@ export function PosClient() {
       .replaceAll("'", "&#39;");
   }
 
-  function printSaleReceipt(sale: PosSaleHistoryRow) {
+  function printSaleReceipt(sale: PosSaleHistoryRow, options?: { previewOnly?: boolean }) {
     if (typeof window === "undefined") {
       return;
     }
@@ -1346,7 +1381,36 @@ export function PosClient() {
       .join("");
 
     const printRegisterName = sale.registerName || registerName;
-    const paperWidthMm = posParameters.infoReceiptSize === "80" ? 80 : 58;
+    const paperWidthMm = (printerSettings.receiptPaperMm || posParameters.infoReceiptSize) === "80" ? 80 : 58;
+    const receiptCopies = Math.max(1, printerSettings.receiptCopies);
+    const printerName = printerSettings.receiptPrinterName.trim() || "Varsayılan Yazıcı";
+    const copySections = Array.from({ length: receiptCopies }, (_, index) => {
+      const copyTitle = receiptCopies > 1 ? `Kopya ${index + 1}/${receiptCopies}` : "Fiş";
+      return `
+        <section class="receipt-copy">
+          <h1>${escapeHtml(printRegisterName)}</h1>
+          <p class="muted">Yazıcı: ${escapeHtml(printerName)}</p>
+          <p class="muted">${copyTitle}</p>
+          <p class="muted">Fiş No: ${escapeHtml(sale.saleCode)}</p>
+          <p class="muted">Tarih: ${new Date(sale.occurredAt).toLocaleString("tr-TR")}</p>
+          <p class="muted">Müşteri: ${escapeHtml(sale.customerName || "Perakende")}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Ürün</th>
+                <th>Miktar</th>
+                <th>Birim</th>
+                <th>Tutar</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+          <div class="total">Toplam: ${formatTry(sale.total)}</div>
+          <ul>${paymentsHtml}</ul>
+        </section>
+      `;
+    }).join('<div class="page-break"></div>');
+
     popup.document.write(`<!doctype html>
 <html lang="tr">
   <head>
@@ -1361,38 +1425,42 @@ export function PosClient() {
       th { text-align: left; }
       .total { margin-top: 10px; font-size: 16px; font-weight: 700; text-align: right; }
       .muted { color: #444; }
+      .page-break { page-break-before: always; height: 12px; }
       @media print { body { margin: 0; } }
     </style>
   </head>
-  <body>
-    <h1>${escapeHtml(printRegisterName)}</h1>
-    <p class="muted">Fiş No: ${escapeHtml(sale.saleCode)}</p>
-    <p class="muted">Tarih: ${new Date(sale.occurredAt).toLocaleString("tr-TR")}</p>
-    <p class="muted">Müşteri: ${escapeHtml(sale.customerName || "Perakende")}</p>
-    <table>
-      <thead>
-        <tr>
-          <th>Ürün</th>
-          <th>Miktar</th>
-          <th>Birim</th>
-          <th>Tutar</th>
-        </tr>
-      </thead>
-      <tbody>${rowsHtml}</tbody>
-    </table>
-    <div class="total">Toplam: ${formatTry(sale.total)}</div>
-    <ul>${paymentsHtml}</ul>
-  </body>
+  <body>${copySections}</body>
 </html>`);
     popup.document.close();
     popup.focus();
+
+    if (options?.previewOnly) {
+      return;
+    }
+
     popup.print();
+
+    if (!printerSettings.printPreviewEnabled) {
+      setTimeout(() => {
+        popup.close();
+      }, 500);
+    }
+  }
+
+  function previewSaleReceipt(sale: PosSaleHistoryRow) {
+    printSaleReceipt(sale, { previewOnly: true });
   }
 
   async function handlePostSaleReceiptFlow(sale: PosSaleHistoryRow) {
     if (posParameters.infoReceiptPrintMode === "never") {
       return;
     }
+
+    if (posParameters.infoReceiptPrintMode === "ask" && printerSettings.autoPrintReceipt) {
+      printSaleReceipt(sale);
+      return;
+    }
+
     if (posParameters.infoReceiptPrintMode === "always") {
       printSaleReceipt(sale);
       return;
@@ -1406,6 +1474,17 @@ export function PosClient() {
     });
     if (wantsPrint) {
       printSaleReceipt(sale);
+    } else if (printerSettings.printPreviewEnabled) {
+      const wantsPreview = await openConfirmDialog({
+        title: "Fiş Önizleme",
+        description: "Yazdırma iptal edildi. Fiş önizlemesi açılsın mı?",
+        confirmLabel: "Önizlemeyi Aç",
+        cancelLabel: "Kapat",
+        tone: "info",
+      });
+      if (wantsPreview) {
+        previewSaleReceipt(sale);
+      }
     }
   }
 
@@ -2583,6 +2662,7 @@ export function PosClient() {
               </>
             ) : null}
             <Button size="sm" className="h-9 border border-amber-300/70 bg-amber-500 text-slate-900 hover:bg-amber-400" onClick={() => (lastSaleReceipt ? printSaleReceipt(lastSaleReceipt) : setError("Yazdırmak için önce satış tamamlayın."))}>Fiş Yazdır</Button>
+            <Button size="sm" className="h-9 border border-sky-300/70 bg-sky-500 text-white hover:bg-sky-400" onClick={() => (lastSaleReceipt ? previewSaleReceipt(lastSaleReceipt) : setError("Önizleme için önce satış tamamlayın."))}>Fiş Önizleme</Button>
             <Button
               size="sm"
               className={`h-9 border ${showAdvancedPos ? "border-lime-300/70 bg-lime-400 text-emerald-950 hover:bg-lime-300" : "border-slate-300/70 bg-slate-100 text-slate-900 hover:bg-slate-200"}`}
@@ -2993,6 +3073,12 @@ export function PosClient() {
                             onClick={() => printSaleReceipt(saleLookupResult)}
                           >
                             Tekrar Yazdır
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            onClick={() => previewSaleReceipt(saleLookupResult)}
+                          >
+                            Önizleme
                           </Button>
                           <Button
                             variant="danger"
