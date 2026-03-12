@@ -1426,13 +1426,16 @@ export function PosClient() {
       return;
     }
 
-    const popup = window.open("", "_blank", "noopener,noreferrer,width=420,height=760");
+    const popup = window.open("about:blank", "_blank", "width=420,height=760");
     if (!popup) {
       setError("Yazdırma penceresi açılamadı. Popup engelini kontrol edin.");
       return;
     }
 
-    const rowsHtml = sale.items
+    const saleItems = Array.isArray(sale.items) ? sale.items : [];
+    const salePayments = Array.isArray(sale.payments) ? sale.payments : [];
+
+    const rowsHtml = saleItems
       .map(
         (line) => `
           <tr>
@@ -1445,7 +1448,7 @@ export function PosClient() {
       )
       .join("");
 
-    const paymentsHtml = sale.payments
+    const paymentsHtml = salePayments
       .map(
         (payment) => `<li>${escapeHtml(payment.method.toUpperCase())}: <strong>${formatTry(payment.amount)}</strong></li>`,
       )
@@ -1482,7 +1485,7 @@ export function PosClient() {
       `;
     }).join('<div class="page-break"></div>');
 
-    popup.document.write(`<!doctype html>
+    const receiptHtml = `<!doctype html>
 <html lang="tr">
   <head>
     <meta charset="utf-8" />
@@ -1501,7 +1504,37 @@ export function PosClient() {
     </style>
   </head>
   <body>${copySections}</body>
-</html>`);
+</html>`;
+
+    try {
+      const blob = new Blob([receiptHtml], { type: "text/html;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      popup.location.replace(blobUrl);
+      popup.focus();
+
+      const finalizePrint = () => {
+        if (options?.previewOnly) {
+          return;
+        }
+        popup.print();
+        if (!printerSettings.printPreviewEnabled) {
+          setTimeout(() => {
+            popup.close();
+          }, 500);
+        }
+      };
+
+      popup.onload = () => {
+        finalizePrint();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      };
+      return;
+    } catch {
+      // Blob açma başarısız olursa document.write ile devam et.
+    }
+
+    popup.document.open();
+    popup.document.write(receiptHtml);
     popup.document.close();
     popup.focus();
 
@@ -2054,8 +2087,9 @@ export function PosClient() {
     }
     if (key === "enter") {
       if (numpadMode === "barcode") {
-        if (numpadBuffer.trim()) {
-          const scanned = tryScanAdd(numpadBuffer);
+        const barcodeValue = (numpadBuffer || searchText || "").trim();
+        if (barcodeValue) {
+          const scanned = tryScanAdd(barcodeValue);
           if (scanned) {
             setSearchText("");
             setNumpadBuffer("");
@@ -2064,18 +2098,24 @@ export function PosClient() {
         return;
       }
       if (numpadMode === "quantity") {
-        if (!selectedLine) {
+        const fallbackLine = selectedLine ?? (cart.length > 0 ? cart[cart.length - 1] : null);
+        if (!fallbackLine) {
           setError("Miktar için önce sepet satırı seçin.");
           return;
         }
-        const qty = normalizeQuantity(asNumber(numpadBuffer, selectedLine.quantity), getQuantityStep(selectedLine.unit));
-        updateQuantity(selectedLine.productId, qty);
+        if (!selectedLine) {
+          setSelectedLineId(fallbackLine.productId);
+        }
+        const qty = normalizeQuantity(asNumber(numpadBuffer, fallbackLine.quantity), getQuantityStep(fallbackLine.unit));
+        updateQuantity(fallbackLine.productId, qty);
         setNumpadBuffer("");
+        setMessage(`Miktar güncellendi: ${fallbackLine.productName}`);
         return;
       }
       const amount = asNumber(numpadBuffer, 0);
       if (amount > 0) {
         setPartialAmount(amount.toFixed(2));
+        setMessage(`Tahsilat tutarı güncellendi: ${formatTry(amount)}`);
       }
       setNumpadBuffer("");
       return;
@@ -2084,7 +2124,9 @@ export function PosClient() {
     const appendValue = key === "," ? "." : key;
     setNumpadBuffer((prev) => `${prev}${appendValue}`);
     if (numpadMode === "barcode") {
-      setSearchText((prev) => `${prev}${key}`);
+      if (key !== ",") {
+        setSearchText((prev) => `${prev}${key}`);
+      }
     }
   }
 
@@ -2770,7 +2812,7 @@ export function PosClient() {
   ]);
 
   return (
-    <div className="space-y-2 pb-28 text-[16px] md:pb-2 xl:text-[17px]">
+    <div className="grid h-[100dvh] grid-rows-[auto_auto_minmax(0,1fr)] gap-2 overflow-hidden pb-24 text-[16px] md:pb-0 xl:text-[17px]">
       <PosSaleTabs
         tabs={saleTabs}
         activeTabId={activeSaleTabId}
@@ -2825,8 +2867,8 @@ export function PosClient() {
         </div>
       </div>
 
-      <div className="grid gap-2 xl:grid-cols-[1.04fr_320px_1.24fr]">
-        <div className="flex min-h-[74vh] flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f8fafc] shadow-sm">
+      <div className="grid min-h-0 gap-2 xl:grid-cols-[1.04fr_320px_1.24fr]">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f8fafc] shadow-sm">
           <div className="space-y-1 border-b border-slate-300 bg-slate-100 p-2">
             <div className="grid gap-1 md:grid-cols-7">
               <Button size="sm" className="h-11 bg-sky-700 text-base text-white hover:bg-sky-600" onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
@@ -3273,7 +3315,7 @@ export function PosClient() {
           </div>
         </div>
 
-        <div className="hidden min-h-[74vh] flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#eef2f6] shadow-sm xl:flex">
+        <div className="hidden h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#eef2f6] shadow-sm xl:flex">
           <div className="border-b border-slate-300 bg-white p-2">
             <div className="rounded-md border border-slate-300 bg-slate-50 px-3 py-1 text-right">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tutar</p>
@@ -3281,7 +3323,15 @@ export function PosClient() {
             </div>
           </div>
           <div className="space-y-2 p-2">
-            <PosNumpad mode={numpadMode} buffer={numpadBuffer} onModeChange={setNumpadMode} onKey={handleNumpadKey} />
+            <PosNumpad
+              mode={numpadMode}
+              buffer={numpadBuffer}
+              onModeChange={(mode) => {
+                setNumpadMode(mode);
+                setNumpadBuffer("");
+              }}
+              onKey={handleNumpadKey}
+            />
             <div className="grid grid-cols-2 gap-1">
               {paymentShortcutValues.slice(0, 6).map((amount) => (
                 <button
@@ -3327,7 +3377,7 @@ export function PosClient() {
           </div>
         </div>
 
-        <div className="flex min-h-[74vh] flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f3f5f8] shadow-sm">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f3f5f8] shadow-sm">
           <div className="space-y-2 border-b border-slate-300 bg-white p-2">
             <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto_auto_auto]">
               <select className="h-11 rounded border border-slate-300 bg-white px-3 text-base font-semibold">
@@ -3370,7 +3420,15 @@ export function PosClient() {
                 Kamera ile Oku
               </Button>
             </div>
-            <PosNumpad mode={numpadMode} buffer={numpadBuffer} onModeChange={setNumpadMode} onKey={handleNumpadKey} />
+            <PosNumpad
+              mode={numpadMode}
+              buffer={numpadBuffer}
+              onModeChange={(mode) => {
+                setNumpadMode(mode);
+                setNumpadBuffer("");
+              }}
+              onKey={handleNumpadKey}
+            />
             <div className="grid grid-cols-4 gap-2">
               <Button size="sm" className="h-10 bg-slate-700 text-white hover:bg-slate-600" onClick={() => applyLineDiscount(5)} disabled={!canDiscountOperations}>
                 %5 İsk.
