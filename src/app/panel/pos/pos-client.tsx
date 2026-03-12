@@ -2812,7 +2812,7 @@ export function PosClient() {
   ]);
 
   return (
-    <div className="grid h-[100dvh] grid-rows-[auto_auto_minmax(0,1fr)] gap-2 overflow-hidden pb-24 text-[16px] md:pb-0 xl:text-[17px]">
+    <div className="grid h-[100dvh] grid-rows-[auto_auto_minmax(0,1fr)] gap-1 overflow-hidden bg-slate-100 pb-24 text-[16px] md:pb-0 xl:text-[17px]">
       <PosSaleTabs
         tabs={saleTabs}
         activeTabId={activeSaleTabId}
@@ -2867,17 +2867,17 @@ export function PosClient() {
         </div>
       </div>
 
-      <div className="grid min-h-0 gap-2 xl:grid-cols-[1.04fr_320px_1.24fr]">
+      <div className="grid min-h-0 gap-1 xl:grid-cols-[minmax(0,1.08fr)_360px_minmax(0,1.18fr)]">
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f8fafc] shadow-sm">
           <div className="space-y-1 border-b border-slate-300 bg-slate-100 p-2">
             <div className="grid gap-1 md:grid-cols-7">
-              <Button size="sm" className="h-11 bg-sky-700 text-base text-white hover:bg-sky-600" onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
-              <Button size="sm" className="h-11 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
-              <Button size="sm" className="h-11 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={() => setShowCustomPanel((prev) => !prev)}>Muhtelif</Button>
-              <Button size="sm" className={`h-11 text-base ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
-              <Button size="sm" className={`h-11 text-base ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
-              <Button size="sm" className={`h-11 text-base ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
-              <Button size="sm" className={`h-11 text-base ${priceTier === 4 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
+              <Button size="sm" className="h-12 bg-sky-700 text-base text-white hover:bg-sky-600" onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
+              <Button size="sm" className="h-12 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
+              <Button size="sm" className="h-12 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={() => setShowCustomPanel((prev) => !prev)}>Muhtelif</Button>
+              <Button size="sm" className={`h-12 text-base ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
+              <Button size="sm" className={`h-12 text-base ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
+              <Button size="sm" className={`h-12 text-base ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
+              <Button size="sm" className={`h-12 text-base ${priceTier === 4 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
             </div>
 
             <div className="grid gap-1 md:grid-cols-[1fr_repeat(5,minmax(0,1fr))]">
@@ -2901,19 +2901,19 @@ export function PosClient() {
                 <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-rose-300 bg-rose-50 text-lg text-rose-700" onClick={() => setSearchText("")}>✕</button>
               </div>
 
-              <Button size="sm" className="h-11 bg-indigo-100 text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(0)}>{quickCustomers[0]?.name ?? "Müşteri 1"}</Button>
-              <Button size="sm" className="h-11 bg-indigo-100 text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(1)}>{quickCustomers[1]?.name ?? "Müşteri 2"}</Button>
-              <Button size="sm" className="h-11 bg-indigo-100 text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(2)}>{quickCustomers[2]?.name ?? "Müşteri 3"}</Button>
+              <Button size="sm" className="h-12 bg-indigo-100 text-base text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(0)}>{quickCustomers[0]?.name ?? "Müşteri 1"}</Button>
+              <Button size="sm" className="h-12 bg-indigo-100 text-base text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(1)}>{quickCustomers[1]?.name ?? "Müşteri 2"}</Button>
+              <Button size="sm" className="h-12 bg-indigo-100 text-base text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(2)}>{quickCustomers[2]?.name ?? "Müşteri 3"}</Button>
               <Button
                 size="sm"
-                className="h-11 bg-emerald-700 text-white hover:bg-emerald-600"
+                className="h-12 bg-emerald-700 text-base text-white hover:bg-emerald-600"
                 onClick={quickReturnSelectedLine}
                 disabled={!canReturnOperations}
                 title={!canReturnOperations ? "Hızlı iade için yetkiniz yok." : undefined}
               >
                 H.İade
               </Button>
-              <Button size="sm" className={`h-11 ${exchangeTargetId ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={quickExchangeSelectedLine}>H.Değşm</Button>
+              <Button size="sm" className={`h-12 text-base ${exchangeTargetId ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={quickExchangeSelectedLine}>H.Değşm</Button>
             </div>
 
             {showMissingBarcodeActions ? (
@@ -2993,7 +2993,7 @@ export function PosClient() {
             </table>
           </div>
 
-          <div className="space-y-2 border-t border-slate-300 bg-[#1c2a44] p-2 text-white">
+          <div className="shrink-0 space-y-2 border-t border-slate-300 bg-[#1c2a44] p-2 text-white">
             <div className="grid gap-2 md:grid-cols-8">
               <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Toplam Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
               <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
@@ -3044,7 +3044,7 @@ export function PosClient() {
             </div>
 
             {showOperations ? (
-              <div className="space-y-3 rounded-lg border border-[color:var(--mx-border)] bg-white p-3">
+              <div className="max-h-[34dvh] space-y-3 overflow-auto rounded-lg border border-[color:var(--mx-border)] bg-white p-3">
                 <div className="rounded-lg border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] p-3">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-bold">Kasa Oturumu ve Vardiya Özeti</p>
@@ -3354,24 +3354,24 @@ export function PosClient() {
             <Button
               onClick={() => void submitSale({ paymentMethod: "nakit", amount: totals.grandTotal, modeLabel: "Nakit satış" })}
               disabled={busy}
-              className="h-20 w-full bg-emerald-700 text-2xl font-black text-white hover:bg-emerald-600"
+              className="h-24 w-full bg-emerald-700 text-3xl font-black text-white hover:bg-emerald-600"
             >
               Nakit Satış (F1)
             </Button>
             <Button
               onClick={() => void submitSale({ paymentMethod: "kart", amount: totals.grandTotal, modeLabel: "POS satış" })}
               disabled={busy}
-              className="h-20 w-full bg-blue-700 text-2xl font-black text-white hover:bg-blue-600"
+              className="h-24 w-full bg-blue-700 text-3xl font-black text-white hover:bg-blue-600"
             >
               POS Satış (F2)
             </Button>
             <div className="grid grid-cols-2 gap-2">
-              <Button onClick={openMixedPaymentModal} disabled={busy} className="h-12 bg-teal-700 text-lg text-white hover:bg-teal-600">Kısmi / Karma (F3)</Button>
-              <Button onClick={openCariCustomerModal} disabled={busy} className="h-12 bg-amber-600 text-lg text-white hover:bg-amber-500">Cari Satış (F4)</Button>
-              <Button onClick={() => void suspendCart()} disabled={busy} className="h-12 bg-slate-700 text-lg text-white hover:bg-slate-600">Beklemeye Al</Button>
-              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-12 bg-slate-700 text-lg text-white hover:bg-slate-600">{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
+              <Button onClick={openMixedPaymentModal} disabled={busy} className="h-14 bg-teal-700 text-lg text-white hover:bg-teal-600">Kısmi / Karma (F3)</Button>
+              <Button onClick={openCariCustomerModal} disabled={busy} className="h-14 bg-amber-600 text-lg text-white hover:bg-amber-500">Cari Satış (F4)</Button>
+              <Button onClick={() => void suspendCart()} disabled={busy} className="h-14 bg-slate-700 text-lg text-white hover:bg-slate-600">Beklemeye Al</Button>
+              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-14 bg-slate-700 text-lg text-white hover:bg-slate-600">{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
             </div>
-            <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-12 w-full text-base font-black">
+            <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-14 w-full text-lg font-black">
               Sepet İptal (F5)
             </Button>
           </div>
@@ -3386,17 +3386,17 @@ export function PosClient() {
                 <option>₺ Fyt3</option>
                 <option>₺ Fyt4</option>
               </select>
-              <Button size="sm" className={`h-11 text-base ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
-              <Button size="sm" className={`h-11 text-base ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
-              <Button size="sm" className={`h-11 text-base ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
-              <Button size="sm" className="h-11 bg-amber-100 text-base text-amber-800 hover:bg-amber-200" onClick={quickReturnSelectedLine} disabled={!canReturnOperations}>H. İade</Button>
-              <Button size="sm" className={`h-11 text-base ${exchangeTargetId ? "bg-sky-600 text-white" : "bg-indigo-100 text-indigo-800 hover:bg-indigo-200"}`} onClick={quickExchangeSelectedLine}>H. Değişim</Button>
+              <Button size="sm" className={`h-12 text-base ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
+              <Button size="sm" className={`h-12 text-base ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
+              <Button size="sm" className={`h-12 text-base ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
+              <Button size="sm" className="h-12 bg-amber-100 text-base text-amber-800 hover:bg-amber-200" onClick={quickReturnSelectedLine} disabled={!canReturnOperations}>H. İade</Button>
+              <Button size="sm" className={`h-12 text-base ${exchangeTargetId ? "bg-sky-600 text-white" : "bg-indigo-100 text-indigo-800 hover:bg-indigo-200"}`} onClick={quickExchangeSelectedLine}>H. Değişim</Button>
             </div>
             <div className="flex items-center gap-2">
-              <select className="h-11 flex-1 rounded border border-slate-300 bg-white px-3 text-base font-semibold">
+              <select className="h-12 flex-1 rounded border border-slate-300 bg-white px-3 text-base font-semibold">
                 <option>Market & Tekel Büfe</option>
               </select>
-              <Button size="sm" className="h-11 bg-emerald-700 px-3 text-base text-white hover:bg-emerald-600">Yeni Kısayol</Button>
+              <Button size="sm" className="h-12 bg-emerald-700 px-3 text-base text-white hover:bg-emerald-600">Yeni Kısayol</Button>
             </div>
           </div>
 
