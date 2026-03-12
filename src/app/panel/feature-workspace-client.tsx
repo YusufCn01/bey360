@@ -631,7 +631,7 @@ function resolveFeature(moduleSegment: string, featureSegment: string): React.Re
     return <SubscriptionFeature />;
   }
 
-  if (key === "stok/sube-tanimlari" || key === "stok/depo-tanimlari" || key === "ayarlar/sube-depo-yonetimi") {
+  if (key === "ayarlar/sube-depo-yonetimi") {
     return <OrganizationUnitsClient />;
   }
 

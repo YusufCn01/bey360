@@ -182,8 +182,8 @@ export const panelNavSections: PanelNavSection[] = [
     ],
   },
   {
-    id: "sube-depo",
-    label: "Şube / Depo",
+    id: "stok",
+    label: "Stok",
     href: "/panel/stok",
     icon: "warehouse",
     children: [
@@ -191,18 +191,6 @@ export const panelNavSections: PanelNavSection[] = [
         href: "/panel/stok",
         label: "Stok Hareketleri",
         description: "Giriş, çıkış, transfer ve sayım hareketleri.",
-        icon: "warehouse",
-      },
-      {
-        href: "/panel/stok/sube-tanimlari",
-        label: "Şube Tanımları",
-        description: "Şube kartlarını ekleme ve durum yönetimi.",
-        icon: "warehouse",
-      },
-      {
-        href: "/panel/stok/depo-tanimlari",
-        label: "Depo Tanımları",
-        description: "Depo kartlarını şube bazlı yönetme.",
         icon: "warehouse",
       },
       {
@@ -623,12 +611,6 @@ export const panelNavSections: PanelNavSection[] = [
         href: "/panel/ayarlar/sms-ayarlar",
         label: "SMS Ayarları",
         description: "Satış sonrası müşteri SMS bilgilendirme ayarları.",
-        icon: "settings",
-      },
-      {
-        href: "/panel/ayarlar/duyuru-yonetimi",
-        label: "Duyuru Yönetimi",
-        description: "Panel duyurularını tenant bazlı planlama ve yayınlama.",
         icon: "settings",
       },
       {

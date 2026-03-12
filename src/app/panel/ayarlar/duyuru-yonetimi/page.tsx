@@ -1,5 +1,5 @@
-import { TenantAnnouncementsSettingsClient } from "@/app/panel/ayarlar/tenant-announcements-settings-client";
+import { redirect } from "next/navigation";
 
 export default function DuyuruYonetimiPage() {
-  return <TenantAnnouncementsSettingsClient />;
+  redirect("/panel/ayarlar");
 }

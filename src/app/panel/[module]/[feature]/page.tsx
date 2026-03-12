@@ -10,6 +10,10 @@ type PageProps = {
 export default async function PanelFeaturePage({ params }: PageProps) {
   const { module: moduleSegment, feature: featureSegment } = await params;
 
+  if (moduleSegment === "stok" && (featureSegment === "sube-tanimlari" || featureSegment === "depo-tanimlari")) {
+    redirect("/panel/ayarlar/sube-depo-yonetimi");
+  }
+
   if (moduleSegment === "pos") {
     redirect(`/pos?focus=${encodeURIComponent(featureSegment)}`);
   }
