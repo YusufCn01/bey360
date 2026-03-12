@@ -42,7 +42,7 @@ const createProductSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await requireTenantAccess(request, "product:view");
+    const access = await requireTenantAccess(request, ["product:view", "sale:pos"]);
     const search = request.nextUrl.searchParams.get("q") ?? undefined;
     const status = request.nextUrl.searchParams.get("status") ?? undefined;
     const limit = Number(request.nextUrl.searchParams.get("limit") ?? "100");

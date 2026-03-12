@@ -736,10 +736,10 @@ export function PosClient() {
     setLoadingProducts(true);
     setError(null);
     try {
-      const [productRows, stockRows, customerRows, settingsRow, companySettings, printerSettingsRow] = await Promise.all([
-        requestApi<ProductApiRow[]>("/api/tenant/products?limit=350"),
-        requestApi<StockBalanceRow[]>("/api/tenant/inventory/stock-balances?limit=2000"),
-        requestApi<CustomerApiRow[]>("/api/tenant/customers?limit=3"),
+      const productRows = await requestApi<ProductApiRow[]>("/api/tenant/products?limit=1200");
+      const [stockRows, customerRows, settingsRow, companySettings, printerSettingsRow] = await Promise.all([
+        requestApi<StockBalanceRow[]>("/api/tenant/inventory/stock-balances?limit=3000").catch(() => []),
+        requestApi<CustomerApiRow[]>("/api/tenant/customers?limit=3").catch(() => []),
         requestApi<SettingsRow>(`/api/tenant/settings?scope=${encodeURIComponent(POS_PARAMETERS_SCOPE)}`).catch(() => ({ payload: {} })),
         requestApi<SettingsRow>("/api/tenant/settings?scope=firma_ayarlari").catch(() => ({ payload: {} })),
         requestApi<SettingsRow>("/api/tenant/settings?scope=printer_settings").catch(() => ({ payload: {} })),
@@ -819,8 +819,18 @@ export function PosClient() {
       } else if (summary.lastClosureReport) {
         setClosingCashInput(String(summary.lastClosureReport.countedClosingCash.toFixed(2)));
       }
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "POS oturum özeti alınamadı.");
+    } catch {
+      // Oturum özeti alınamazsa POS akışını durdurma.
+      setSessionSummary({
+        registerId: registerId || null,
+        openSession: null,
+        openingCash: 0,
+        closingCash: 0,
+        todaysSalesCount: 0,
+        todaysSalesTotal: 0,
+        lastClosureReport: null,
+      });
+      setSessionReady(false);
     } finally {
       setLoadingSessionSummary(false);
     }
@@ -2760,7 +2770,7 @@ export function PosClient() {
   ]);
 
   return (
-    <div className="space-y-2 pb-20 md:pb-2">
+    <div className="space-y-2 pb-28 text-[16px] md:pb-2 xl:text-[17px]">
       <PosSaleTabs
         tabs={saleTabs}
         activeTabId={activeSaleTabId}
@@ -2774,42 +2784,42 @@ export function PosClient() {
       <div className="overflow-hidden rounded-xl border border-slate-700 bg-[#17253c] text-slate-100 shadow-md">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 px-3 py-2">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="pr-2 text-2xl font-black leading-none text-white">{companyName || "Bey360"}</p>
-            <Button size="sm" className="h-9 bg-sky-700 text-white hover:bg-sky-600" onClick={() => setSearchText("")}>
+            <p className="pr-2 text-4xl font-black leading-none text-white">{companyName || "Bey360"}</p>
+            <Button size="sm" className="h-12 bg-sky-700 px-5 text-lg text-white hover:bg-sky-600" onClick={() => setSearchText("")}>
               Hızlı Satış
             </Button>
-            <Button size="sm" className="h-9 bg-slate-700 text-white hover:bg-slate-600" onClick={openCustomerScreen}>
+            <Button size="sm" className="h-12 bg-slate-700 px-5 text-lg text-white hover:bg-slate-600" onClick={openCustomerScreen}>
               Müşteri Ekranı
             </Button>
             <Button
               size="sm"
-              className={`h-9 ${showAdvancedPos ? "bg-indigo-600 text-white hover:bg-indigo-500" : "bg-slate-700 text-white hover:bg-slate-600"}`}
+              className={`h-12 px-5 text-lg ${showAdvancedPos ? "bg-indigo-600 text-white hover:bg-indigo-500" : "bg-slate-700 text-white hover:bg-slate-600"}`}
               onClick={() => setShowAdvancedPos((prev) => !prev)}
             >
               Gelişmiş Mod
             </Button>
             <Button
               size="sm"
-              className="h-9 bg-amber-500 text-slate-900 hover:bg-amber-400"
+              className="h-12 bg-amber-500 px-5 text-lg text-slate-900 hover:bg-amber-400"
               onClick={() => (lastSaleReceipt ? printSaleReceipt(lastSaleReceipt) : setError("Yazdırmak için önce satış tamamlayın."))}
             >
               Fiş Yazdır/Önizleme
             </Button>
           </div>
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <span className="rounded-md bg-slate-800 px-2 py-1">{registerName} ({registerId})</span>
+          <div className="flex items-center gap-2 text-lg font-semibold">
+            <span className="rounded-md bg-slate-800 px-3 py-2">{registerName} ({registerId})</span>
             <span>{clock.toLocaleDateString("tr-TR")} {clock.toLocaleTimeString("tr-TR")}</span>
-            <Button size="sm" variant="danger" className="h-9" onClick={() => { window.location.href = "/giris"; }}>
+            <Button size="sm" variant="danger" className="h-12 px-5 text-lg" onClick={() => { window.location.href = "/giris"; }}>
               Çıkış
             </Button>
           </div>
         </div>
         <div className="grid gap-2 bg-[#1e2f49] px-3 py-2 md:grid-cols-[140px_1fr_120px_1fr_auto]">
-          <input value={registerId} onChange={(event) => setRegisterId(event.target.value)} className="h-9 rounded border border-slate-500 bg-slate-100 px-2 text-slate-900" placeholder="Kasa Kodu" />
-          <input value={searchText} onChange={(event) => setSearchText(event.target.value)} className="h-9 rounded border border-slate-500 bg-slate-100 px-2 text-slate-900" placeholder="Barkod / Ürün Adı Okutun..." />
-          <Button size="sm" className="h-9 bg-slate-300 text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
-          <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} className="h-9 rounded border border-slate-500 bg-slate-100 px-2 text-slate-900" placeholder="Müşteri Seçiniz..." />
-          <Button size="sm" className="h-9 bg-slate-700 text-white hover:bg-slate-600" onClick={() => void loadData()} disabled={loadingProducts}>
+          <input value={registerId} onChange={(event) => setRegisterId(event.target.value)} className="h-12 rounded border border-slate-500 bg-slate-100 px-3 text-lg text-slate-900" placeholder="Kasa Kodu" />
+          <input value={searchText} onChange={(event) => setSearchText(event.target.value)} className="h-12 rounded border border-slate-500 bg-slate-100 px-3 text-lg text-slate-900" placeholder="Barkod / Ürün Adı Okutun..." />
+          <Button size="sm" className="h-12 bg-slate-300 px-3 text-lg text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
+          <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} className="h-12 rounded border border-slate-500 bg-slate-100 px-3 text-lg text-slate-900" placeholder="Müşteri Seçiniz..." />
+          <Button size="sm" className="h-12 bg-slate-700 px-4 text-lg text-white hover:bg-slate-600" onClick={() => void loadData()} disabled={loadingProducts}>
             Yenile
           </Button>
         </div>
@@ -2819,24 +2829,24 @@ export function PosClient() {
         <div className="flex min-h-[74vh] flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f8fafc] shadow-sm">
           <div className="space-y-1 border-b border-slate-300 bg-slate-100 p-2">
             <div className="grid gap-1 md:grid-cols-7">
-              <Button size="sm" className="h-9 bg-sky-700 text-white hover:bg-sky-600" onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
-              <Button size="sm" className="h-9 bg-slate-300 text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
-              <Button size="sm" className="h-9 bg-slate-300 text-slate-900 hover:bg-slate-200" onClick={() => setShowCustomPanel((prev) => !prev)}>Muhtelif</Button>
-              <Button size="sm" className={`h-9 ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
-              <Button size="sm" className={`h-9 ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
-              <Button size="sm" className={`h-9 ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
-              <Button size="sm" className={`h-9 ${priceTier === 4 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
+              <Button size="sm" className="h-11 bg-sky-700 text-base text-white hover:bg-sky-600" onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
+              <Button size="sm" className="h-11 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
+              <Button size="sm" className="h-11 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={() => setShowCustomPanel((prev) => !prev)}>Muhtelif</Button>
+              <Button size="sm" className={`h-11 text-base ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
+              <Button size="sm" className={`h-11 text-base ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
+              <Button size="sm" className={`h-11 text-base ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
+              <Button size="sm" className={`h-11 text-base ${priceTier === 4 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
             </div>
 
             <div className="grid gap-1 md:grid-cols-[1fr_repeat(5,minmax(0,1fr))]">
               <div className="flex items-center gap-1 rounded-md bg-white/95 p-1">
-                <button type="button" className="inline-flex h-9 w-10 items-center justify-center rounded-md bg-sky-700 text-white" onClick={openCameraScanner}>📷</button>
+                <button type="button" className="inline-flex h-11 w-12 items-center justify-center rounded-md bg-sky-700 text-xl text-white" onClick={openCameraScanner}>📷</button>
                 <input
                   ref={searchInputRef}
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
                   placeholder="Barkod / Ürün adı / Ürün kodu"
-                  className="h-9 flex-1 rounded border border-slate-300 px-2 text-sm"
+                  className="h-11 flex-1 rounded border border-slate-300 px-3 text-base"
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
@@ -2846,7 +2856,7 @@ export function PosClient() {
                     }
                   }}
                 />
-                <button type="button" className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-rose-300 bg-rose-50 text-rose-700" onClick={() => setSearchText("")}>✕</button>
+                <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-rose-300 bg-rose-50 text-lg text-rose-700" onClick={() => setSearchText("")}>✕</button>
               </div>
 
               <Button size="sm" className="h-11 bg-indigo-100 text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(0)}>{quickCustomers[0]?.name ?? "Müşteri 1"}</Button>
@@ -2869,13 +2879,13 @@ export function PosClient() {
                 <p className="self-center text-sm font-semibold">
                   Barkod bulunamadı: <span className="font-black">{missingBarcode}</span>
                 </p>
-                <Button size="sm" className="h-9 bg-slate-800 text-white hover:bg-slate-700" onClick={() => handleMissingBarcodeAction("new_product")}>
+                <Button size="sm" className="h-11 bg-slate-800 text-base text-white hover:bg-slate-700" onClick={() => handleMissingBarcodeAction("new_product")}>
                   Ürün Oluştur
                 </Button>
-                <Button size="sm" className="h-9 bg-slate-800 text-white hover:bg-slate-700" onClick={() => handleMissingBarcodeAction("manual_line")}>
+                <Button size="sm" className="h-11 bg-slate-800 text-base text-white hover:bg-slate-700" onClick={() => handleMissingBarcodeAction("manual_line")}>
                   Manuel Satır
                 </Button>
-                <Button size="sm" className="h-9 bg-slate-800 text-white hover:bg-slate-700" onClick={() => handleMissingBarcodeAction("retry")}>
+                <Button size="sm" className="h-11 bg-slate-800 text-base text-white hover:bg-slate-700" onClick={() => handleMissingBarcodeAction("retry")}>
                   Tekrar Dene
                 </Button>
               </div>
@@ -2883,26 +2893,26 @@ export function PosClient() {
 
             {showCustomPanel ? (
               <div className="grid gap-1 rounded-md bg-white/10 p-1.5 md:grid-cols-[1fr_160px_120px_auto]">
-                <input value={customName} onChange={(event) => setCustomName(event.target.value)} className="h-9 rounded border border-white/20 bg-white/90 px-2" placeholder="Muhtelif ürün adı" />
-                <input value={customPrice} onChange={(event) => setCustomPrice(event.target.value)} className="h-9 rounded border border-white/20 bg-white/90 px-2" inputMode="decimal" placeholder="Fiyat" />
-                <input value={customVatRate} onChange={(event) => setCustomVatRate(event.target.value)} className="h-9 rounded border border-white/20 bg-white/90 px-2" inputMode="decimal" placeholder="KDV %" />
-                <Button size="sm" className="h-9 bg-lime-400 text-emerald-950 hover:bg-lime-300" onClick={addCustomLine}>Satıra Ekle</Button>
+                <input value={customName} onChange={(event) => setCustomName(event.target.value)} className="h-11 rounded border border-white/20 bg-white/90 px-3 text-base" placeholder="Muhtelif ürün adı" />
+                <input value={customPrice} onChange={(event) => setCustomPrice(event.target.value)} className="h-11 rounded border border-white/20 bg-white/90 px-3 text-base" inputMode="decimal" placeholder="Fiyat" />
+                <input value={customVatRate} onChange={(event) => setCustomVatRate(event.target.value)} className="h-11 rounded border border-white/20 bg-white/90 px-3 text-base" inputMode="decimal" placeholder="KDV %" />
+                <Button size="sm" className="h-11 bg-lime-400 text-base text-emerald-950 hover:bg-lime-300" onClick={addCustomLine}>Satıra Ekle</Button>
               </div>
             ) : null}
           </div>
 
           <div className="flex-1 overflow-auto bg-white">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-base">
               <thead className="sticky top-0 z-10 bg-[#e6edf5] text-slate-700">
                 <tr>
-                  <th className="w-14 px-2 py-2 text-left">Sıra</th>
-                  <th className="w-40 px-2 py-2 text-left">Ürün Kodu</th>
-                  <th className="px-2 py-2 text-left">Ürün Adı</th>
-                  <th className="w-24 px-2 py-2 text-left">Miktar</th>
-                  <th className="w-20 px-2 py-2 text-left">Birim</th>
-                  <th className="w-28 px-2 py-2 text-left">Fiyat</th>
-                  <th className="w-28 px-2 py-2 text-left">Tutar</th>
-                  <th className="w-16 px-2 py-2 text-left">#</th>
+                  <th className="w-14 px-2 py-3 text-left">Sıra</th>
+                  <th className="w-40 px-2 py-3 text-left">Ürün Kodu</th>
+                  <th className="px-2 py-3 text-left">Ürün Adı</th>
+                  <th className="w-24 px-2 py-3 text-left">Miktar</th>
+                  <th className="w-20 px-2 py-3 text-left">Birim</th>
+                  <th className="w-28 px-2 py-3 text-left">Fiyat</th>
+                  <th className="w-28 px-2 py-3 text-left">Tutar</th>
+                  <th className="w-16 px-2 py-3 text-left">#</th>
                 </tr>
               </thead>
               <tbody>
@@ -2917,21 +2927,21 @@ export function PosClient() {
                     const quantityStep = getQuantityStep(line.unit);
                     return (
                       <tr key={line.productId} className={`border-b border-slate-200 ${isSelected ? "bg-sky-100" : "hover:bg-slate-50"}`} onClick={() => setSelectedLineId(line.productId)}>
-                        <td className="px-2 py-2">{index + 1}</td>
-                        <td className="px-2 py-2">{line.productCode}</td>
-                        <td className="px-2 py-2 font-medium">{line.productName}</td>
-                        <td className="px-2 py-2">
+                        <td className="px-2 py-3">{index + 1}</td>
+                        <td className="px-2 py-3">{line.productCode}</td>
+                        <td className="px-2 py-3 font-medium">{line.productName}</td>
+                        <td className="px-2 py-3">
                           <div className="inline-flex items-center gap-1 rounded border border-[color:var(--mx-border)] bg-white px-1 py-0.5">
-                            <button type="button" className="h-6 w-6 rounded bg-slate-100" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity - quantityStep); }}>-</button>
-                            <span className="min-w-8 text-center font-semibold">{formatQuantity(line.quantity)}</span>
-                            <button type="button" className="h-6 w-6 rounded bg-slate-100" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity + quantityStep); }}>+</button>
+                            <button type="button" className="h-10 w-10 rounded bg-slate-100 text-xl font-bold" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity - quantityStep); }}>-</button>
+                            <span className="min-w-10 text-center font-semibold">{formatQuantity(line.quantity)}</span>
+                            <button type="button" className="h-10 w-10 rounded bg-slate-100 text-xl font-bold" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity + quantityStep); }}>+</button>
                           </div>
                         </td>
-                        <td className="px-2 py-2">{line.unit}</td>
-                        <td className="px-2 py-2">{formatTry(line.unitPrice)}</td>
-                        <td className="px-2 py-2 font-semibold">{formatTry(rowTotal)}</td>
-                        <td className="px-2 py-2">
-                          <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded bg-emerald-700 text-white hover:bg-emerald-600" onClick={(event) => { event.stopPropagation(); removeLine(line.productId); }}>✕</button>
+                        <td className="px-2 py-3">{line.unit}</td>
+                        <td className="px-2 py-3">{formatTry(line.unitPrice)}</td>
+                        <td className="px-2 py-3 font-semibold">{formatTry(rowTotal)}</td>
+                        <td className="px-2 py-3">
+                          <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded bg-emerald-700 text-lg text-white hover:bg-emerald-600" onClick={(event) => { event.stopPropagation(); removeLine(line.productId); }}>✕</button>
                         </td>
                       </tr>
                     );
@@ -2943,14 +2953,14 @@ export function PosClient() {
 
           <div className="space-y-2 border-t border-slate-300 bg-[#1c2a44] p-2 text-white">
             <div className="grid gap-2 md:grid-cols-8">
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Toplam Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Genel İskonto</p><p className="font-bold">{formatTry(0)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Tahsil Edilen</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Para Üstü</p><p className="font-bold text-indigo-700">{formatTry(paymentPreview.change)}</p></div>
-              <div className="rounded border border-emerald-700 bg-emerald-800 px-2 py-1.5 text-sm text-white"><p className="text-xs text-emerald-100">Genel Toplam</p><p className="font-extrabold">{formatTry(totals.grandTotal)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Toplam Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Genel İskonto</p><p className="font-bold">{formatTry(0)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Tahsil Edilen</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
+              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Para Üstü</p><p className="font-bold text-indigo-700">{formatTry(paymentPreview.change)}</p></div>
+              <div className="rounded border border-emerald-700 bg-emerald-800 px-3 py-2 text-base text-white"><p className="text-sm text-emerald-100">Genel Toplam</p><p className="text-xl font-extrabold">{formatTry(totals.grandTotal)}</p></div>
             </div>
 
             <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-2 xl:hidden">
@@ -2961,7 +2971,7 @@ export function PosClient() {
                     key={`shortcut-${amount}`}
                     type="button"
                     onClick={() => applyQuickPartialAmount(amount)}
-                    className={`h-8 rounded border px-2 text-xs font-bold ${
+                  className={`h-10 rounded border px-3 text-sm font-bold ${
                       amount === roundCurrency(totals.grandTotal)
                         ? "border-indigo-300 bg-indigo-100 text-indigo-700"
                         : "border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] text-[color:var(--mx-text)]"
@@ -2973,7 +2983,7 @@ export function PosClient() {
                 <button
                   type="button"
                   onClick={() => applyQuickPartialAmount(asNumber(partialAmount, 0) + totals.grandTotal)}
-                  className="h-8 rounded border border-emerald-300 bg-emerald-100 px-2 text-xs font-bold text-emerald-700"
+                  className="h-10 rounded border border-emerald-300 bg-emerald-100 px-3 text-sm font-bold text-emerald-700"
                 >
                   Tutar + Toplam
                 </button>
@@ -3258,8 +3268,8 @@ export function PosClient() {
               </div>
             ) : null}
 
-            {message ? <p className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
-            {error ? <p className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
+            {message ? <p className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-base text-emerald-700">{message}</p> : null}
+            {error ? <p className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-base text-rose-700">{error}</p> : null}
           </div>
         </div>
 
@@ -3278,7 +3288,7 @@ export function PosClient() {
                   key={`middle-shortcut-${amount}`}
                   type="button"
                   onClick={() => applyQuickPartialAmount(amount)}
-                  className="h-8 rounded border border-slate-300 bg-white text-xs font-bold text-slate-900 hover:bg-slate-100"
+                  className="h-11 rounded border border-slate-300 bg-white text-base font-bold text-slate-900 hover:bg-slate-100"
                 >
                   {formatTry(amount)}
                 </button>
@@ -3286,7 +3296,7 @@ export function PosClient() {
               <button
                 type="button"
                 onClick={() => applyQuickPartialAmount(totals.grandTotal)}
-                className="col-span-2 h-9 rounded border border-indigo-300 bg-indigo-100 text-sm font-bold text-indigo-800 hover:bg-indigo-200"
+                className="col-span-2 h-11 rounded border border-indigo-300 bg-indigo-100 text-base font-bold text-indigo-800 hover:bg-indigo-200"
               >
                 Tam Tutar (Tutar+Top)
               </button>
@@ -3306,10 +3316,10 @@ export function PosClient() {
               POS Satış (F2)
             </Button>
             <div className="grid grid-cols-2 gap-2">
-              <Button onClick={openMixedPaymentModal} disabled={busy} className="h-11 bg-teal-700 text-white hover:bg-teal-600">Kısmi / Karma (F3)</Button>
-              <Button onClick={openCariCustomerModal} disabled={busy} className="h-11 bg-amber-600 text-white hover:bg-amber-500">Cari Satış (F4)</Button>
-              <Button onClick={() => void suspendCart()} disabled={busy} className="h-11 bg-slate-700 text-white hover:bg-slate-600">Beklemeye Al</Button>
-              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-11 bg-slate-700 text-white hover:bg-slate-600">{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
+              <Button onClick={openMixedPaymentModal} disabled={busy} className="h-12 bg-teal-700 text-lg text-white hover:bg-teal-600">Kısmi / Karma (F3)</Button>
+              <Button onClick={openCariCustomerModal} disabled={busy} className="h-12 bg-amber-600 text-lg text-white hover:bg-amber-500">Cari Satış (F4)</Button>
+              <Button onClick={() => void suspendCart()} disabled={busy} className="h-12 bg-slate-700 text-lg text-white hover:bg-slate-600">Beklemeye Al</Button>
+              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-12 bg-slate-700 text-lg text-white hover:bg-slate-600">{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
             </div>
             <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-12 w-full text-base font-black">
               Sepet İptal (F5)
@@ -3320,23 +3330,23 @@ export function PosClient() {
         <div className="flex min-h-[74vh] flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f3f5f8] shadow-sm">
           <div className="space-y-2 border-b border-slate-300 bg-white p-2">
             <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto_auto_auto]">
-              <select className="h-10 rounded border border-slate-300 bg-white px-2 text-sm font-semibold">
+              <select className="h-11 rounded border border-slate-300 bg-white px-3 text-base font-semibold">
                 <option>₺ Fyt1</option>
                 <option>₺ Fyt2</option>
                 <option>₺ Fyt3</option>
                 <option>₺ Fyt4</option>
               </select>
-              <Button size="sm" className={`h-10 ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
-              <Button size="sm" className={`h-10 ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
-              <Button size="sm" className={`h-10 ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
-              <Button size="sm" className="h-10 bg-amber-100 text-amber-800 hover:bg-amber-200" onClick={quickReturnSelectedLine} disabled={!canReturnOperations}>H. İade</Button>
-              <Button size="sm" className={`h-10 ${exchangeTargetId ? "bg-sky-600 text-white" : "bg-indigo-100 text-indigo-800 hover:bg-indigo-200"}`} onClick={quickExchangeSelectedLine}>H. Değişim</Button>
+              <Button size="sm" className={`h-11 text-base ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
+              <Button size="sm" className={`h-11 text-base ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
+              <Button size="sm" className={`h-11 text-base ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
+              <Button size="sm" className="h-11 bg-amber-100 text-base text-amber-800 hover:bg-amber-200" onClick={quickReturnSelectedLine} disabled={!canReturnOperations}>H. İade</Button>
+              <Button size="sm" className={`h-11 text-base ${exchangeTargetId ? "bg-sky-600 text-white" : "bg-indigo-100 text-indigo-800 hover:bg-indigo-200"}`} onClick={quickExchangeSelectedLine}>H. Değişim</Button>
             </div>
             <div className="flex items-center gap-2">
-              <select className="h-10 flex-1 rounded border border-slate-300 bg-white px-2 text-sm font-semibold">
-              <option>Market & Tekel Büfe</option>
+              <select className="h-11 flex-1 rounded border border-slate-300 bg-white px-3 text-base font-semibold">
+                <option>Market & Tekel Büfe</option>
               </select>
-              <Button size="sm" className="h-10 bg-emerald-700 text-white hover:bg-emerald-600">Yeni Kısayol</Button>
+              <Button size="sm" className="h-11 bg-emerald-700 px-3 text-base text-white hover:bg-emerald-600">Yeni Kısayol</Button>
             </div>
           </div>
 
@@ -3380,7 +3390,7 @@ export function PosClient() {
 
           <div className="flex-1 overflow-auto p-2">
             {loadingProducts ? (
-              <p className="rounded-md border border-[color:var(--mx-border)] bg-white px-3 py-8 text-center text-sm text-[color:var(--mx-text-muted)]">Ürünler yükleniyor...</p>
+              <p className="rounded-md border border-[color:var(--mx-border)] bg-white px-3 py-10 text-center text-base text-[color:var(--mx-text-muted)]">Ürünler yükleniyor...</p>
             ) : (
               <div className="grid grid-cols-2 gap-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {filteredProducts.map((product) => {
@@ -3407,21 +3417,21 @@ export function PosClient() {
                     >
                       {product.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={product.imageUrl} alt={product.name} className="mb-2 h-20 w-full rounded object-contain" />
+                        <img src={product.imageUrl} alt={product.name} className="mb-2 h-28 w-full rounded object-contain" />
                       ) : (
                         <div
-                          className="mb-2 grid h-20 place-items-center rounded text-xl font-black text-white"
+                          className="mb-2 grid h-28 place-items-center rounded text-3xl font-black text-white"
                           style={{ background: hashColor(product.name) }}
                         >
                           {productInitials(product.name)}
                         </div>
                       )}
-                      <p className="line-clamp-2 text-xs font-semibold text-slate-800">{product.name}</p>
-                      <div className="mt-1 flex items-center justify-between text-xs">
-                        <span className="font-bold text-emerald-700">{formatTry(getProductPrice(product, priceTier))}</span>
+                      <p className="line-clamp-2 text-base font-semibold text-slate-800">{product.name}</p>
+                      <div className="mt-1 flex items-center justify-between text-base">
+                        <span className="text-lg font-black text-emerald-700">{formatTry(getProductPrice(product, priceTier))}</span>
                         <span className="text-slate-500">Stok: {product.stock.toFixed(0)}</span>
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-1 text-[10px] font-semibold">
+                      <div className="mt-1 flex flex-wrap gap-1 text-xs font-semibold">
                         {product.lockedForSale ? (
                           <span className="rounded bg-rose-100 px-1.5 py-0.5 text-rose-700">Satışa Kapalı</span>
                         ) : null}

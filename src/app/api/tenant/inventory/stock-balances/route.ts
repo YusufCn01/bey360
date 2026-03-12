@@ -6,7 +6,7 @@ import { fail, ok } from "@/lib/http/response";
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await requireTenantAccess(request, "product:view");
+    const access = await requireTenantAccess(request, ["product:view", "sale:pos"]);
     const limit = Math.min(Math.max(Number(request.nextUrl.searchParams.get("limit") ?? "500"), 1), 2000);
     const productId = request.nextUrl.searchParams.get("productId") ?? undefined;
     const warehouseId = request.nextUrl.searchParams.get("warehouseId") ?? undefined;

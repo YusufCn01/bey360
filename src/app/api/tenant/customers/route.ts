@@ -22,7 +22,7 @@ const createCustomerSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await requireTenantAccess(request, "dashboard:view");
+    const access = await requireTenantAccess(request, ["dashboard:view", "sale:pos"]);
     const search = request.nextUrl.searchParams.get("q") ?? undefined;
     const limit = Number(request.nextUrl.searchParams.get("limit") ?? "100");
     const view = request.nextUrl.searchParams.get("view");

@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+﻿import { NextRequest } from "next/server";
 import { AuthorizationError, requireTenantAccess } from "@/lib/auth/tenant-access";
 import { prisma } from "@/lib/db/prisma";
 import { fail, ok } from "@/lib/http/response";
@@ -52,55 +52,73 @@ export async function GET(request: NextRequest) {
     const dayStart = new Date();
     dayStart.setHours(0, 0, 0, 0);
 
-    const openSession = await prisma.saleRegisterSessions.findFirst({
-      where: {
-        tenantId: access.tenantId,
-        deletedAt: null,
-        status: "open",
-        ...(registerId
-          ? {
-              code: registerId,
-            }
-          : {}),
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    let openSession: Awaited<ReturnType<typeof prisma.saleRegisterSessions.findFirst>> = null;
+    let lastClosedSessionPayload: unknown = null;
+    let saleRows: Array<{ payload: unknown }> = [];
+
+    try {
+      openSession = await prisma.saleRegisterSessions.findFirst({
+        where: {
+          tenantId: access.tenantId,
+          deletedAt: null,
+          status: "open",
+          ...(registerId
+            ? {
+                code: registerId,
+              }
+            : {}),
+        },
+        orderBy: { createdAt: "desc" },
+      });
+    } catch {
+      openSession = null;
+    }
 
     const targetRegisterId = registerId || openSession?.code || "";
-    const lastClosedSession = await prisma.saleRegisterSessions.findFirst({
-      where: {
-        tenantId: access.tenantId,
-        deletedAt: null,
-        status: "closed",
-        ...(targetRegisterId
-          ? {
-              code: targetRegisterId,
-            }
-          : {}),
-      },
-      orderBy: { updatedAt: "desc" },
-      select: {
-        payload: true,
-      },
-    });
 
-    const saleRows = await prisma.sales.findMany({
-      where: {
-        tenantId: access.tenantId,
-        deletedAt: null,
-        status: "completed",
-        occurredAt: {
-          gte: dayStart,
+    try {
+      const lastClosedSession = await prisma.saleRegisterSessions.findFirst({
+        where: {
+          tenantId: access.tenantId,
+          deletedAt: null,
+          status: "closed",
+          ...(targetRegisterId
+            ? {
+                code: targetRegisterId,
+              }
+            : {}),
         },
-      },
-      select: {
-        payload: true,
-      },
-      orderBy: {
-        occurredAt: "desc",
-      },
-      take: 3000,
-    });
+        orderBy: { updatedAt: "desc" },
+        select: {
+          payload: true,
+        },
+      });
+      lastClosedSessionPayload = lastClosedSession?.payload ?? null;
+    } catch {
+      lastClosedSessionPayload = null;
+    }
+
+    try {
+      saleRows = await prisma.sales.findMany({
+        where: {
+          tenantId: access.tenantId,
+          deletedAt: null,
+          status: "completed",
+          occurredAt: {
+            gte: dayStart,
+          },
+        },
+        select: {
+          payload: true,
+        },
+        orderBy: {
+          occurredAt: "desc",
+        },
+        take: 3000,
+      });
+    } catch {
+      saleRows = [];
+    }
 
     let todaysSalesCount = 0;
     let todaysSalesTotal = 0;
@@ -117,7 +135,7 @@ export async function GET(request: NextRequest) {
     const openPayload = asRecord(openSession?.payload);
     const openingCash = asNumber(openPayload.openingCash, 0);
     const closingCash = asNumber(openPayload.closingCash, 0);
-    const lastClosurePayload = asRecord(lastClosedSession?.payload);
+    const lastClosurePayload = asRecord(lastClosedSessionPayload);
     const lastClosureReport = parseClosureReport(lastClosurePayload.closureReport);
 
     return ok({
