@@ -14,7 +14,6 @@ import { PosMixedPaymentModal } from "@/modules/pos/ui/fast-sales/components/pos
 import { PosMobileActionBar } from "@/modules/pos/ui/fast-sales/components/pos-mobile-action-bar";
 import { PosNumpad } from "@/modules/pos/ui/fast-sales/components/pos-numpad";
 import { PosSaleTabs } from "@/modules/pos/ui/fast-sales/components/pos-sale-tabs";
-import { PosTopStatusBar } from "@/modules/pos/ui/fast-sales/components/pos-top-status-bar";
 import type { MixedPaymentDraft, SaleTabSnapshot } from "@/modules/pos/ui/fast-sales/types";
 
 type ApiEnvelope<T> = {
@@ -506,7 +505,7 @@ export function PosClient() {
   const [mixedPaymentRows, setMixedPaymentRows] = React.useState<MixedPaymentDraft[]>([
     { id: "pay-1", method: "nakit", amount: "0", reference: "" },
   ]);
-  const [showAdvancedPos, setShowAdvancedPos] = React.useState(false);
+  const [showAdvancedPos, setShowAdvancedPos] = React.useState(true);
   const [showCameraScanner, setShowCameraScanner] = React.useState(false);
   const [cameraBusy, setCameraBusy] = React.useState(false);
   const [torchEnabled, setTorchEnabled] = React.useState(false);
@@ -2762,135 +2761,71 @@ export function PosClient() {
 
   return (
     <div className="space-y-2 pb-20 md:pb-2">
-      {showAdvancedPos ? (
-        <>
-          <PosTopStatusBar
-            companyName={companyName}
-            branchName={branchName}
-            registerName={registerName}
-            cashierName={cashierName}
-            activeTabLabel={activeSaleTabLabel}
-            customerName={customerName}
-            currencyCode={currencyCode}
-            connectionOnline={connectionOnline}
-            clock={clock}
-          />
-          <PosSaleTabs
-            tabs={saleTabs}
-            activeTabId={activeSaleTabId}
-            onSelect={switchSaleTab}
-            onCreate={createSaleTab}
-            onRename={renameSaleTab}
-            onClose={(tabId) => void closeSaleTab(tabId)}
-            canCloseTabs={saleTabs.length > 1}
-          />
-        </>
-      ) : null}
+      <PosSaleTabs
+        tabs={saleTabs}
+        activeTabId={activeSaleTabId}
+        onSelect={switchSaleTab}
+        onCreate={createSaleTab}
+        onRename={renameSaleTab}
+        onClose={(tabId) => void closeSaleTab(tabId)}
+        canCloseTabs={saleTabs.length > 1}
+      />
 
-      <div className="rounded-xl border border-emerald-950/40 bg-gradient-to-r from-emerald-950 via-emerald-800 to-emerald-900 px-3 py-2 text-white shadow-md">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="overflow-hidden rounded-xl border border-slate-700 bg-[#17253c] text-slate-100 shadow-md">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 px-3 py-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" className="h-9 border border-emerald-200/60 bg-emerald-900 text-white hover:bg-emerald-950" onClick={() => setSearchText("")}>Hızlı Satış</Button>
-            <Button size="sm" className="h-9 border border-emerald-200/60 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => void loadData()} disabled={loadingProducts}>Yenile</Button>
-            <Button size="sm" className="h-9 border border-cyan-300/70 bg-sky-700 text-white hover:bg-sky-600" onClick={openCustomerScreen}>Müşteri Ekranı</Button>
-            {showAdvancedPos ? (
-              <>
-                <Button size="sm" className="h-9 border border-cyan-300/70 bg-sky-700 text-white hover:bg-sky-600" onClick={openCameraScanner}>Kamera Barkod</Button>
-                <Button
-                  size="sm"
-                  className={`h-9 border ${priceCheckMode ? "border-lime-300/80 bg-lime-400 text-emerald-950 hover:bg-lime-300" : "border-emerald-200/60 bg-emerald-700 text-white hover:bg-emerald-600"}`}
-                  onClick={() => setPriceCheckMode((prev) => !prev)}
-                >
-                  {priceCheckMode ? "Fiyat Gör Açık" : "Fiyat Gör Modu"}
-                </Button>
-              </>
-            ) : null}
-            <Button size="sm" className="h-9 border border-amber-300/70 bg-amber-500 text-slate-900 hover:bg-amber-400" onClick={() => (lastSaleReceipt ? printSaleReceipt(lastSaleReceipt) : setError("Yazdırmak için önce satış tamamlayın."))}>Fiş Yazdır</Button>
-            <Button size="sm" className="h-9 border border-sky-300/70 bg-sky-500 text-white hover:bg-sky-400" onClick={() => (lastSaleReceipt ? previewSaleReceipt(lastSaleReceipt) : setError("Önizleme için önce satış tamamlayın."))}>Fiş Önizleme</Button>
+            <p className="pr-2 text-2xl font-black leading-none text-white">{companyName || "Bey360"}</p>
+            <Button size="sm" className="h-9 bg-sky-700 text-white hover:bg-sky-600" onClick={() => setSearchText("")}>
+              Hızlı Satış
+            </Button>
+            <Button size="sm" className="h-9 bg-slate-700 text-white hover:bg-slate-600" onClick={openCustomerScreen}>
+              Müşteri Ekranı
+            </Button>
             <Button
               size="sm"
-              className={`h-9 border ${showAdvancedPos ? "border-lime-300/70 bg-lime-400 text-emerald-950 hover:bg-lime-300" : "border-slate-300/70 bg-slate-100 text-slate-900 hover:bg-slate-200"}`}
+              className={`h-9 ${showAdvancedPos ? "bg-indigo-600 text-white hover:bg-indigo-500" : "bg-slate-700 text-white hover:bg-slate-600"}`}
               onClick={() => setShowAdvancedPos((prev) => !prev)}
             >
-              {showAdvancedPos ? "Yalın Mod" : "Gelişmiş Mod"}
+              Gelişmiş Mod
             </Button>
-            <Button size="sm" className="h-9 border border-lime-300/70 bg-lime-400 text-emerald-950 hover:bg-lime-300" onClick={() => setMessage("Bilgi paneli aktif.")}>Bilgi</Button>
+            <Button
+              size="sm"
+              className="h-9 bg-amber-500 text-slate-900 hover:bg-amber-400"
+              onClick={() => (lastSaleReceipt ? printSaleReceipt(lastSaleReceipt) : setError("Yazdırmak için önce satış tamamlayın."))}
+            >
+              Fiş Yazdır/Önizleme
+            </Button>
           </div>
-
-          <div className="rounded-md border border-emerald-200/50 bg-emerald-950/90 px-4 py-1 text-right">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-300">Genel Toplam</p>
-            <p className="text-3xl font-black tracking-tight text-lime-400">{formatTry(totals.grandTotal)}</p>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <span className="rounded-md bg-slate-800 px-2 py-1">{registerName} ({registerId})</span>
+            <span>{clock.toLocaleDateString("tr-TR")} {clock.toLocaleTimeString("tr-TR")}</span>
+            <Button size="sm" variant="danger" className="h-9" onClick={() => { window.location.href = "/giris"; }}>
+              Çıkış
+            </Button>
           </div>
         </div>
-
-        <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_1fr_1.2fr]">
-          <div className="rounded-md bg-white/10 px-2 py-1.5 text-xs">
-            <p className="font-semibold text-emerald-200">Kasa</p>
-            <div className="mt-1 grid grid-cols-2 gap-1">
-              <input value={registerId} onChange={(event) => setRegisterId(event.target.value)} className="h-8 rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70" placeholder="Kasa kodu" />
-              <input value={registerName} onChange={(event) => setRegisterName(event.target.value)} className="h-8 rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70" placeholder="Kasa adı" />
-            </div>
-          </div>
-
-          <div className="rounded-md bg-white/10 px-2 py-1.5 text-xs">
-            <p className="font-semibold text-emerald-200">Müşteri</p>
-            <div className="mt-1 grid grid-cols-2 gap-1">
-              <input value={customerCode} onChange={(event) => setCustomerCode(event.target.value)} className="h-8 rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70" placeholder="Kod" />
-              <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} className="h-8 rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70" placeholder="Ad" />
-            </div>
-          </div>
-
-          <div className="rounded-md bg-white/10 px-2 py-1.5 text-xs">
-            <p className="font-semibold text-emerald-200">
-              {posParameters.requireChangeFlowOnSale ? "Nakit / Para Üstü" : "Kısmi Ödeme"}
-            </p>
-            <input value={partialAmount} onChange={(event) => setPartialAmount(event.target.value)} className="mt-1 h-8 w-full rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70" placeholder="0,00" inputMode="decimal" />
-            <div className="mt-1 flex flex-wrap gap-1">
-              {paymentShortcutValues.slice(0, 4).map((amount) => (
-                <button
-                  key={`top-shortcut-${amount}`}
-                  type="button"
-                  onClick={() => applyQuickPartialAmount(amount)}
-                  className="h-6 rounded border border-white/25 bg-white/15 px-1.5 text-[11px] font-semibold text-white hover:bg-white/25"
-                >
-                  {amount === roundCurrency(totals.grandTotal) ? "Tam" : `${amount}`}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-md bg-white/10 px-2 py-1.5 text-xs">
-            <p className="font-semibold text-emerald-200">Saat</p>
-            <p className="mt-1 text-sm font-bold text-white">
-              {clock.toLocaleDateString("tr-TR")} {clock.toLocaleTimeString("tr-TR")}
-            </p>
-          </div>
-
-          {showAdvancedPos ? (
-            <div className="rounded-md bg-white/10 px-2 py-1.5 text-xs">
-              <p className="font-semibold text-emerald-200">Sepet Notu</p>
-              <input
-                value={cartNote}
-                onChange={(event) => setCartNote(event.target.value)}
-                className="mt-1 h-8 w-full rounded border border-white/20 bg-white/10 px-2 text-white placeholder:text-emerald-200/70"
-                placeholder="Fiş notu / müşteri notu"
-              />
-            </div>
-          ) : null}
+        <div className="grid gap-2 bg-[#1e2f49] px-3 py-2 md:grid-cols-[140px_1fr_120px_1fr_auto]">
+          <input value={registerId} onChange={(event) => setRegisterId(event.target.value)} className="h-9 rounded border border-slate-500 bg-slate-100 px-2 text-slate-900" placeholder="Kasa Kodu" />
+          <input value={searchText} onChange={(event) => setSearchText(event.target.value)} className="h-9 rounded border border-slate-500 bg-slate-100 px-2 text-slate-900" placeholder="Barkod / Ürün Adı Okutun..." />
+          <Button size="sm" className="h-9 bg-slate-300 text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
+          <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} className="h-9 rounded border border-slate-500 bg-slate-100 px-2 text-slate-900" placeholder="Müşteri Seçiniz..." />
+          <Button size="sm" className="h-9 bg-slate-700 text-white hover:bg-slate-600" onClick={() => void loadData()} disabled={loadingProducts}>
+            Yenile
+          </Button>
         </div>
       </div>
 
-      <div className="grid gap-2 xl:grid-cols-[1.06fr_1fr]">
-        <div className="flex min-h-[74vh] flex-col overflow-hidden rounded-xl border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] shadow-sm">
-          <div className="space-y-1 border-b border-[color:var(--mx-border)] bg-emerald-800/95 p-2">
+      <div className="grid gap-2 xl:grid-cols-[1.04fr_320px_1.24fr]">
+        <div className="flex min-h-[74vh] flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f8fafc] shadow-sm">
+          <div className="space-y-1 border-b border-slate-300 bg-slate-100 p-2">
             <div className="grid gap-1 md:grid-cols-7">
-              <Button size="sm" className="h-9 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
-              <Button size="sm" className="h-9 bg-emerald-700 text-white hover:bg-emerald-600" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
-              <Button size="sm" className="h-9 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => setShowCustomPanel((prev) => !prev)}>Muhtelif</Button>
-              <Button size="sm" className={`h-9 ${priceTier === 1 ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
-              <Button size="sm" className={`h-9 ${priceTier === 2 ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
-              <Button size="sm" className={`h-9 ${priceTier === 3 ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
-              <Button size="sm" className={`h-9 ${priceTier === 4 ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
+              <Button size="sm" className="h-9 bg-sky-700 text-white hover:bg-sky-600" onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
+              <Button size="sm" className="h-9 bg-slate-300 text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
+              <Button size="sm" className="h-9 bg-slate-300 text-slate-900 hover:bg-slate-200" onClick={() => setShowCustomPanel((prev) => !prev)}>Muhtelif</Button>
+              <Button size="sm" className={`h-9 ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
+              <Button size="sm" className={`h-9 ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
+              <Button size="sm" className={`h-9 ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
+              <Button size="sm" className={`h-9 ${priceTier === 4 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
             </div>
 
             <div className="grid gap-1 md:grid-cols-[1fr_repeat(5,minmax(0,1fr))]">
@@ -2914,9 +2849,9 @@ export function PosClient() {
                 <button type="button" className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-rose-300 bg-rose-50 text-rose-700" onClick={() => setSearchText("")}>✕</button>
               </div>
 
-              <Button size="sm" className="h-11 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => applyQuickCustomer(0)}>{quickCustomers[0]?.name ?? "Müşteri 1"}</Button>
-              <Button size="sm" className="h-11 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => applyQuickCustomer(1)}>{quickCustomers[1]?.name ?? "Müşteri 2"}</Button>
-              <Button size="sm" className="h-11 bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => applyQuickCustomer(2)}>{quickCustomers[2]?.name ?? "Müşteri 3"}</Button>
+              <Button size="sm" className="h-11 bg-indigo-100 text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(0)}>{quickCustomers[0]?.name ?? "Müşteri 1"}</Button>
+              <Button size="sm" className="h-11 bg-indigo-100 text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(1)}>{quickCustomers[1]?.name ?? "Müşteri 2"}</Button>
+              <Button size="sm" className="h-11 bg-indigo-100 text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(2)}>{quickCustomers[2]?.name ?? "Müşteri 3"}</Button>
               <Button
                 size="sm"
                 className="h-11 bg-emerald-700 text-white hover:bg-emerald-600"
@@ -2956,9 +2891,9 @@ export function PosClient() {
             ) : null}
           </div>
 
-          <div className="flex-1 overflow-auto bg-[color:var(--mx-surface)]">
+          <div className="flex-1 overflow-auto bg-white">
             <table className="min-w-full text-sm">
-              <thead className="sticky top-0 z-10 bg-emerald-800 text-white">
+              <thead className="sticky top-0 z-10 bg-[#e6edf5] text-slate-700">
                 <tr>
                   <th className="w-14 px-2 py-2 text-left">Sıra</th>
                   <th className="w-40 px-2 py-2 text-left">Ürün Kodu</th>
@@ -2981,7 +2916,7 @@ export function PosClient() {
                     const isSelected = selectedLineId === line.productId;
                     const quantityStep = getQuantityStep(line.unit);
                     return (
-                      <tr key={line.productId} className={`border-b border-[color:var(--mx-border)] ${isSelected ? "bg-lime-100" : "hover:bg-emerald-50/60"}`} onClick={() => setSelectedLineId(line.productId)}>
+                      <tr key={line.productId} className={`border-b border-slate-200 ${isSelected ? "bg-sky-100" : "hover:bg-slate-50"}`} onClick={() => setSelectedLineId(line.productId)}>
                         <td className="px-2 py-2">{index + 1}</td>
                         <td className="px-2 py-2">{line.productCode}</td>
                         <td className="px-2 py-2 font-medium">{line.productName}</td>
@@ -3006,7 +2941,7 @@ export function PosClient() {
             </table>
           </div>
 
-          <div className="space-y-2 border-t border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] p-2">
+          <div className="space-y-2 border-t border-slate-300 bg-[#1c2a44] p-2 text-white">
             <div className="grid gap-2 md:grid-cols-8">
               <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Toplam Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
               <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-xs text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
@@ -3018,7 +2953,7 @@ export function PosClient() {
               <div className="rounded border border-emerald-700 bg-emerald-800 px-2 py-1.5 text-sm text-white"><p className="text-xs text-emerald-100">Genel Toplam</p><p className="font-extrabold">{formatTry(totals.grandTotal)}</p></div>
             </div>
 
-            <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-2">
+            <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-2 xl:hidden">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-xs font-semibold text-[color:var(--mx-text-muted)]">Hızlı Tutar:</p>
                 {paymentShortcutValues.map((amount) => (
@@ -3045,7 +2980,7 @@ export function PosClient() {
               </div>
             </div>
 
-            <div className="grid gap-2 md:grid-cols-8">
+            <div className="grid gap-2 md:grid-cols-8 xl:hidden">
               <Button onClick={() => void submitSale({ paymentMethod: "nakit", amount: totals.grandTotal, modeLabel: "Nakit satış" })} disabled={busy} className="h-12 bg-emerald-700 text-white hover:bg-emerald-600">Nakit Satış (F1)</Button>
               <Button onClick={() => void submitSale({ paymentMethod: "kart", amount: totals.grandTotal, modeLabel: "POS satış" })} disabled={busy} className="h-12 bg-emerald-700 text-white hover:bg-emerald-600">POS Satış (F2)</Button>
               <Button onClick={openMixedPaymentModal} disabled={busy} className="h-12 bg-indigo-700 text-white hover:bg-indigo-600">Karma Ödeme</Button>
@@ -3328,16 +3263,85 @@ export function PosClient() {
           </div>
         </div>
 
-        <div className="flex min-h-[74vh] flex-col overflow-hidden rounded-xl border border-[color:var(--mx-border)] bg-[#f5f2fa] shadow-sm">
-          <div className="flex items-center gap-2 border-b border-[color:var(--mx-border)] bg-white p-2">
-            <select className="h-10 flex-1 rounded border border-[color:var(--mx-border)] bg-white px-2 text-sm font-semibold">
+        <div className="hidden min-h-[74vh] flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#eef2f6] shadow-sm xl:flex">
+          <div className="border-b border-slate-300 bg-white p-2">
+            <div className="rounded-md border border-slate-300 bg-slate-50 px-3 py-1 text-right">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tutar</p>
+              <p className="text-4xl font-black text-slate-900">{formatTry(totals.grandTotal)}</p>
+            </div>
+          </div>
+          <div className="space-y-2 p-2">
+            <PosNumpad mode={numpadMode} buffer={numpadBuffer} onModeChange={setNumpadMode} onKey={handleNumpadKey} />
+            <div className="grid grid-cols-2 gap-1">
+              {paymentShortcutValues.slice(0, 6).map((amount) => (
+                <button
+                  key={`middle-shortcut-${amount}`}
+                  type="button"
+                  onClick={() => applyQuickPartialAmount(amount)}
+                  className="h-8 rounded border border-slate-300 bg-white text-xs font-bold text-slate-900 hover:bg-slate-100"
+                >
+                  {formatTry(amount)}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => applyQuickPartialAmount(totals.grandTotal)}
+                className="col-span-2 h-9 rounded border border-indigo-300 bg-indigo-100 text-sm font-bold text-indigo-800 hover:bg-indigo-200"
+              >
+                Tam Tutar (Tutar+Top)
+              </button>
+            </div>
+            <Button
+              onClick={() => void submitSale({ paymentMethod: "nakit", amount: totals.grandTotal, modeLabel: "Nakit satış" })}
+              disabled={busy}
+              className="h-20 w-full bg-emerald-700 text-2xl font-black text-white hover:bg-emerald-600"
+            >
+              Nakit Satış (F1)
+            </Button>
+            <Button
+              onClick={() => void submitSale({ paymentMethod: "kart", amount: totals.grandTotal, modeLabel: "POS satış" })}
+              disabled={busy}
+              className="h-20 w-full bg-blue-700 text-2xl font-black text-white hover:bg-blue-600"
+            >
+              POS Satış (F2)
+            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={openMixedPaymentModal} disabled={busy} className="h-11 bg-teal-700 text-white hover:bg-teal-600">Kısmi / Karma (F3)</Button>
+              <Button onClick={openCariCustomerModal} disabled={busy} className="h-11 bg-amber-600 text-white hover:bg-amber-500">Cari Satış (F4)</Button>
+              <Button onClick={() => void suspendCart()} disabled={busy} className="h-11 bg-slate-700 text-white hover:bg-slate-600">Beklemeye Al</Button>
+              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-11 bg-slate-700 text-white hover:bg-slate-600">{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
+            </div>
+            <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-12 w-full text-base font-black">
+              Sepet İptal (F5)
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex min-h-[74vh] flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f3f5f8] shadow-sm">
+          <div className="space-y-2 border-b border-slate-300 bg-white p-2">
+            <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto_auto_auto]">
+              <select className="h-10 rounded border border-slate-300 bg-white px-2 text-sm font-semibold">
+                <option>₺ Fyt1</option>
+                <option>₺ Fyt2</option>
+                <option>₺ Fyt3</option>
+                <option>₺ Fyt4</option>
+              </select>
+              <Button size="sm" className={`h-10 ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
+              <Button size="sm" className={`h-10 ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
+              <Button size="sm" className={`h-10 ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
+              <Button size="sm" className="h-10 bg-amber-100 text-amber-800 hover:bg-amber-200" onClick={quickReturnSelectedLine} disabled={!canReturnOperations}>H. İade</Button>
+              <Button size="sm" className={`h-10 ${exchangeTargetId ? "bg-sky-600 text-white" : "bg-indigo-100 text-indigo-800 hover:bg-indigo-200"}`} onClick={quickExchangeSelectedLine}>H. Değişim</Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <select className="h-10 flex-1 rounded border border-slate-300 bg-white px-2 text-sm font-semibold">
               <option>Market & Tekel Büfe</option>
-            </select>
-            <Button size="sm" className="h-10 bg-emerald-700 text-white hover:bg-emerald-600">Yeni Kısayol</Button>
+              </select>
+              <Button size="sm" className="h-10 bg-emerald-700 text-white hover:bg-emerald-600">Yeni Kısayol</Button>
+            </div>
           </div>
 
           {showAdvancedPos ? (
-            <div className="space-y-2 border-b border-[color:var(--mx-border)] bg-white p-2">
+            <div className="space-y-2 border-b border-[color:var(--mx-border)] bg-white p-2 xl:hidden">
             <div className="grid gap-2 md:grid-cols-2">
               <Button size="sm" className="h-11 bg-emerald-700 text-white hover:bg-emerald-600" onClick={openCariCustomerModal}>
                 Müşteri Seç
@@ -3378,7 +3382,7 @@ export function PosClient() {
             {loadingProducts ? (
               <p className="rounded-md border border-[color:var(--mx-border)] bg-white px-3 py-8 text-center text-sm text-[color:var(--mx-text-muted)]">Ürünler yükleniyor...</p>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {filteredProducts.map((product) => {
                   const expiryDayCount = daysUntilExpiry(product.expiryDate);
                   const nearExpiry =
@@ -3395,18 +3399,18 @@ export function PosClient() {
                       key={product.id}
                       onClick={() => addProductToCart(product)}
                       disabled={isBlocked}
-                      className={`rounded-xl border border-violet-200 bg-white p-2 text-left transition ${
+                      className={`rounded-md border border-slate-300 bg-white p-2 text-left transition ${
                         isBlocked
                           ? "cursor-not-allowed opacity-60"
-                          : "hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-sm"
+                          : "hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-sm"
                       }`}
                     >
                       {product.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={product.imageUrl} alt={product.name} className="mb-2 h-28 w-full rounded object-contain" />
+                        <img src={product.imageUrl} alt={product.name} className="mb-2 h-20 w-full rounded object-contain" />
                       ) : (
                         <div
-                          className="mb-2 grid h-28 place-items-center rounded text-xl font-black text-white"
+                          className="mb-2 grid h-20 place-items-center rounded text-xl font-black text-white"
                           style={{ background: hashColor(product.name) }}
                         >
                           {productInitials(product.name)}
