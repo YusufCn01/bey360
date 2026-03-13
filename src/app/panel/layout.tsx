@@ -435,7 +435,7 @@ export default async function PanelLayout({ children }: { children: ReactNode })
     );
   } catch (error) {
     const message = isDatabaseConnectionError(error)
-      ? "Veritabani baglantisi kurulamadi. DATABASE_URL ayarini ve Neon erisim bilgilerini kontrol edin."
+      ? "Veritabani baglantisi kurulamadi. DATABASE_URL (veya NEON_DATABASE_URL) ayarini ve Neon erisim bilgilerini kontrol edin."
       : error instanceof Error
         ? error.message
         : "Panel yuklenirken beklenmeyen bir hata olustu.";

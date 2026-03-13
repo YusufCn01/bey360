@@ -14,8 +14,29 @@ function optionalEnv(name) {
   return value && value.trim() ? value.trim() : null;
 }
 
+function requireDatabaseUrl() {
+  const fromDatabaseUrl = optionalEnv("DATABASE_URL");
+  if (fromDatabaseUrl) {
+    return fromDatabaseUrl;
+  }
+
+  const fromNeon = optionalEnv("NEON_DATABASE_URL");
+  if (fromNeon) {
+    process.env.DATABASE_URL = fromNeon;
+    return fromNeon;
+  }
+
+  const fromDirect = optionalEnv("DIRECT_URL");
+  if (fromDirect) {
+    process.env.DATABASE_URL = fromDirect;
+    return fromDirect;
+  }
+
+  throw new Error("Eksik ortam degiskeni: DATABASE_URL (veya NEON_DATABASE_URL / DIRECT_URL)");
+}
+
 async function main() {
-  requiredEnv("DATABASE_URL");
+  requireDatabaseUrl();
   requiredEnv("APP_URL");
   requiredEnv("APP_SECRET");
 
