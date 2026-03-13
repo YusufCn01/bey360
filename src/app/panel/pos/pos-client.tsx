@@ -3322,7 +3322,7 @@ export function PosClient() {
               <p className="text-4xl font-black text-slate-900">{formatTry(totals.grandTotal)}</p>
             </div>
           </div>
-          <div className="space-y-2 p-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
             <PosNumpad
               mode={numpadMode}
               buffer={numpadBuffer}
@@ -3338,7 +3338,7 @@ export function PosClient() {
                   key={`middle-shortcut-${amount}`}
                   type="button"
                   onClick={() => applyQuickPartialAmount(amount)}
-                  className="h-11 rounded border border-slate-300 bg-white text-base font-bold text-slate-900 hover:bg-slate-100"
+                  className="h-[clamp(2.5rem,4.7vh,3rem)] rounded border border-slate-300 bg-white text-base font-bold text-slate-900 hover:bg-slate-100"
                 >
                   {formatTry(amount)}
                 </button>
@@ -3346,34 +3346,36 @@ export function PosClient() {
               <button
                 type="button"
                 onClick={() => applyQuickPartialAmount(totals.grandTotal)}
-                className="col-span-2 h-11 rounded border border-indigo-300 bg-indigo-100 text-base font-bold text-indigo-800 hover:bg-indigo-200"
+                className="col-span-2 h-[clamp(2.5rem,4.7vh,3rem)] rounded border border-indigo-300 bg-indigo-100 text-base font-bold text-indigo-800 hover:bg-indigo-200"
               >
                 Tam Tutar (Tutar+Top)
               </button>
             </div>
+            <div className="mt-auto space-y-2">
             <Button
               onClick={() => void submitSale({ paymentMethod: "nakit", amount: totals.grandTotal, modeLabel: "Nakit satış" })}
               disabled={busy}
-              className="h-24 w-full bg-emerald-700 text-3xl font-black text-white hover:bg-emerald-600"
+              className="h-[clamp(4.1rem,9vh,5.4rem)] w-full bg-emerald-700 text-[clamp(1.45rem,2.8vh,1.9rem)] font-black text-white hover:bg-emerald-600"
             >
               Nakit Satış (F1)
             </Button>
             <Button
               onClick={() => void submitSale({ paymentMethod: "kart", amount: totals.grandTotal, modeLabel: "POS satış" })}
               disabled={busy}
-              className="h-24 w-full bg-blue-700 text-3xl font-black text-white hover:bg-blue-600"
+              className="h-[clamp(4.1rem,9vh,5.4rem)] w-full bg-blue-700 text-[clamp(1.45rem,2.8vh,1.9rem)] font-black text-white hover:bg-blue-600"
             >
               POS Satış (F2)
             </Button>
             <div className="grid grid-cols-2 gap-2">
-              <Button onClick={openMixedPaymentModal} disabled={busy} className="h-14 bg-teal-700 text-lg text-white hover:bg-teal-600">Kısmi / Karma (F3)</Button>
-              <Button onClick={openCariCustomerModal} disabled={busy} className="h-14 bg-amber-600 text-lg text-white hover:bg-amber-500">Cari Satış (F4)</Button>
-              <Button onClick={() => void suspendCart()} disabled={busy} className="h-14 bg-slate-700 text-lg text-white hover:bg-slate-600">Beklemeye Al</Button>
-              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-14 bg-slate-700 text-lg text-white hover:bg-slate-600">{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
+              <Button onClick={openMixedPaymentModal} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-teal-700 text-lg text-white hover:bg-teal-600">Kısmi / Karma (F3)</Button>
+              <Button onClick={openCariCustomerModal} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-amber-600 text-lg text-white hover:bg-amber-500">Cari Satış (F4)</Button>
+              <Button onClick={() => void suspendCart()} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-slate-700 text-lg text-white hover:bg-slate-600">Beklemeye Al</Button>
+              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-slate-700 text-lg text-white hover:bg-slate-600">{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
             </div>
-            <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-14 w-full text-lg font-black">
+            <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] w-full text-lg font-black">
               Sepet İptal (F5)
             </Button>
+            </div>
           </div>
         </div>
 
