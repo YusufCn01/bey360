@@ -1,7 +1,10 @@
-﻿import { notFound, redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { FeatureWorkspaceClient } from "@/app/panel/feature-workspace-client";
 import { findFeatureByPath } from "@/lib/navigation/panel-nav";
+import { resolvePanelModuleFromPath } from "@/lib/subscription/module-access";
+import { getTenantContext } from "@/lib/tenant/context";
+import { getCurrentSubscription, getTenantModuleAccess } from "@/modules/subscription/application/subscription-service";
 
 type PageProps = {
   params: Promise<{ module: string; feature: string }>;
@@ -9,6 +12,14 @@ type PageProps = {
 
 export default async function PanelFeaturePage({ params }: PageProps) {
   const { module: moduleSegment, feature: featureSegment } = await params;
+  const tenant = await getTenantContext();
+  const subscription = await getCurrentSubscription(tenant.tenantId);
+  const moduleAccess = await getTenantModuleAccess(tenant.tenantId, subscription?.code ?? null);
+  const routeModule = resolvePanelModuleFromPath(`/panel/${moduleSegment}/${featureSegment}`);
+
+  if (routeModule && !moduleAccess[routeModule]) {
+    redirect("/panel");
+  }
 
   if (moduleSegment === "stok" && (featureSegment === "sube-tanimlari" || featureSegment === "depo-tanimlari")) {
     redirect("/panel/ayarlar/sube-depo-yonetimi");

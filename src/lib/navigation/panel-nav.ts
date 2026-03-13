@@ -1,4 +1,6 @@
-﻿export type PanelIconKey =
+﻿import type { PanelModuleCode } from "@/lib/subscription/module-access";
+
+export type PanelIconKey =
   | "dashboard"
   | "pos"
   | "product"
@@ -27,6 +29,7 @@ export type PanelNavSection = {
   label: string;
   href: string;
   icon: PanelIconKey;
+  moduleCode: PanelModuleCode;
   children: PanelFeature[];
 };
 
@@ -36,6 +39,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Ana Ekran",
     href: "/panel",
     icon: "dashboard",
+    moduleCode: "dashboard",
     children: [
       {
         href: "/panel",
@@ -56,6 +60,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Hızlı Satış",
     href: "/pos",
     icon: "pos",
+    moduleCode: "pos",
     children: [
       {
         href: "/pos",
@@ -94,6 +99,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Ürünler",
     href: "/panel/urunler/yeni-urun-karti",
     icon: "product",
+    moduleCode: "product",
     children: [
       {
         href: "/panel/urunler/yeni-urun-karti",
@@ -186,6 +192,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Stok",
     href: "/panel/stok",
     icon: "warehouse",
+    moduleCode: "inventory",
     children: [
       {
         href: "/panel/stok",
@@ -218,6 +225,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Müşteriler",
     href: "/panel/musteriler",
     icon: "customer",
+    moduleCode: "customer",
     children: [
       {
         href: "/panel/musteriler/yeni-musteri-karti",
@@ -262,6 +270,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Tedarikçiler",
     href: "/panel/tedarikciler",
     icon: "supplier",
+    moduleCode: "supplier",
     children: [
       {
         href: "/panel/tedarikciler",
@@ -294,6 +303,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "İrsaliye / Fatura",
     href: "/panel/fatura",
     icon: "invoice",
+    moduleCode: "invoice",
     children: [
       {
         href: "/panel/fatura",
@@ -326,6 +336,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Kasa / Banka",
     href: "/panel/kasa",
     icon: "cash",
+    moduleCode: "finance",
     children: [
       {
         href: "/panel/kasa",
@@ -358,6 +369,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Ödeme Sistemi",
     href: "/panel/odeme",
     icon: "payment",
+    moduleCode: "payment",
     children: [
       {
         href: "/panel/odeme",
@@ -384,6 +396,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "e-Fatura / e-Arşiv",
     href: "/panel/e-fatura",
     icon: "einvoice",
+    moduleCode: "einvoice",
     children: [
       {
         href: "/panel/e-fatura",
@@ -410,6 +423,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Raporlar",
     href: "/panel/raporlar",
     icon: "report",
+    moduleCode: "report",
     children: [
       {
         href: "/panel/raporlar",
@@ -448,6 +462,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Kullanıcılar",
     href: "/panel/kullanicilar",
     icon: "user",
+    moduleCode: "user",
     children: [
       {
         href: "/panel/kullanicilar",
@@ -480,6 +495,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Destek Merkezi",
     href: "/panel/destek",
     icon: "history",
+    moduleCode: "support",
     children: [
       {
         href: "/panel/destek",
@@ -500,6 +516,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Lisans ve Abonelik",
     href: "/panel/abonelik",
     icon: "subscription",
+    moduleCode: "subscription",
     children: [
       {
         href: "/panel/abonelik",
@@ -532,6 +549,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "İşlem Geçmişi",
     href: "/panel/islem-gecmisi",
     icon: "history",
+    moduleCode: "history",
     children: [
       {
         href: "/panel/islem-gecmisi",
@@ -570,6 +588,7 @@ export const panelNavSections: PanelNavSection[] = [
     label: "Ayarlar",
     href: "/panel/ayarlar",
     icon: "settings",
+    moduleCode: "settings",
     children: [
       {
         href: "/panel/ayarlar",
@@ -640,3 +659,4 @@ export function findFeatureByPath(moduleSegment: string, featureSegment: string)
 
   return null;
 }
+

@@ -24,6 +24,11 @@ type SubscriptionSummary = {
     key: string;
     value: string;
   }>;
+  modules?: Array<{
+    code: string;
+    label: string;
+    isEnabled: boolean;
+  }>;
 };
 
 export function SubscriptionClient() {
@@ -76,7 +81,7 @@ export function SubscriptionClient() {
         throw new Error(body.error.message ?? "Plan değiştirilemedi.");
       }
 
-      setMessage(`Plan güncellendi: ${planCode.toUpperCase()} (${billingCycle})`);
+      setMessage(`Plan güncellendi: ${planCode.toUpperCase()} (${billingCycle === "monthly" ? "Aylık" : "Yıllık"})`);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Plan değiştirilemedi.");
@@ -133,7 +138,7 @@ export function SubscriptionClient() {
         <CardHeader>
           <CardTitle>Kullanım ve Limitler</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2">
+        <CardContent className="grid gap-3 md:grid-cols-3">
           <div className="rounded-lg border border-slate-200 p-3">
             <p className="mb-2 text-sm font-semibold">Kullanım Sayaçları</p>
             <ul className="space-y-1 text-sm text-slate-700">
@@ -152,6 +157,17 @@ export function SubscriptionClient() {
               {summary.entitlements.map((row) => (
                 <li key={row.key}>
                   {row.key}: {row.value}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-lg border border-slate-200 p-3">
+            <p className="mb-2 text-sm font-semibold">Modül Durumu</p>
+            <ul className="space-y-1 text-sm text-slate-700">
+              {!summary.modules || summary.modules.length === 0 ? <li>Kayıt yok.</li> : null}
+              {summary.modules?.map((row) => (
+                <li key={row.code}>
+                  {row.label}: {row.isEnabled ? "Açık" : "Kapalı"}
                 </li>
               ))}
             </ul>

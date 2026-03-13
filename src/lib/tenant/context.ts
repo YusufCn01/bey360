@@ -87,6 +87,6 @@ export async function getTenantContext(): Promise<TenantContext> {
   }
 
   throw new Error(
-    "Tenant bilgisi bulunamadi. DEFAULT_TENANT_SLUG ayarlayin veya giris ekranindan demo/tenant kaydi olusturun.",
+    "Tenant bilgisi bulunamadı. DEFAULT_TENANT_SLUG ayarlayın veya giriş ekranından demo/tenant kaydı oluşturun.",
   );
 }

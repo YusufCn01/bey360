@@ -3,15 +3,17 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { panelNavSections, type PanelIconKey } from "@/lib/navigation/panel-nav";
+import { panelNavSections, type PanelIconKey, type PanelNavSection } from "@/lib/navigation/panel-nav";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/layout/logout-button";
+import type { PanelModuleAccess } from "@/lib/subscription/module-access";
 
 type SidebarProps = {
   companyName: string;
   logoUrl?: string;
   className?: string;
   onNavigate?: () => void;
+  moduleAccess?: PanelModuleAccess;
 };
 
 function isPathActive(pathname: string, href: string) {
@@ -134,21 +136,34 @@ function MenuIcon({ icon, className }: { icon: PanelIconKey; className: string }
   );
 }
 
-function getInitialSectionState(pathname: string) {
+function getInitialSectionState(pathname: string, sections: PanelNavSection[]) {
   const state: Record<string, boolean> = {};
-  for (const section of panelNavSections) {
+  for (const section of sections) {
     const hasActiveItem = section.children.some((item) => isPathActive(pathname, item.href));
     state[section.id] = hasActiveItem || section.id === "ana-ekran";
   }
   return state;
 }
 
-export function Sidebar({ companyName, logoUrl, className, onNavigate }: SidebarProps) {
+function isSectionEnabled(section: PanelNavSection, moduleAccess?: PanelModuleAccess) {
+  if (!moduleAccess) {
+    return true;
+  }
+  return moduleAccess[section.moduleCode] !== false;
+}
+
+export function Sidebar({ companyName, logoUrl, className, onNavigate, moduleAccess }: SidebarProps) {
   const pathname = usePathname();
-  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => getInitialSectionState(pathname));
+  const visibleSections = React.useMemo(
+    () => panelNavSections.filter((section) => isSectionEnabled(section, moduleAccess)),
+    [moduleAccess],
+  );
+  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() =>
+    getInitialSectionState(pathname, visibleSections),
+  );
 
   React.useEffect(() => {
-    const activeStates = getInitialSectionState(pathname);
+    const activeStates = getInitialSectionState(pathname, visibleSections);
     setOpenSections((prev) => {
       const next = { ...prev };
       for (const [key, value] of Object.entries(activeStates)) {
@@ -158,7 +173,7 @@ export function Sidebar({ companyName, logoUrl, className, onNavigate }: Sidebar
       }
       return next;
     });
-  }, [pathname]);
+  }, [pathname, visibleSections]);
 
   return (
     <aside
@@ -180,7 +195,7 @@ export function Sidebar({ companyName, logoUrl, className, onNavigate }: Sidebar
       </div>
 
       <nav className="flex-1 overflow-y-auto py-1">
-        {panelNavSections.map((section) => {
+        {visibleSections.map((section) => {
           const sectionActive =
             isPathActive(pathname, section.href) || section.children.some((item) => isPathActive(pathname, item.href));
           const isOpen = openSections[section.id] ?? false;

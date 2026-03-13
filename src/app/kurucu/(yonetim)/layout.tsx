@@ -25,13 +25,13 @@ export default async function FounderLayout({ children }: { children: ReactNode 
           <div className="flex flex-wrap items-center gap-2">
             <div className="rounded-lg border border-cyan-300/40 bg-slate-900/35 px-3 py-2">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100/80">Kurucu Paneli</p>
-              <p className="text-base font-bold">Bey360 Platform Yonetimi</p>
+              <p className="text-base font-bold">Bey360 Platform Yönetimi</p>
             </div>
             <Link
               href="/panel"
               className="rounded-lg border border-emerald-200/40 bg-emerald-300/15 px-3 py-2 text-sm font-semibold text-emerald-50 transition hover:bg-emerald-300/25"
             >
-              Musteri Paneline Don
+              Müşteri Paneline Dön
             </Link>
           </div>
 

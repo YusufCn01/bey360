@@ -8,7 +8,11 @@ import { prisma } from "@/lib/db/prisma";
 import { getPlatformMaintenanceState } from "@/lib/platform/maintenance";
 import { verifyAccessToken } from "@/lib/security/jwt";
 import { getTenantContext } from "@/lib/tenant/context";
-import { getCurrentSubscription } from "@/modules/subscription/application/subscription-service";
+import {
+  getCurrentSubscription,
+  getTenantModuleAccess,
+} from "@/modules/subscription/application/subscription-service";
+import type { PanelModuleAccess } from "@/lib/subscription/module-access";
 
 type DemoState = {
   label: string;
@@ -294,6 +298,7 @@ type PanelTenantData = {
   companyUiSettings: CompanyUiSettings;
   updateNotice: TenantUpdateNotice | null;
   announcements: TenantAnnouncement[];
+  moduleAccess: PanelModuleAccess;
 };
 
 async function getPanelTenantData(tenantId: string): Promise<PanelTenantData> {
@@ -307,12 +312,14 @@ async function getPanelTenantData(tenantId: string): Promise<PanelTenantData> {
         getTenantUpdateNotice(tenantId),
         getTenantAnnouncements(tenantId),
       ]);
+      const moduleAccess = await getTenantModuleAccess(tenantId, subscription?.code ?? null);
 
       return {
         subscription,
         companyUiSettings,
         updateNotice,
         announcements,
+        moduleAccess,
       };
     },
   });
@@ -395,7 +402,7 @@ export default async function PanelLayout({ children }: { children: ReactNode })
       getPanelTenantData(tenant.tenantId),
       getPlatformMaintenanceState(),
     ]);
-    const { subscription, companyUiSettings, updateNotice, announcements } = tenantData;
+    const { subscription, companyUiSettings, updateNotice, announcements, moduleAccess } = tenantData;
     const subscriptionEndsAt = extractEndDateFromPayload(subscription?.payload);
     const demoState = resolveDemoState({
       trialEndsAt: tenant.trialEndsAt,
@@ -419,13 +426,14 @@ export default async function PanelLayout({ children }: { children: ReactNode })
         maintenanceState={maintenanceState}
         updateNotice={updateNotice}
         announcements={announcements}
+        moduleAccess={moduleAccess}
       >
         {maintenanceState.enabled ? (
           <section className="rounded-xl border border-rose-300 bg-rose-50 p-6 text-rose-900 shadow-sm">
-            <h2 className="text-xl font-black">Platform Bakim Modu Aktif</h2>
+            <h2 className="text-xl font-black">Platform Bakım Modu Aktif</h2>
             <p className="mt-2 text-sm font-semibold">{maintenanceState.message}</p>
             <p className="mt-2 text-xs text-rose-700">
-              Yazma islemleri gecici olarak durduruldu. Bu ekran bakim bitene kadar pasif kalir.
+              Yazma işlemleri geçici olarak durduruldu. Bu ekran bakım bitene kadar pasif kalır.
             </p>
           </section>
         ) : (
@@ -435,19 +443,19 @@ export default async function PanelLayout({ children }: { children: ReactNode })
     );
   } catch (error) {
     const message = isDatabaseConnectionError(error)
-      ? "Veritabani baglantisi kurulamadi. DATABASE_URL (veya NEON_DATABASE_URL) ayarini ve Neon erisim bilgilerini kontrol edin."
+      ? "Veritabanı bağlantısı kurulamadı. DATABASE_URL (veya NEON_DATABASE_URL) ayarını ve Neon erişim bilgilerini kontrol edin."
       : error instanceof Error
         ? error.message
-        : "Panel yuklenirken beklenmeyen bir hata olustu.";
+        : "Panel yüklenirken beklenmeyen bir hata oluştu.";
 
     return (
       <div className="mx-panel-shell flex min-h-screen items-center justify-center p-6">
         <section className="w-full max-w-2xl rounded-2xl border border-rose-300 bg-rose-50 p-6 text-rose-900 shadow-sm">
-          <h1 className="text-xl font-black">Panel baslatilamadi</h1>
+          <h1 className="text-xl font-black">Panel başlatılamadı</h1>
           <p className="mt-3 text-sm font-semibold">{message}</p>
           <p className="mt-2 text-xs text-rose-700">
-            Sorun devam ederse ortam degiskenlerinde `DEFAULT_TENANT_SLUG` ve `DATABASE_URL` degerlerini dogrulayin veya
-            giris ekranindan demo tenant olusturun.
+            Sorun devam ederse ortam değişkenlerinde `DEFAULT_TENANT_SLUG` ve `DATABASE_URL` değerlerini doğrulayın veya
+            giriş ekranından demo tenant oluşturun.
           </p>
         </section>
       </div>

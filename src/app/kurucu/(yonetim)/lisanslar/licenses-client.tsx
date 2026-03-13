@@ -15,6 +15,12 @@ type BillingCycle = "monthly" | "yearly";
 type TenantStatus = "TRIALING" | "ACTIVE" | "PAST_DUE" | "SUSPENDED" | "CANCELLED";
 type RiskFilter = "all" | "missing" | "expired" | "critical" | "warning" | "safe";
 
+type ModuleRow = {
+  code: string;
+  label: string;
+  isEnabled: boolean;
+};
+
 type LicenseRow = {
   tenantId: string;
   tenantSlug: string;
@@ -33,6 +39,7 @@ type LicenseRow = {
     changedBy: string;
     updatedAt: string;
   } | null;
+  modules: ModuleRow[];
 };
 
 type DraftMap = Record<
@@ -56,7 +63,7 @@ async function requestApi<T>(url: string, init?: RequestInit): Promise<T> {
   });
   const body = (await response.json()) as Envelope<T>;
   if (!response.ok || !body.success || body.data === undefined) {
-    throw new Error(body.error?.message ?? "Islem basarisiz.");
+    throw new Error(body.error?.message ?? "İşlem başarısız.");
   }
   return body.data;
 }
@@ -116,11 +123,11 @@ function riskLabel(risk: LicenseRisk): string {
     case "missing":
       return "Lisans Yok";
     case "expired":
-      return "Suresi Dolmus";
+      return "Süresi Dolmuş";
     case "critical":
-      return "7 Gun Icinde Bitiyor";
+      return "7 Gün İçinde Bitiyor";
     case "warning":
-      return "30 Gun Icinde Bitiyor";
+      return "30 Gün İçinde Bitiyor";
     default:
       return "Normal";
   }
@@ -148,14 +155,81 @@ function statusLabel(status: TenantStatus): string {
     case "TRIALING":
       return "Deneme";
     case "PAST_DUE":
-      return "Borcu Gecmis";
+      return "Borcu Geçmiş";
     case "SUSPENDED":
-      return "Askida";
+      return "Askıda";
     case "CANCELLED":
-      return "Iptal";
+      return "İptal";
     default:
       return status;
   }
+}
+
+function ModuleModal(props: {
+  tenantName: string;
+  open: boolean;
+  modules: ModuleRow[];
+  busyModuleCode: string | null;
+  onClose: () => void;
+  onToggle: (moduleCode: string, isEnabled: boolean) => Promise<void>;
+}) {
+  React.useEffect(() => {
+    if (!props.open) {
+      return;
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        props.onClose();
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [props.onClose, props.open]);
+
+  if (!props.open) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/70 p-4">
+      <div className="w-full max-w-2xl rounded-xl border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] shadow-xl">
+        <div className="flex items-center justify-between border-b border-[color:var(--mx-border)] px-4 py-3">
+          <div>
+            <h3 className="text-base font-black">Modül Yetkileri</h3>
+            <p className="text-xs text-[color:var(--mx-text-muted)]">{props.tenantName}</p>
+          </div>
+          <Button size="sm" variant="secondary" onClick={props.onClose}>
+            Kapat
+          </Button>
+        </div>
+
+        <div className="grid max-h-[70vh] gap-2 overflow-y-auto p-4 sm:grid-cols-2">
+          {props.modules.map((moduleRow) => {
+            const busy = props.busyModuleCode === moduleRow.code;
+            return (
+              <div
+                key={moduleRow.code}
+                className="flex items-center justify-between rounded-md border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] px-3 py-2"
+              >
+                <div>
+                  <p className="text-sm font-semibold">{moduleRow.label}</p>
+                  <p className="text-xs text-[color:var(--mx-text-muted)]">{moduleRow.code}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={moduleRow.isEnabled ? "secondary" : "default"}
+                  disabled={busy}
+                  onClick={() => void props.onToggle(moduleRow.code, !moduleRow.isEnabled)}
+                >
+                  {busy ? "Kaydediliyor..." : moduleRow.isEnabled ? "Açık" : "Kapalı"}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function LicensesClient() {
@@ -166,6 +240,8 @@ export function LicensesClient() {
   const [tenantStatusFilter, setTenantStatusFilter] = React.useState<"all" | TenantStatus>("all");
   const [riskFilter, setRiskFilter] = React.useState<RiskFilter>("all");
   const [busyTenantId, setBusyTenantId] = React.useState<string | null>(null);
+  const [moduleTenantId, setModuleTenantId] = React.useState<string | null>(null);
+  const [moduleBusyCode, setModuleBusyCode] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -190,7 +266,7 @@ export function LicensesClient() {
         ) as DraftMap,
       );
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Lisans listesi yuklenemedi.");
+      setError(requestError instanceof Error ? requestError.message : "Lisans listesi yüklenemedi.");
     } finally {
       setLoading(false);
     }
@@ -218,12 +294,61 @@ export function LicensesClient() {
           billingCycle: draft.billingCycle,
         }),
       });
-      setMessage("Lisans plani guncellendi.");
+      setMessage("Lisans planı güncellendi.");
       await load(appliedQuery);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Lisans guncellenemedi.");
+      setError(requestError instanceof Error ? requestError.message : "Lisans güncellenemedi.");
     } finally {
       setBusyTenantId(null);
+    }
+  }
+
+  async function cancelLicense(tenantId: string, tenantName: string) {
+    const confirmed = window.confirm(`${tenantName} için lisansı iptal etmek istediğinizden emin misiniz?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setBusyTenantId(tenantId);
+    setError(null);
+    setMessage(null);
+    try {
+      await requestApi("/api/founder/licenses", {
+        method: "PATCH",
+        body: JSON.stringify({
+          action: "cancel",
+          tenantId,
+        }),
+      });
+      setMessage("Firma lisansı iptal edildi.");
+      await load(appliedQuery);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Lisans iptal edilemedi.");
+    } finally {
+      setBusyTenantId(null);
+    }
+  }
+
+  async function toggleModule(tenantId: string, moduleCode: string, isEnabled: boolean) {
+    setModuleBusyCode(moduleCode);
+    setError(null);
+    setMessage(null);
+    try {
+      await requestApi("/api/founder/licenses", {
+        method: "PATCH",
+        body: JSON.stringify({
+          action: "toggle_module",
+          tenantId,
+          moduleCode,
+          isEnabled,
+        }),
+      });
+      setMessage("Modül yetkisi güncellendi.");
+      await load(appliedQuery);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Modül yetkisi güncellenemedi.");
+    } finally {
+      setModuleBusyCode(null);
     }
   }
 
@@ -256,11 +381,18 @@ export function LicensesClient() {
     return totals;
   }, [rows]);
 
+  const selectedModuleTenant = React.useMemo(() => {
+    if (!moduleTenantId) {
+      return null;
+    }
+    return rows.find((row) => row.tenantId === moduleTenantId) ?? null;
+  }, [moduleTenantId, rows]);
+
   return (
     <Card>
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle>Lisans Yonetimi</CardTitle>
+          <CardTitle>Lisans Yönetimi</CardTitle>
           <Button variant="secondary" onClick={() => void load(appliedQuery)} disabled={loading}>
             Yenile
           </Button>
@@ -274,7 +406,7 @@ export function LicensesClient() {
           }}
         >
           <div>
-            <label className="mb-1 block text-xs font-semibold text-[color:var(--mx-text-muted)]">Bayi Ara</label>
+            <label className="mb-1 block text-xs font-semibold text-[color:var(--mx-text-muted)]">Firma Ara</label>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -283,24 +415,24 @@ export function LicensesClient() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold text-[color:var(--mx-text-muted)]">Bayi Durumu</label>
+            <label className="mb-1 block text-xs font-semibold text-[color:var(--mx-text-muted)]">Firma Durumu</label>
             <select value={tenantStatusFilter} onChange={(event) => setTenantStatusFilter(event.target.value as "all" | TenantStatus)}>
-              <option value="all">Tum Durumlar</option>
+              <option value="all">Tüm Durumlar</option>
               <option value="ACTIVE">Aktif</option>
               <option value="TRIALING">Deneme</option>
-              <option value="PAST_DUE">Borcu Gecmis</option>
-              <option value="SUSPENDED">Askida</option>
-              <option value="CANCELLED">Iptal</option>
+              <option value="PAST_DUE">Borcu Geçmiş</option>
+              <option value="SUSPENDED">Askıda</option>
+              <option value="CANCELLED">İptal</option>
             </select>
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-[color:var(--mx-text-muted)]">Risk</label>
             <select value={riskFilter} onChange={(event) => setRiskFilter(event.target.value as RiskFilter)}>
-              <option value="all">Tum Riskler</option>
+              <option value="all">Tüm Riskler</option>
               <option value="missing">Lisans Yok</option>
-              <option value="expired">Suresi Dolmus</option>
-              <option value="critical">7 Gun Icinde Biten</option>
-              <option value="warning">30 Gun Icinde Biten</option>
+              <option value="expired">Süresi Dolmuş</option>
+              <option value="critical">7 Gün İçinde Biten</option>
+              <option value="warning">30 Gün İçinde Biten</option>
               <option value="safe">Normal</option>
             </select>
           </div>
@@ -319,15 +451,15 @@ export function LicensesClient() {
             <p className="text-lg font-black">{summary.missing}</p>
           </div>
           <div className="rounded-md border border-rose-300 bg-rose-50 p-2 text-rose-900">
-            <p className="text-xs font-semibold">Suresi Dolmus</p>
+            <p className="text-xs font-semibold">Süresi Dolmuş</p>
             <p className="text-lg font-black">{summary.expired}</p>
           </div>
           <div className="rounded-md border border-orange-300 bg-orange-50 p-2 text-orange-900">
-            <p className="text-xs font-semibold">7 Gun Icinde</p>
+            <p className="text-xs font-semibold">7 Gün İçinde</p>
             <p className="text-lg font-black">{summary.critical}</p>
           </div>
           <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-amber-900">
-            <p className="text-xs font-semibold">30 Gun Icinde</p>
+            <p className="text-xs font-semibold">30 Gün İçinde</p>
             <p className="text-lg font-black">{summary.warning}</p>
           </div>
           <div className="rounded-md border border-emerald-300 bg-emerald-50 p-2 text-emerald-900">
@@ -335,6 +467,8 @@ export function LicensesClient() {
             <p className="text-lg font-black">{summary.safe}</p>
           </div>
         </div>
+
+        <p className="text-xs text-[color:var(--mx-text-muted)]">Türkçe karakter desteği aktif: ğ Ğ ş Ş ı İ</p>
 
         {message ? (
           <p className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p>
@@ -347,14 +481,15 @@ export function LicensesClient() {
           <table className="min-w-full text-sm">
             <thead className="bg-[color:var(--mx-surface-soft)]">
               <tr>
-                <th className="px-2 py-2 text-left">Bayi</th>
-                <th className="px-2 py-2 text-left">Bayi Durumu</th>
+                <th className="px-2 py-2 text-left">Firma</th>
+                <th className="px-2 py-2 text-left">Durum</th>
                 <th className="px-2 py-2 text-left">Plan</th>
-                <th className="px-2 py-2 text-left">Bitis Tarihi</th>
+                <th className="px-2 py-2 text-left">Bitiş Tarihi</th>
                 <th className="px-2 py-2 text-left">Risk</th>
+                <th className="px-2 py-2 text-left">Modüller</th>
                 <th className="px-2 py-2 text-left">Yeni Plan</th>
-                <th className="px-2 py-2 text-left">Donem</th>
-                <th className="px-2 py-2 text-left">Islem</th>
+                <th className="px-2 py-2 text-left">Dönem</th>
+                <th className="px-2 py-2 text-left">İşlem</th>
               </tr>
             </thead>
             <tbody>
@@ -362,28 +497,35 @@ export function LicensesClient() {
                 const draft = drafts[row.tenantId] ?? { planCode: "starter" as PlanCode, billingCycle: "monthly" as BillingCycle };
                 const busy = busyTenantId === row.tenantId;
                 const riskMeta = computeRisk(row);
+                const enabledModuleCount = row.modules.filter((moduleRow) => moduleRow.isEnabled).length;
+                const tenantName = row.tradeName || row.legalName;
 
                 return (
                   <tr key={row.tenantId} className="border-t border-[color:var(--mx-border)]">
                     <td className="px-2 py-2">
-                      <p className="font-semibold">{row.tradeName || row.legalName}</p>
+                      <p className="font-semibold">{tenantName}</p>
                       <p className="text-xs text-[color:var(--mx-text-muted)]">{row.tenantSlug}</p>
                     </td>
                     <td className="px-2 py-2">{statusLabel(row.tenantStatus)}</td>
                     <td className="px-2 py-2">
                       <p>{row.license?.code?.toUpperCase() ?? "-"}</p>
-                      <p className="text-xs text-[color:var(--mx-text-muted)]">{row.license?.status ?? "atanmamis"}</p>
+                      <p className="text-xs text-[color:var(--mx-text-muted)]">{row.license?.status ?? "atanmamış"}</p>
                     </td>
                     <td className="px-2 py-2">
                       <p>{formatDate(riskMeta.endDate)}</p>
                       <p className="text-xs text-[color:var(--mx-text-muted)]">
-                        {riskMeta.daysLeft === null ? "-" : `${riskMeta.daysLeft} gun`}
+                        {riskMeta.daysLeft === null ? "-" : `${riskMeta.daysLeft} gün`}
                       </p>
                     </td>
                     <td className="px-2 py-2">
                       <span className={`rounded-full border px-2 py-1 text-xs font-bold ${riskClass(riskMeta.risk)}`}>
                         {riskLabel(riskMeta.risk)}
                       </span>
+                    </td>
+                    <td className="px-2 py-2">
+                      <Button size="sm" variant="secondary" onClick={() => setModuleTenantId(row.tenantId)}>
+                        {enabledModuleCount}/{row.modules.length} Açık
+                      </Button>
                     </td>
                     <td className="px-2 py-2">
                       <select
@@ -418,22 +560,27 @@ export function LicensesClient() {
                           }))
                         }
                       >
-                        <option value="monthly">Aylik</option>
-                        <option value="yearly">Yillik</option>
+                        <option value="monthly">Aylık</option>
+                        <option value="yearly">Yıllık</option>
                       </select>
                     </td>
                     <td className="px-2 py-2">
-                      <Button size="sm" onClick={() => void applyPlan(row.tenantId)} disabled={busy}>
-                        {busy ? "Uygulaniyor..." : "Lisansi Uygula"}
-                      </Button>
+                      <div className="flex flex-wrap gap-1">
+                        <Button size="sm" onClick={() => void applyPlan(row.tenantId)} disabled={busy}>
+                          {busy ? "Uygulanıyor..." : "Lisansı Uygula"}
+                        </Button>
+                        <Button size="sm" variant="danger" onClick={() => void cancelLicense(row.tenantId, tenantName)} disabled={busy}>
+                          Lisansı İptal Et
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
               })}
               {!loading && filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-2 py-6 text-center text-[color:var(--mx-text-muted)]">
-                    Filtreye uygun lisans kaydi bulunamadi.
+                  <td colSpan={9} className="px-2 py-6 text-center text-[color:var(--mx-text-muted)]">
+                    Filtreye uygun lisans kaydı bulunamadı.
                   </td>
                 </tr>
               ) : null}
@@ -441,6 +588,20 @@ export function LicensesClient() {
           </table>
         </div>
       </CardContent>
+
+      <ModuleModal
+        tenantName={selectedModuleTenant?.tradeName || selectedModuleTenant?.legalName || "-"}
+        open={Boolean(selectedModuleTenant)}
+        modules={selectedModuleTenant?.modules ?? []}
+        busyModuleCode={moduleBusyCode}
+        onClose={() => setModuleTenantId(null)}
+        onToggle={async (moduleCode, isEnabled) => {
+          if (!selectedModuleTenant) {
+            return;
+          }
+          await toggleModule(selectedModuleTenant.tenantId, moduleCode, isEnabled);
+        }}
+      />
     </Card>
   );
 }

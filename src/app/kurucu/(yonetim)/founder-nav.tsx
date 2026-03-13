@@ -6,12 +6,12 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/kurucu", label: "Genel Durum" },
-  { href: "/kurucu/bayi-basvurulari", label: "Bayi Basvurulari" },
+  { href: "/kurucu/bayi-basvurulari", label: "Bayi Başvuruları" },
   { href: "/kurucu/bayilikler", label: "Bayilikler" },
   { href: "/kurucu/lisanslar", label: "Lisanslar" },
   { href: "/kurucu/duyurular", label: "Duyurular" },
-  { href: "/kurucu/guncellemeler", label: "Guncellemeler" },
-  { href: "/kurucu/bakim-modu", label: "Bakim Modu" },
+  { href: "/kurucu/guncellemeler", label: "Güncellemeler" },
+  { href: "/kurucu/bakim-modu", label: "Bakım Modu" },
 ];
 
 function isActive(pathname: string, href: string) {

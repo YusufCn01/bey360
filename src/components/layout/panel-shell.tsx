@@ -1,8 +1,11 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { PANEL_MODULE_LABELS, resolvePanelModuleFromPath, type PanelModuleAccess } from "@/lib/subscription/module-access";
 
 type DemoState = {
   label: string;
@@ -44,6 +47,7 @@ type PanelShellProps = {
   maintenanceState: MaintenanceState;
   updateNotice: UpdateNotice;
   announcements?: TenantAnnouncement[];
+  moduleAccess: PanelModuleAccess;
 };
 
 export function PanelShell({
@@ -57,8 +61,21 @@ export function PanelShell({
   maintenanceState,
   updateNotice,
   announcements = [],
+  moduleAccess,
 }: PanelShellProps) {
+  const pathname = usePathname();
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+
+  const blockedModuleCode = React.useMemo(() => {
+    const moduleCode = resolvePanelModuleFromPath(pathname);
+    if (!moduleCode) {
+      return null;
+    }
+    if (moduleAccess[moduleCode]) {
+      return null;
+    }
+    return moduleCode;
+  }, [moduleAccess, pathname]);
 
   React.useEffect(() => {
     if (!mobileSidebarOpen) {
@@ -78,7 +95,12 @@ export function PanelShell({
   return (
     <div className="mx-panel-shell flex min-h-screen">
       <div className="hidden lg:block">
-        <Sidebar companyName={companyName} logoUrl={logoUrl} className="sticky top-0 h-screen w-72" />
+        <Sidebar
+          companyName={companyName}
+          logoUrl={logoUrl}
+          className="sticky top-0 h-screen w-72"
+          moduleAccess={moduleAccess}
+        />
       </div>
 
       {mobileSidebarOpen ? (
@@ -95,6 +117,7 @@ export function PanelShell({
               logoUrl={logoUrl}
               className="h-full w-full"
               onNavigate={() => setMobileSidebarOpen(false)}
+              moduleAccess={moduleAccess}
             />
           </div>
         </div>
@@ -113,7 +136,35 @@ export function PanelShell({
           announcements={announcements}
           onToggleSidebar={() => setMobileSidebarOpen((prev) => !prev)}
         />
-        <main className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4">{children}</main>
+        <main className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4">
+          {blockedModuleCode ? (
+            <section className="mx-auto w-full max-w-2xl rounded-2xl border border-amber-300 bg-amber-50 p-6 text-amber-900 shadow-sm">
+              <h2 className="text-xl font-black">Modül Lisans Kapsamı Dışında</h2>
+              <p className="mt-2 text-sm font-semibold">
+                {PANEL_MODULE_LABELS[blockedModuleCode]} modülü mevcut lisans paketinde kapalı.
+              </p>
+              <p className="mt-1 text-xs text-amber-700">
+                Kurucu panelinden modülü açabilir veya plan yükselterek bu ekrana erişimi aktif edebilirsiniz.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href="/panel/abonelik"
+                  className="rounded-md border border-amber-400 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-200"
+                >
+                  Abonelik ve Lisans
+                </Link>
+                <Link
+                  href="/panel"
+                  className="rounded-md border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-sm font-semibold text-[color:var(--mx-text)]"
+                >
+                  Ana Panele Dön
+                </Link>
+              </div>
+            </section>
+          ) : (
+            children
+          )}
+        </main>
         <footer
           className="border-t px-3 py-2 text-xs font-semibold sm:px-4 sm:text-sm"
           style={{
