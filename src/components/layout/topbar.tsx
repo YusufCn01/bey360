@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { LogoutButton } from "@/components/layout/logout-button";
 
 type DemoStateTone = "ok" | "warn" | "danger" | "neutral";
 type AnnouncementTone = "info" | "success" | "warning" | "danger";
@@ -120,7 +120,7 @@ function AnnouncementModal({
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div>
             <h2 className="text-base font-black text-cyan-100 sm:text-lg">Duyuru Merkezi</h2>
-            <p className="text-xs font-medium text-cyan-100/70">Güncel sistem, kampanya ve operasyon bildirimleri</p>
+            <p className="text-xs font-medium text-cyan-100/70">GÃ¼ncel sistem, kampanya ve operasyon bildirimleri</p>
           </div>
           <button
             type="button"
@@ -216,9 +216,9 @@ export function Topbar({
               type="button"
               onClick={onToggleSidebar}
               className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-cyan-200/35 bg-slate-900/25 text-cyan-100 lg:hidden"
-              aria-label="Menüyü aç"
+              aria-label="MenÃ¼yÃ¼ aÃ§"
             >
-              ☰
+              â˜°
             </button>
 
             {logoUrl ? (
@@ -242,13 +242,13 @@ export function Topbar({
                 href="/panel"
                 className="rounded-lg border border-cyan-200/30 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-300/20"
               >
-                Gösterge Paneli
+                GÃ¶sterge Paneli
               </Link>
               <Link
                 href="/panel/ayarlar"
                 className="rounded-lg border border-amber-200/50 bg-amber-300/20 px-3 py-2 text-sm font-semibold text-amber-50 transition hover:bg-amber-300/30"
               >
-                Firma Ayarları
+                Firma AyarlarÄ±
               </Link>
               <Link
                 href="/pos"
@@ -263,7 +263,7 @@ export function Topbar({
             <ThemeToggle />
             <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2">{tenantSlug}</div>
             <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2">{userName}</div>
-            <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2">Şube: {branchName}</div>
+            <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2">Åube: {branchName}</div>
             <div
               className={`rounded-lg border px-3 py-2 ${
                 isOnline
@@ -271,34 +271,31 @@ export function Topbar({
                   : "border-rose-200/45 bg-rose-300/20 text-rose-50"
               }`}
             >
-              {isOnline ? "Çevrim içi" : "Çevrim dışı"}
+              {isOnline ? "Ã‡evrim iÃ§i" : "Ã‡evrim dÄ±ÅŸÄ±"}
             </div>
             <div className="rounded-lg border border-cyan-200/30 bg-slate-950/30 px-3 py-2">{formatNow(clock)}</div>
             <button
               type="button"
               onClick={() => setAnnouncementModalOpen(true)}
               className="inline-flex items-center gap-2 rounded-lg border border-amber-200/40 bg-amber-300/15 px-3 py-2 text-amber-50 transition hover:bg-amber-300/25"
-              aria-label="Duyuruları aç"
+              aria-label="DuyurularÄ± aÃ§"
             >
               Duyurular
               <span className="rounded-md border border-amber-200/45 bg-amber-300/20 px-2 py-0.5 text-xs font-black">
                 {announcementCount}
               </span>
             </button>
-            <form action="/api/auth/logout" method="post">
-              <Button
-                type="submit"
-                variant="ghost"
-                className="h-9 rounded-lg border border-cyan-200/40 px-3 text-cyan-50 hover:bg-cyan-200/10"
-              >
-                Çıkış
-              </Button>
-            </form>
+            <LogoutButton
+              endpoint="/api/auth/logout"
+              redirectTo="/giris"
+              label="Çıkış"
+              className="h-9 rounded-lg border border-cyan-200/40 px-3 text-cyan-50 hover:bg-cyan-200/10"
+            />
           </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-cyan-200/20 bg-slate-950/35 px-3 py-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100/75">Lisans ve Güncelleme</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100/75">Lisans ve GÃ¼ncelleme</span>
           <div className="flex flex-wrap items-center gap-2">
             {updateNotice ? (
               <div
@@ -308,13 +305,13 @@ export function Topbar({
                     : "border-fuchsia-300/60 bg-fuchsia-500/20 text-fuchsia-100"
                 }`}
               >
-                {updateNotice.isForce ? "Zorunlu" : "Güncelleme"}: v{updateNotice.version} - {updateNotice.title}
+                {updateNotice.isForce ? "Zorunlu" : "GÃ¼ncelleme"}: v{updateNotice.version} - {updateNotice.title}
                 {updateNotice.publishedAt ? ` (${updateNotice.publishedAt})` : ""}
               </div>
             ) : null}
             {maintenanceState?.enabled ? (
               <div className="max-w-[42rem] rounded-full border border-rose-300/75 bg-rose-500/25 px-3 py-1 text-xs font-bold text-rose-100">
-                Bakım Modu: {maintenanceState.message}
+                BakÄ±m Modu: {maintenanceState.message}
               </div>
             ) : null}
             <div className={`rounded-full border px-3 py-1 text-sm font-bold ${demoToneClassMap[demoState.tone]}`}>
@@ -329,3 +326,5 @@ export function Topbar({
     </>
   );
 }
+
+

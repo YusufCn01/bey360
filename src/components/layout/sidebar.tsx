@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { panelNavSections, type PanelIconKey } from "@/lib/navigation/panel-nav";
 import { cn } from "@/lib/utils";
+import { LogoutButton } from "@/components/layout/logout-button";
 
 type SidebarProps = {
   companyName: string;
@@ -230,17 +231,17 @@ export function Sidebar({ companyName, logoUrl, className, onNavigate }: Sidebar
       </nav>
 
       <div className="mt-auto border-t border-white/10 px-4 py-4">
-        <form action="/api/auth/logout" method="post">
-          <button
-            type="submit"
-            className="w-full rounded-sm border border-cyan-300/50 bg-slate-900/35 px-3 py-2 text-left text-sm font-semibold text-cyan-100 hover:bg-slate-900/55"
-          >
-            Çıkış
-          </button>
-        </form>
+        <LogoutButton
+          endpoint="/api/auth/logout"
+          redirectTo="/giris"
+          label="Çıkış"
+          className="w-full rounded-sm border border-cyan-300/50 bg-slate-900/35 px-3 py-2 text-left text-sm font-semibold text-cyan-100 hover:bg-slate-900/55"
+        />
       </div>
     </aside>
   );
 }
+
+
 
 

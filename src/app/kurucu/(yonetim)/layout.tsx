@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { getFounderSessionFromCookies } from "@/lib/auth/founder-session";
 import { FounderNav } from "@/app/kurucu/(yonetim)/founder-nav";
+import { LogoutButton } from "@/components/layout/logout-button";
 
 export default async function FounderLayout({ children }: { children: ReactNode }) {
   const session = await getFounderSessionFromCookies();
@@ -40,14 +41,12 @@ export default async function FounderLayout({ children }: { children: ReactNode 
               {session.fullName}
             </div>
             <div className="rounded-lg border border-cyan-200/35 bg-slate-950/35 px-3 py-2">{session.email}</div>
-            <form action="/api/founder/auth/logout" method="post">
-              <button
-                type="submit"
-                className="h-9 rounded-lg border border-cyan-200/35 bg-slate-950/30 px-3 text-sm font-semibold text-cyan-50 hover:bg-slate-950/45"
-              >
-                Cikis
-              </button>
-            </form>
+            <LogoutButton
+              endpoint="/api/founder/auth/logout"
+              redirectTo="/kurucu/giris"
+              label="Çıkış"
+              className="h-9 rounded-lg border border-cyan-200/35 bg-slate-950/30 px-3 text-sm font-semibold text-cyan-50 hover:bg-slate-950/45"
+            />
           </div>
         </div>
       </header>
@@ -62,4 +61,6 @@ export default async function FounderLayout({ children }: { children: ReactNode 
     </div>
   );
 }
+
+
 
