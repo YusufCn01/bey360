@@ -1,7 +1,7 @@
 "use client";
 
 import type { InputHTMLAttributes } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -10,25 +10,14 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 
 const loginSchema = z.object({
-  tenantSlug: z.string().min(2, "Şirket alanı zorunludur."),
-  loginId: z.string().min(2, "Kullanıcı bilgisi zorunludur."),
-  password: z.string().min(8, "Şifre en az 8 karakter olmalıdır."),
-});
-
-const demoSchema = z.object({
-  gsmNumber: z.string().min(10, "GSM numarası zorunludur."),
-  companyYear: z.number().int().min(2000).max(2100),
-  companyName: z.string().min(2, "Şirket adı zorunludur."),
-  username: z
-    .string()
-    .min(2, "Kullanıcı adı zorunludur.")
-    .regex(/^[a-zA-Z0-9._-]+$/, "Kullanıcı adı yalnızca harf, rakam, nokta, alt çizgi ve tire içerebilir."),
+  tenantSlug: z.string().min(2, "Firma kodu zorunludur."),
+  loginId: z.string().min(2, "Kullanıcı adı zorunludur."),
   password: z.string().min(8, "Şifre en az 8 karakter olmalıdır."),
 });
 
 const forgotSendSchema = z.object({
-  tenantSlug: z.string().min(2, "Şirket alanı zorunludur."),
-  loginId: z.string().min(2, "Kullanıcı bilgisi zorunludur."),
+  tenantSlug: z.string().min(2, "Firma kodu zorunludur."),
+  loginId: z.string().min(2, "Kullanıcı adı zorunludur."),
   gsmNumber: z.string().min(10, "GSM numarası zorunludur."),
 });
 
@@ -49,7 +38,6 @@ const forgotResetSchema = z
   });
 
 type LoginValues = z.infer<typeof loginSchema>;
-type DemoValues = z.infer<typeof demoSchema>;
 type ForgotSendValues = z.infer<typeof forgotSendSchema>;
 type ForgotResetValues = z.infer<typeof forgotResetSchema>;
 
@@ -65,12 +53,17 @@ type ForgotOtpResponse = {
   otpPreview?: string;
 };
 
-const features = [
-  "Hızlı satış, ön muhasebe ve stok yönetimi tek panelde",
-  "Çoklu şube ve depo yapısı ile ölçeklenebilir kullanım",
-  "Dokunmatik kasalara uygun modern POS altyapısı",
-  "e-Fatura, e-Arşiv ve raporlama süreçlerinde hazır akışlar",
-  "Rol bazlı yetki ve güvenli audit altyapısı",
+const announcements = [
+  {
+    title: "Güncelleme Başarılı",
+    message: "v2.4.1 e-Fatura entegrasyon modülü devreye alındı.",
+    tone: "success" as const,
+  },
+  {
+    title: "Bakım Çalışması",
+    message: "Pazar günü 02:00 - 04:00 arası veritabanı optimizasyonu yapılacaktır.",
+    tone: "info" as const,
+  },
 ];
 
 function readApiErrorMessage(raw: unknown, fallback: string): string {
@@ -96,26 +89,33 @@ function formatDateTime(value: string): string {
   }).format(date);
 }
 
-function FieldLabel({ children }: { children: string }) {
-  return <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-[0.08em] text-[#91a4e6]">{children}</label>;
+function Label({ children }: { children: string }) {
+  return <label className="mb-1.5 block text-xs font-black uppercase tracking-[0.08em] text-slate-700">{children}</label>;
 }
 
-function FieldInput(props: InputHTMLAttributes<HTMLInputElement>) {
+function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`h-12 w-full rounded-xl border border-[#3b4e95] bg-[#1f2c66] px-4 text-sm font-semibold text-[#eaf0ff] placeholder:text-[#7f92d1] outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/30 ${props.className ?? ""}`}
+      className={`h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${props.className ?? ""}`}
     />
+  );
+}
+
+function InputIcon({ children }: { children: string }) {
+  return (
+    <span className="inline-flex h-4 w-4 items-center justify-center text-slate-400" aria-hidden="true">
+      {children}
+    </span>
   );
 }
 
 export function LoginForm() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"login" | "demo">("login");
+
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [demoError, setDemoError] = useState<string | null>(null);
-  const [demoSuccess, setDemoSuccess] = useState<string | null>(null);
-  const [demoBusy, setDemoBusy] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotStep, setForgotStep] = useState<"send" | "reset">("send");
@@ -131,24 +131,11 @@ export function LoginForm() {
     otpPreview?: string;
   } | null>(null);
 
-  const currentYear = useMemo(() => new Date().getFullYear(), []);
-
   const loginForm = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       tenantSlug: "demo-market",
       loginId: "owner@demo.local",
-      password: "Demo1234!",
-    },
-  });
-
-  const demoForm = useForm<DemoValues>({
-    resolver: zodResolver(demoSchema),
-    defaultValues: {
-      gsmNumber: "",
-      companyYear: currentYear,
-      companyName: "",
-      username: "admin",
       password: "Demo1234!",
     },
   });
@@ -207,7 +194,10 @@ export function LoginForm() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(values),
+      body: JSON.stringify({
+        ...values,
+        rememberMe,
+      }),
     });
 
     if (!response.ok) {
@@ -217,34 +207,6 @@ export function LoginForm() {
     }
 
     router.push("/panel");
-  });
-
-  const submitDemo = demoForm.handleSubmit(async (values) => {
-    setDemoBusy(true);
-    setDemoError(null);
-    setDemoSuccess(null);
-
-    try {
-      const response = await fetch("/api/auth/demo-account", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-      });
-
-      if (!response.ok) {
-        const raw = (await response.json().catch(() => null)) as unknown;
-        throw new Error(readApiErrorMessage(raw, "Demo hesap açılamadı."));
-      }
-
-      setDemoSuccess("Demo hesabınız açıldı. Yönlendiriliyorsunuz...");
-      router.push("/panel");
-    } catch (requestError) {
-      setDemoError(requestError instanceof Error ? requestError.message : "Demo hesap açılamadı.");
-    } finally {
-      setDemoBusy(false);
-    }
   });
 
   const submitForgotSend = forgotSendForm.handleSubmit(async (values) => {
@@ -324,7 +286,6 @@ export function LoginForm() {
       setForgotMessage(raw.data.message);
       loginForm.setValue("tenantSlug", forgotContext.tenantSlug);
       loginForm.setValue("loginId", forgotContext.loginId);
-      setActiveTab("login");
 
       setTimeout(() => {
         closeForgotModal();
@@ -338,180 +299,187 @@ export function LoginForm() {
 
   return (
     <>
-      <div className="mx-auto w-full max-w-[1120px] overflow-hidden rounded-[30px] border border-[#4156a6]/60 bg-[#121d4b]/75 shadow-[0_30px_100px_rgba(3,10,35,0.6)] backdrop-blur-sm">
-        <div className="grid min-h-[680px] grid-cols-1 lg:grid-cols-[1.2fr_1fr]">
-          <aside className="relative overflow-hidden border-b border-[#33478f] bg-gradient-to-br from-[#152058] via-[#141f4d] to-[#0f173e] p-7 lg:border-b-0 lg:border-r lg:p-10">
-            <div className="pointer-events-none absolute -right-20 top-4 h-72 w-72 rounded-full bg-cyan-300/10 blur-2xl" />
-            <div className="pointer-events-none absolute -left-16 bottom-8 h-64 w-64 rounded-full bg-emerald-300/10 blur-2xl" />
-
-            <div className="relative">
-              <div className="mb-7 flex items-center gap-3">
-                <div className="grid h-12 w-12 place-items-center rounded-xl border border-cyan-300/40 bg-cyan-300/15 text-sm font-black tracking-widest text-cyan-100">
-                  B360
-                </div>
-                <div>
-                  <p className="text-3xl font-black tracking-tight text-white">Bey360</p>
-                  <p className="text-sm font-semibold text-[#9fb4ff]">Ticari Yönetim Platformu</p>
-                </div>
+      <div className="mx-auto w-full max-w-[980px] overflow-hidden rounded-xl border border-slate-300 bg-white shadow-[0_20px_70px_rgba(12,18,38,0.22)]">
+        <div className="grid min-h-[620px] grid-cols-1 md:grid-cols-[360px_1fr]">
+          <aside
+            className="relative border-b border-slate-800 bg-[#102b47] p-6 text-white md:border-b-0 md:border-r"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(180deg, #113254 0%, #0e2a47 100%)",
+              backgroundSize: "24px 24px, 24px 24px, cover",
+            }}
+          >
+            <div className="mb-8 flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded bg-white text-xl font-black text-[#12345a]">B</div>
+              <div>
+                <p className="text-4xl font-black leading-none">Bey360</p>
+                <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300">ERP & POS ÇÖZÜMLERİ</p>
               </div>
+            </div>
 
-              <h2 className="max-w-md text-4xl font-black leading-tight text-white">Hızlı, güvenli ve profesyonel ticari operasyon</h2>
-              <p className="mt-4 max-w-md text-sm font-semibold leading-6 text-[#aec0ff]">
-                Perakende, market ve ön muhasebe süreçlerinizi tek panelde yönetin. Bey360 ile satıştan raporlamaya kadar tüm
-                operasyonlarınız gerçek zamanlı kontrol altında.
-              </p>
+            <h2 className="text-3xl font-black text-white">Sistem Duyuruları</h2>
+            <div className="mt-5 space-y-3">
+              {announcements.map((item) => (
+                <article
+                  key={item.title}
+                  className={`rounded-md border px-3 py-3 ${
+                    item.tone === "success"
+                      ? "border-emerald-400/45 bg-emerald-500/10"
+                      : "border-sky-400/40 bg-sky-500/10"
+                  }`}
+                >
+                  <p className={`text-sm font-black ${item.tone === "success" ? "text-emerald-300" : "text-sky-300"}`}>
+                    {item.tone === "success" ? "✓" : "ⓘ"} {item.title}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-200">{item.message}</p>
+                </article>
+              ))}
+            </div>
 
-              <ul className="mt-8 space-y-3">
-                {features.map((item) => (
-                  <li
-                    key={item}
-                    className="flex items-start gap-3 rounded-xl border border-[#3a4d97] bg-[#101947]/55 px-3 py-2 text-sm text-[#e4ebff]"
-                  >
-                    <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-400/20 text-emerald-300">
-                      ✓
-                    </span>
-                    <span className="font-medium">{item}</span>
-                  </li>
-                ))}
-              </ul>
+            <div className="absolute bottom-6 left-6 right-6 border-t border-white/15 pt-4">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+                <p>
+                  <span className="mr-1 text-emerald-400">●</span>
+                  Sistem Durumu: Çevrimiçi
+                </p>
+                <p>Sürüm 2.4.1089</p>
+              </div>
             </div>
           </aside>
 
-          <section className="bg-[#1a275f]/90 p-6 sm:p-8">
-            <div className="rounded-2xl border border-[#3e53a1] bg-[#151f52]/80 p-2">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("login")}
-                  className={`h-11 rounded-xl text-sm font-black transition ${
-                    activeTab === "login" ? "bg-[#5a6db4] text-white shadow-[0_10px_20px_rgba(0,0,0,0.25)]" : "text-[#9bb0ef]"
-                  }`}
-                >
-                  Giriş Yap
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("demo")}
-                  className={`h-11 rounded-xl text-sm font-black transition ${
-                    activeTab === "demo" ? "bg-[#5a6db4] text-white shadow-[0_10px_20px_rgba(0,0,0,0.25)]" : "text-[#9bb0ef]"
-                  }`}
-                >
-                  Demo Hesap Aç
-                </button>
-              </div>
+          <section className="bg-[#f8fafc] p-6 sm:p-8 md:p-10">
+            <div className="mb-6 flex items-center justify-end gap-4 text-sm font-semibold text-slate-600">
+              <button type="button" className="hover:text-slate-900">
+                🌐 Türkçe
+              </button>
+              <button type="button" className="hover:text-slate-900">
+                Destek
+              </button>
             </div>
 
-            <div className="mt-5">
-              {activeTab === "login" ? (
-                <form onSubmit={submitLogin} className="space-y-3">
-                  <div>
-                    <FieldLabel>Şirket Alanı</FieldLabel>
-                    <FieldInput {...loginForm.register("tenantSlug")} placeholder="ornek-bayi" />
-                  </div>
+            <div className="mx-auto w-full max-w-[460px]">
+              <h1 className="text-4xl font-black text-slate-900">Kullanıcı Girişi</h1>
+              <p className="mt-2 text-sm font-medium text-slate-500">Lütfen firma kodu ve kullanıcı bilgilerinizi giriniz.</p>
 
-                  <div>
-                    <FieldLabel>Kullanıcı</FieldLabel>
-                    <FieldInput {...loginForm.register("loginId")} placeholder="E-posta veya kullanıcı adı" />
+              <form onSubmit={submitLogin} className="mt-6 space-y-4">
+                <div>
+                  <Label>Firma Kodu</Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+                      <InputIcon>⌂</InputIcon>
+                    </span>
+                    <TextInput
+                      {...loginForm.register("tenantSlug")}
+                      placeholder="ÖRN: BEY360_MERKEZ"
+                      className="pl-9"
+                      autoComplete="organization"
+                    />
                   </div>
+                </div>
 
-                  <div>
-                    <FieldLabel>Şifre</FieldLabel>
-                    <FieldInput type="password" {...loginForm.register("password")} />
+                <div>
+                  <Label>Kullanıcı Adı</Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+                      <InputIcon>◔</InputIcon>
+                    </span>
+                    <TextInput
+                      {...loginForm.register("loginId")}
+                      placeholder="Kullanıcı adınızı girin"
+                      className="pl-9"
+                      autoComplete="username"
+                    />
                   </div>
+                </div>
 
-                  <div className="flex justify-end">
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <Label>Şifre</Label>
                     <button
                       type="button"
                       onClick={openForgotModal}
-                      className="text-sm font-semibold text-[#c7d4ff] underline-offset-4 hover:text-white hover:underline"
+                      className="text-sm font-semibold text-blue-700 hover:text-blue-800 hover:underline"
                     >
                       Şifremi Unuttum
                     </button>
                   </div>
-
-                  {loginError ? (
-                    <p className="rounded-xl border border-rose-300/50 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-100">{loginError}</p>
-                  ) : null}
-
-                  <div className="pt-2">
-                    <Button
-                      type="submit"
-                      className="h-12 w-full rounded-xl border border-emerald-300/30 bg-emerald-600 text-base font-black text-white hover:bg-emerald-500"
-                      disabled={loginBusy}
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+                      <InputIcon>🔒</InputIcon>
+                    </span>
+                    <TextInput
+                      type={showPassword ? "text" : "password"}
+                      {...loginForm.register("password")}
+                      className="pl-9 pr-11"
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                      aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"}
                     >
-                      {loginBusy ? "Giriş yapılıyor..." : "Giriş Yap"}
-                    </Button>
+                      {showPassword ? "🙈" : "👁"}
+                    </button>
                   </div>
-                </form>
-              ) : (
-                <form onSubmit={submitDemo} className="space-y-3">
-                  <div>
-                    <FieldLabel>GSM Numarası</FieldLabel>
-                    <FieldInput placeholder="05xx xxx xx xx" {...demoForm.register("gsmNumber")} />
-                  </div>
+                </div>
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <FieldLabel>Şirket Yılı</FieldLabel>
-                      <FieldInput type="number" min={2000} max={2100} {...demoForm.register("companyYear", { valueAsNumber: true })} />
-                    </div>
-                    <div>
-                      <FieldLabel>Kullanıcı</FieldLabel>
-                      <FieldInput placeholder="admin" {...demoForm.register("username")} />
-                    </div>
-                  </div>
+                <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(event) => setRememberMe(event.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                  />
+                  Oturumu açık tut
+                </label>
 
-                  <div>
-                    <FieldLabel>Şirket Adı</FieldLabel>
-                    <FieldInput placeholder="Örn: Bey360 Market" {...demoForm.register("companyName")} />
-                  </div>
+                {loginError ? (
+                  <p className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{loginError}</p>
+                ) : null}
 
-                  <div>
-                    <FieldLabel>Şifre</FieldLabel>
-                    <FieldInput type="password" {...demoForm.register("password")} />
-                  </div>
+                <Button
+                  type="submit"
+                  className="h-12 w-full rounded-md bg-[#1658d0] text-base font-black text-white hover:bg-[#1149af]"
+                  disabled={loginBusy}
+                >
+                  {loginBusy ? "Giriş Yapılıyor..." : "Giriş Yap  →"}
+                </Button>
 
-                  {demoSuccess ? (
-                    <p className="rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100">
-                      {demoSuccess}
-                    </p>
-                  ) : null}
-                  {demoError ? (
-                    <p className="rounded-xl border border-rose-300/50 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-100">{demoError}</p>
-                  ) : null}
+                <div className="relative py-2 text-center text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                  <span className="bg-[#f8fafc] px-3">Bey360 Ailesine Katılın</span>
+                  <div className="absolute left-0 right-0 top-1/2 -z-10 border-t border-slate-200" />
+                </div>
 
-                  <div className="pt-2">
-                    <Button
-                      type="submit"
-                      className="h-12 w-full rounded-xl border border-cyan-300/20 bg-cyan-600 text-base font-black text-white hover:bg-cyan-500"
-                      disabled={demoBusy}
-                    >
-                      {demoBusy ? "Demo hesap açılıyor..." : "Demo Hesap Aç"}
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </div>
-
-            <div className="mt-6 rounded-xl border border-[#3a4f9a] bg-[#121c4b] px-4 py-3 text-sm">
-              <p className="font-semibold text-[#c8d5ff]">Yeni bayi olmak ister misiniz?</p>
-              <Link href="/bayi-basvuru" className="mt-1 inline-block font-black text-emerald-300 hover:text-emerald-200">
-                Bayi Başvuru Formuna Git
-              </Link>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Link
+                    href="/bayi-basvuru?tip=hesap"
+                    className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 bg-white text-sm font-black text-slate-700 transition hover:bg-slate-100"
+                  >
+                    👤 Hesap Oluştur
+                  </Link>
+                  <Link
+                    href="/bayi-basvuru"
+                    className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 bg-white text-sm font-black text-slate-700 transition hover:bg-slate-100"
+                  >
+                    💼 Bayilik Başvurusu
+                  </Link>
+                </div>
+              </form>
             </div>
           </section>
         </div>
       </div>
 
       {forgotOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-[#3f539d] bg-[#162259] p-5 shadow-[0_24px_60px_rgba(7,12,39,0.65)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
+          <div className="w-full max-w-lg rounded-xl border border-slate-300 bg-white p-5 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-lg font-black text-white">Şifremi Unuttum</p>
+              <p className="text-lg font-black text-slate-900">Şifremi Unuttum</p>
               <button
                 type="button"
                 onClick={closeForgotModal}
-                className="rounded-md border border-white/20 px-2 py-1 text-sm font-semibold text-white/80 hover:bg-white/10"
+                className="rounded-md border border-slate-300 px-2 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-100"
               >
                 Kapat
               </button>
@@ -520,28 +488,24 @@ export function LoginForm() {
             {forgotStep === "send" ? (
               <form onSubmit={submitForgotSend} className="space-y-3">
                 <div>
-                  <FieldLabel>Şirket Alanı</FieldLabel>
-                  <FieldInput {...forgotSendForm.register("tenantSlug")} />
+                  <Label>Firma Kodu</Label>
+                  <TextInput {...forgotSendForm.register("tenantSlug")} />
                 </div>
                 <div>
-                  <FieldLabel>Kullanıcı</FieldLabel>
-                  <FieldInput {...forgotSendForm.register("loginId")} placeholder="E-posta veya kullanıcı adı" />
+                  <Label>Kullanıcı Adı</Label>
+                  <TextInput {...forgotSendForm.register("loginId")} placeholder="E-posta veya kullanıcı adı" />
                 </div>
                 <div>
-                  <FieldLabel>GSM Numarası</FieldLabel>
-                  <FieldInput {...forgotSendForm.register("gsmNumber")} placeholder="05xx xxx xx xx" />
+                  <Label>GSM Numarası</Label>
+                  <TextInput {...forgotSendForm.register("gsmNumber")} placeholder="05xx xxx xx xx" />
                 </div>
-                <Button
-                  type="submit"
-                  className="h-11 w-full rounded-xl bg-cyan-600 text-base font-black text-white hover:bg-cyan-500"
-                  disabled={forgotBusy}
-                >
-                  {forgotBusy ? "Kod gönderiliyor..." : "SMS Kod Gönder"}
+                <Button type="submit" className="h-11 w-full text-base font-black" disabled={forgotBusy}>
+                  {forgotBusy ? "Kod Gönderiliyor..." : "SMS Kod Gönder"}
                 </Button>
               </form>
             ) : (
               <form onSubmit={submitForgotReset} className="space-y-3">
-                <div className="rounded-xl border border-cyan-300/30 bg-cyan-600/10 px-3 py-2 text-sm font-semibold text-cyan-100">
+                <div className="rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-900">
                   Kod gönderildi: {forgotContext?.maskedPhone}
                   <br />
                   Son geçerlilik: {forgotContext?.expiresAt ? formatDateTime(forgotContext.expiresAt) : "-"}
@@ -554,23 +518,23 @@ export function LoginForm() {
                 </div>
 
                 <div>
-                  <FieldLabel>SMS Kodu</FieldLabel>
-                  <FieldInput {...forgotResetForm.register("otpCode")} placeholder="000000" maxLength={6} className="tracking-[0.25em]" />
+                  <Label>SMS Kodu</Label>
+                  <TextInput {...forgotResetForm.register("otpCode")} placeholder="000000" maxLength={6} className="tracking-[0.25em]" />
                 </div>
                 <div>
-                  <FieldLabel>Yeni Şifre</FieldLabel>
-                  <FieldInput type="password" {...forgotResetForm.register("newPassword")} />
+                  <Label>Yeni Şifre</Label>
+                  <TextInput type="password" {...forgotResetForm.register("newPassword")} />
                 </div>
                 <div>
-                  <FieldLabel>Yeni Şifre Tekrar</FieldLabel>
-                  <FieldInput type="password" {...forgotResetForm.register("confirmPassword")} />
+                  <Label>Yeni Şifre Tekrar</Label>
+                  <TextInput type="password" {...forgotResetForm.register("confirmPassword")} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     type="button"
                     variant="secondary"
-                    className="h-11 rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white/20"
+                    className="h-11"
                     disabled={forgotBusy}
                     onClick={() => {
                       setForgotStep("send");
@@ -580,26 +544,20 @@ export function LoginForm() {
                   >
                     Kodu Yeniden Al
                   </Button>
-                  <Button
-                    type="submit"
-                    className="h-11 rounded-xl bg-emerald-600 text-base font-black text-white hover:bg-emerald-500"
-                    disabled={forgotBusy}
-                  >
-                    {forgotBusy ? "Şifre güncelleniyor..." : "Şifreyi Yenile"}
+                  <Button type="submit" className="h-11" disabled={forgotBusy}>
+                    {forgotBusy ? "Güncelleniyor..." : "Şifreyi Yenile"}
                   </Button>
                 </div>
               </form>
             )}
 
             {forgotMessage ? (
-              <p className="mt-3 rounded-xl border border-emerald-300/40 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100">
+              <p className="mt-3 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
                 {forgotMessage}
               </p>
             ) : null}
             {forgotError ? (
-              <p className="mt-3 rounded-xl border border-rose-300/50 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-100">
-                {forgotError}
-              </p>
+              <p className="mt-3 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{forgotError}</p>
             ) : null}
           </div>
         </div>
