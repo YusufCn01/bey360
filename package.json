@@ -4,6 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack --hostname 0.0.0.0 --port 3015",
+    "desktop:install": "npm install --prefix apps/desktop",
+    "desktop:start": "npm --prefix apps/desktop run start",
+    "desktop:start:cloud": "npm --prefix apps/desktop run start:cloud",
+    "desktop:start:local": "npm --prefix apps/desktop run start:local",
+    "desktop:dev": "npm --prefix apps/desktop run dev",
+    "desktop:build:win": "npm --prefix apps/desktop run build:win",
     "mobile:start": "npm --prefix apps/mobile run start",
     "mobile:android": "npm --prefix apps/mobile run android",
     "mobile:web": "npm --prefix apps/mobile run web",

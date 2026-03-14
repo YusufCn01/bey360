@@ -2,15 +2,59 @@ import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-function resolveDatabaseUrl(): string | undefined {
-  const raw =
-    process.env.DATABASE_URL?.trim() ||
-    process.env.NEON_DATABASE_URL?.trim() ||
-    process.env.DIRECT_URL?.trim() ||
-    "";
+type DatabaseSourceKey =
+  | "LOCAL_DATABASE_URL"
+  | "CLOUD_DATABASE_URL"
+  | "DATABASE_URL"
+  | "NEON_DATABASE_URL"
+  | "DIRECT_URL";
+
+type ResolvedDatabaseInfo = {
+  url?: string;
+  source?: DatabaseSourceKey;
+  host?: string;
+};
+
+function pickDatabaseCandidates(): Array<{ source: DatabaseSourceKey; value: string }> {
+  const target = (process.env.DATABASE_TARGET ?? "auto").trim().toLowerCase();
+
+  const local = process.env.LOCAL_DATABASE_URL?.trim() ?? "";
+  const cloud = process.env.CLOUD_DATABASE_URL?.trim() ?? "";
+  const db = process.env.DATABASE_URL?.trim() ?? "";
+  const neon = process.env.NEON_DATABASE_URL?.trim() ?? "";
+  const direct = process.env.DIRECT_URL?.trim() ?? "";
+
+  if (target === "local") {
+    return [
+      { source: "LOCAL_DATABASE_URL", value: local },
+      { source: "DATABASE_URL", value: db },
+    ];
+  }
+
+  if (target === "cloud") {
+    return [
+      { source: "CLOUD_DATABASE_URL", value: cloud },
+      { source: "NEON_DATABASE_URL", value: neon },
+      { source: "DATABASE_URL", value: db },
+      { source: "DIRECT_URL", value: direct },
+    ];
+  }
+
+  return [
+    { source: "LOCAL_DATABASE_URL", value: local },
+    { source: "DATABASE_URL", value: db },
+    { source: "CLOUD_DATABASE_URL", value: cloud },
+    { source: "NEON_DATABASE_URL", value: neon },
+    { source: "DIRECT_URL", value: direct },
+  ];
+}
+
+function resolveDatabaseInfo(): ResolvedDatabaseInfo {
+  const candidate = pickDatabaseCandidates().find((entry) => entry.value.length > 0);
+  const raw = candidate?.value ?? "";
 
   if (!raw) {
-    return undefined;
+    return {};
   }
 
   try {
@@ -33,13 +77,25 @@ function resolveDatabaseUrl(): string | undefined {
       url.searchParams.set("connect_timeout", "15");
     }
 
-    return url.toString();
+    return {
+      url: url.toString(),
+      source: candidate?.source,
+      host: url.hostname,
+    };
   } catch {
-    return raw;
+    return {
+      url: raw,
+      source: candidate?.source,
+    };
   }
 }
 
-const resolvedDatabaseUrl = resolveDatabaseUrl();
+const resolvedDatabase = resolveDatabaseInfo();
+const resolvedDatabaseUrl = resolvedDatabase.url;
+export const runtimeDatabaseInfo = {
+  source: resolvedDatabase.source ?? "DATABASE_URL",
+  host: resolvedDatabase.host ?? "",
+};
 
 export const prisma =
   globalForPrisma.prisma ??

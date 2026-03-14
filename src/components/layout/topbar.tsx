@@ -47,6 +47,26 @@ type TopbarProps = {
   onToggleSidebar?: () => void;
 };
 
+type ConnectionState = "ok" | "degraded" | "down";
+
+type ConnectionStatusResponse = {
+  success: boolean;
+  data: {
+    sql: {
+      status: ConnectionState;
+      source?: string;
+      host?: string;
+      error?: string;
+    };
+    cloud: {
+      status: ConnectionState;
+      url?: string;
+      httpStatus?: number;
+      error?: string;
+    };
+  };
+};
+
 function formatNow(value: Date): string {
   return new Intl.DateTimeFormat("tr-TR", {
     day: "2-digit",
@@ -100,6 +120,16 @@ function resolveBreadcrumb(pathname: string) {
     root: "Panel",
     current: "Genel Görünüm",
   };
+}
+
+function statusBadgeClass(status: ConnectionState) {
+  if (status === "ok") {
+    return "border-emerald-400/40 bg-emerald-400/15 text-emerald-200";
+  }
+  if (status === "degraded") {
+    return "border-amber-400/40 bg-amber-400/15 text-amber-200";
+  }
+  return "border-rose-400/45 bg-rose-400/15 text-rose-200";
 }
 
 function AnnouncementModal({
@@ -173,11 +203,49 @@ export function Topbar({
   const pathname = usePathname();
   const [announcementModalOpen, setAnnouncementModalOpen] = React.useState(false);
   const [now, setNow] = React.useState(() => new Date());
+  const [connectionStatus, setConnectionStatus] = React.useState<ConnectionStatusResponse["data"] | null>(null);
   const breadcrumb = React.useMemo(() => resolveBreadcrumb(pathname), [pathname]);
 
   React.useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 30_000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadStatus() {
+      try {
+        const response = await fetch("/api/system/connection-status", { cache: "no-store" });
+        const body = (await response.json()) as ConnectionStatusResponse;
+        if (!cancelled && body?.data) {
+          setConnectionStatus(body.data);
+        }
+      } catch {
+        if (!cancelled) {
+          setConnectionStatus({
+            sql: {
+              status: "down",
+              source: "N/A",
+              host: "-",
+              error: "SQL durum bilgisi alinamadi",
+            },
+            cloud: {
+              status: "down",
+              error: "Bulut durum bilgisi alinamadi",
+            },
+          });
+        }
+      }
+    }
+
+    void loadStatus();
+    const poll = window.setInterval(() => void loadStatus(), 20_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(poll);
+    };
   }, []);
 
   return (
@@ -212,6 +280,23 @@ export function Topbar({
                 {formatNow(now)}
               </div>
             </div>
+
+            {connectionStatus ? (
+              <div className="hidden items-center gap-2 md:flex">
+                <div
+                  className={`rounded-md border px-2.5 py-1.5 text-xs font-semibold ${statusBadgeClass(connectionStatus.sql.status)}`}
+                  title={connectionStatus.sql.error || connectionStatus.sql.host || "SQL baglantisi"}
+                >
+                  SQL: {connectionStatus.sql.status.toUpperCase()}
+                </div>
+                <div
+                  className={`rounded-md border px-2.5 py-1.5 text-xs font-semibold ${statusBadgeClass(connectionStatus.cloud.status)}`}
+                  title={connectionStatus.cloud.error || connectionStatus.cloud.url || "Bulut baglantisi"}
+                >
+                  Bulut: {connectionStatus.cloud.status.toUpperCase()}
+                </div>
+              </div>
+            ) : null}
 
             <ThemeToggle />
 

@@ -1,0 +1,52 @@
+{
+  "name": "bey360-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bey360 masaustu uygulamasi (Electron)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:cloud": "cross-env B360_DESKTOP_DB_MODE=cloud electron .",
+    "start:local": "cross-env B360_DESKTOP_DB_MODE=local ELECTRON_START_URL=http://localhost:3015 electron .",
+    "dev:web": "npm --prefix ../.. run dev",
+    "dev:desktop": "wait-on http://localhost:3015 && cross-env ELECTRON_START_URL=http://localhost:3015 electron .",
+    "dev": "concurrently -k \"npm run dev:web\" \"npm run dev:desktop\"",
+    "pack": "electron-builder --dir",
+    "build:win": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^37.4.0",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.bey360.desktop",
+    "productName": "Bey360",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "local-db.js",
+      "preload.js",
+      "package.json"
+    ],
+    "win": {
+      "artifactName": "Bey360-Setup-${version}.${ext}",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
