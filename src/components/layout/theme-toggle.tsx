@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 
@@ -27,11 +27,11 @@ function applyTheme(theme: ThemeKey) {
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = React.useState<ThemeKey>("corporate");
+  const [theme, setTheme] = React.useState<ThemeKey>("dark");
 
   React.useEffect(() => {
-    const saved = (window.localStorage.getItem(THEME_STORAGE_KEY) as ThemeKey | null) ?? "corporate";
-    const fallback = themeOptions.some((option) => option.key === saved) ? saved : "corporate";
+    const saved = (window.localStorage.getItem(THEME_STORAGE_KEY) as ThemeKey | null) ?? "dark";
+    const fallback = themeOptions.some((option) => option.key === saved) ? saved : "dark";
     setTheme(fallback);
     applyTheme(fallback);
   }, []);
@@ -51,9 +51,7 @@ export function ThemeToggle() {
       role="group"
       aria-label="Tema seçici"
     >
-      <span className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--mx-text-muted)]">
-        Tema
-      </span>
+      <span className="px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--mx-text-muted)]">Tema</span>
       {themeOptions.map((option) => {
         const active = theme === option.key;
         return (

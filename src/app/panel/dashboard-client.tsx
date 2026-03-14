@@ -1,8 +1,7 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatTry } from "@/lib/format/currency";
 import { formatDateTr } from "@/lib/format/date";
 
@@ -20,48 +19,12 @@ type DashboardTopProduct = {
   revenue: number;
 };
 
-type DashboardLastSoldItem = {
-  saleId: string;
-  productId: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-  netAmount: number;
-  occurredAt: string;
-};
-
 type DashboardLowStockProduct = {
   productId: string;
   productCode: string;
   productName: string;
   quantity: number;
   minStockLevel: number;
-};
-
-type DashboardRecentFinancialMove = {
-  kind: string;
-  code: string;
-  amount: number;
-  direction: "in" | "out" | "none";
-  occurredAt: string;
-  description: string;
-};
-
-type DashboardRiskCustomer = {
-  customerCode: string;
-  customerName: string;
-  currentBalance: number;
-  riskLimit: number;
-  availableRisk: number;
-  usageRate: number;
-  status: "ok" | "warning" | "over_limit";
-};
-
-type DashboardClosingChecklistItem = {
-  key: string;
-  title: string;
-  status: "ok" | "warning" | "critical";
-  detail: string;
 };
 
 type DashboardData = {
@@ -71,10 +34,8 @@ type DashboardData = {
   dailyCashOut: number;
   weeklySales: number;
   monthlyRevenue: number;
-  lowStockCount: number;
   totalCollections: number;
   totalPayments: number;
-  cashBalance: number;
   customerDebtTotal: number;
   customersNearRiskLimit: number;
   customersOverRiskLimit: number;
@@ -85,12 +46,22 @@ type DashboardData = {
   suspendedCartCount: number;
   monthlyCashFlow: DashboardMonthlyPoint[];
   topProducts: DashboardTopProduct[];
-  lastSoldItems: DashboardLastSoldItem[];
   lowStockProducts: DashboardLowStockProduct[];
-  recentFinancialMoves: DashboardRecentFinancialMove[];
-  riskyCustomers: DashboardRiskCustomer[];
-  closingChecklist: DashboardClosingChecklistItem[];
   updatedAt: string;
+};
+
+type TenantPlatformStatus = {
+  maintenance?: {
+    enabled: boolean;
+    message: string;
+  } | null;
+  update?: {
+    version: string;
+    title: string;
+    summary?: string;
+    isForce: boolean;
+    publishAt?: string;
+  } | null;
 };
 
 type ApiEnvelope<T> = {
@@ -99,7 +70,11 @@ type ApiEnvelope<T> = {
   error?: { message?: string };
 };
 
-function formatDate(value: string): string {
+function formatDate(value?: string): string {
+  if (!value) {
+    return "-";
+  }
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return "-";
@@ -126,97 +101,133 @@ function buildLinePath(values: number[], width: number, height: number, padding:
     .join(" ");
 }
 
+function miniCard(title: string, value: string, note: string, dotClass: string) {
+  return (
+    <div className="rounded-xl border border-[#1f3553] bg-[#0b1d35] p-3">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-semibold text-slate-300">{title}</p>
+        <span className={`mt-1 inline-flex h-2 w-2 rounded-full ${dotClass}`} />
+      </div>
+      <p className="mt-2 text-3xl font-black leading-none text-white">{value}</p>
+      <p className="mt-2 text-xs text-slate-400">{note}</p>
+    </div>
+  );
+}
+
+function summaryCard(title: string, value: string, note: string) {
+  return (
+    <div className="rounded-xl border border-[#1f3553] bg-[#0b1d35] px-3 py-3">
+      <p className="text-xs font-semibold text-slate-300">{title}</p>
+      <p className="mt-2 text-[26px] font-black leading-none text-white">{value}</p>
+      <p className="mt-1 text-xs text-slate-400">{note}</p>
+    </div>
+  );
+}
+
 function TrendChart({ series }: { series: DashboardMonthlyPoint[] }) {
-  const width = 860;
-  const height = 250;
-  const padding = 24;
+  const [period, setPeriod] = React.useState<7 | 30>(7);
+
+  const view = React.useMemo(() => {
+    if (series.length === 0) {
+      return [] as DashboardMonthlyPoint[];
+    }
+    return series.slice(-period);
+  }, [series, period]);
+
+  const width = 1000;
+  const height = 320;
+  const padding = 30;
+
   const salesPath = buildLinePath(
-    series.map((point) => point.sales),
+    view.map((point) => point.sales),
     width,
     height,
     padding,
   );
-  const cashInPath = buildLinePath(
-    series.map((point) => point.cashIn),
-    width,
-    height,
-    padding,
-  );
+
   const cashOutPath = buildLinePath(
-    series.map((point) => point.cashOut),
+    view.map((point) => point.cashOut),
     width,
     height,
     padding,
   );
 
   return (
-    <Card className="border-[#2f336c] bg-[#171a42] text-white">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Aylık Satış ve Kasa Akışı</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-64 w-full rounded-xl bg-[#101230]">
-          <defs>
-            <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
-              <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(148,163,184,0.12)" strokeWidth="1" />
-            </pattern>
-          </defs>
-          <rect x="0" y="0" width={width} height={height} fill="url(#grid)" />
-          <path d={salesPath} fill="none" stroke="#22d3ee" strokeWidth="2.8" strokeLinecap="round" />
-          <path d={cashInPath} fill="none" stroke="#34d399" strokeWidth="2.8" strokeLinecap="round" />
-          <path d={cashOutPath} fill="none" stroke="#fb7185" strokeWidth="2.8" strokeLinecap="round" />
-        </svg>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full bg-cyan-400/20 px-3 py-1 text-cyan-100">Satış</span>
-          <span className="rounded-full bg-emerald-400/20 px-3 py-1 text-emerald-100">Kasa Giriş</span>
-          <span className="rounded-full bg-rose-400/20 px-3 py-1 text-rose-100">Kasa Çıkış</span>
+    <section className="rounded-2xl border border-[#1f3553] bg-[#0b1d35] p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-xl font-black text-white">Satış ve Tahsilat Trendi</h3>
+          <p className="text-sm text-slate-400">Son aktivite görünümü</p>
         </div>
-      </CardContent>
-    </Card>
-  );
-}
 
-function KpiCard({
-  title,
-  value,
-  note,
-}: {
-  title: string;
-  value: string;
-  note: string;
-}) {
-  return (
-    <Card className="border-[#2f336c] bg-gradient-to-br from-[#272b66] to-[#171a42] text-white">
-      <CardHeader className="pb-1">
-        <CardTitle className="text-sm font-semibold tracking-wide">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-3xl font-extrabold leading-tight">{value}</p>
-        <p className="mt-2 text-xs text-slate-300">{note}</p>
-      </CardContent>
-    </Card>
-  );
-}
+        <label className="inline-flex items-center gap-2 rounded-lg border border-[#2b466a] bg-[#102641] px-3 py-2 text-sm font-semibold text-slate-200">
+          <span>Dönem</span>
+          <select
+            value={period}
+            onChange={(event) => setPeriod(Number(event.target.value) as 7 | 30)}
+            className="bg-transparent text-sm text-slate-100 outline-none"
+          >
+            <option value={7}>Son 7 Gün</option>
+            <option value={30}>Son 30 Gün</option>
+          </select>
+        </label>
+      </div>
 
-function EmptyState({ text }: { text: string }) {
-  return <p className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-4 text-sm text-slate-500">{text}</p>;
+      <div className="overflow-x-auto rounded-xl border border-[#223b5b] bg-[#071528]">
+        {view.length === 0 ? (
+          <div className="grid h-[320px] place-items-center text-sm text-slate-400">Grafik için veri bulunamadı.</div>
+        ) : (
+          <svg viewBox={`0 0 ${width} ${height}`} className="h-[320px] min-w-[760px] w-full">
+            <defs>
+              <pattern id="kpi-grid" width="48" height="48" patternUnits="userSpaceOnUse">
+                <path d="M 48 0 L 0 0 0 48" fill="none" stroke="rgba(148,163,184,0.16)" strokeWidth="1" />
+              </pattern>
+            </defs>
+            <rect x="0" y="0" width={width} height={height} fill="url(#kpi-grid)" />
+            <path d={salesPath} fill="none" stroke="#22b8ff" strokeWidth="5" strokeLinecap="round" />
+            <path d={cashOutPath} fill="none" stroke="#f43f74" strokeWidth="5" strokeDasharray="14 10" strokeLinecap="round" />
+          </svg>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2 text-xs">
+        <span className="rounded-full border border-sky-400/40 bg-sky-400/15 px-2.5 py-1 font-bold text-sky-200">Satış</span>
+        <span className="rounded-full border border-pink-400/40 bg-pink-400/15 px-2.5 py-1 font-bold text-pink-200">Kasa Çıkış</span>
+      </div>
+    </section>
+  );
 }
 
 export function DashboardClient() {
   const [data, setData] = React.useState<DashboardData | null>(null);
+  const [platform, setPlatform] = React.useState<TenantPlatformStatus | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
     setError(null);
+
     try {
-      const response = await fetch("/api/tenant/reports/dashboard", { cache: "no-store" });
-      const body = (await response.json()) as ApiEnvelope<DashboardData>;
-      if (!response.ok || !body.success || !body.data) {
-        throw new Error(body.error?.message ?? "Gösterge paneli verisi alınamadı.");
+      const [dashboardResponse, platformResponse] = await Promise.all([
+        fetch("/api/tenant/reports/dashboard", { cache: "no-store" }),
+        fetch("/api/tenant/platform-status", { cache: "no-store" }),
+      ]);
+
+      const dashboardBody = (await dashboardResponse.json()) as ApiEnvelope<DashboardData>;
+
+      if (!dashboardResponse.ok || !dashboardBody.success || !dashboardBody.data) {
+        throw new Error(dashboardBody.error?.message ?? "Gösterge paneli verisi alınamadı.");
       }
-      setData(body.data);
+
+      setData(dashboardBody.data);
+
+      if (platformResponse.ok) {
+        const platformBody = (await platformResponse.json()) as ApiEnvelope<TenantPlatformStatus>;
+        if (platformBody.success && platformBody.data) {
+          setPlatform(platformBody.data);
+        }
+      }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Gösterge paneli verisi alınamadı.");
     } finally {
@@ -230,244 +241,98 @@ export function DashboardClient() {
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Gösterge Paneli</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-slate-600">Veriler yükleniyor...</CardContent>
-      </Card>
+      <section className="rounded-2xl border border-[#1f3553] bg-[#0a1a31] p-6 text-slate-200">
+        <p className="text-sm font-semibold">Dashboard yükleniyor...</p>
+      </section>
     );
   }
 
   if (error || !data) {
     return (
-      <Card className="border-rose-200 bg-rose-50">
-        <CardHeader>
-          <CardTitle className="text-rose-700">Gösterge paneli yüklenemedi</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-rose-700">{error ?? "Bilinmeyen bir hata oluştu."}</p>
-          <Button onClick={() => void load()} variant="secondary" size="sm">
-            Yeniden Dene
-          </Button>
-        </CardContent>
-      </Card>
+      <section className="rounded-2xl border border-rose-400/45 bg-rose-950/30 p-6 text-rose-100">
+        <h2 className="text-lg font-black">Dashboard yüklenemedi</h2>
+        <p className="mt-2 text-sm">{error ?? "Bilinmeyen bir hata oluştu."}</p>
+        <Button onClick={() => void load()} variant="secondary" size="sm" className="mt-4">
+          Yeniden Dene
+        </Button>
+      </section>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard title="Bugün Satış" value={formatTry(data.dailySales)} note={`Haftalık satış: ${formatTry(data.weeklySales)}`} />
-        <KpiCard title="Bugün Alış" value={formatTry(data.dailyPurchases)} note={`Aylık ciro: ${formatTry(data.monthlyRevenue)}`} />
-        <KpiCard title="Bugün Kasa Giriş" value={formatTry(data.dailyCashIn)} note={`Toplam tahsilat: ${formatTry(data.totalCollections)}`} />
-        <KpiCard title="Bugün Kasa Çıkış" value={formatTry(data.dailyCashOut)} note={`Toplam ödeme: ${formatTry(data.totalPayments)}`} />
-      </div>
+      <section className="rounded-xl border border-[#1f3553] bg-[#071a31] px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="rounded-md bg-[#0197e8] px-2 py-1 text-xs font-black text-white">LİSANS & GÜNCELLEME</span>
+          {platform?.update ? (
+            <>
+              <span className="font-black text-slate-100">v{platform.update.version}</span>
+              <span className="text-slate-200">{platform.update.title}</span>
+              <button type="button" className="ml-auto text-cyan-300 hover:text-cyan-200">
+                İncele →
+              </button>
+            </>
+          ) : (
+            <span className="font-semibold text-emerald-300">Sistem güncel ve çevrimiçi.</span>
+          )}
+        </div>
+      </section>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <KpiCard title="Müşteri Açık Bakiye" value={formatTry(data.customerDebtTotal)} note="Cari kartlarda toplam borç bakiyesi." />
-        <KpiCard title="Risk Limiti Aşan" value={`${data.customersOverRiskLimit}`} note="Limitin üstünde olan cari müşteri sayısı." />
-        <KpiCard title="Limite Yaklaşan" value={`${data.customersNearRiskLimit}`} note="Kullanım oranı %80 ve üzeri cari sayısı." />
-      </div>
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {miniCard("Bugün Satış", formatTry(data.dailySales), `Haftalık: ${formatTry(data.weeklySales)}`, "bg-cyan-400")}
+        {miniCard("Bugün Alış", formatTry(data.dailyPurchases), `Aylık: ${formatTry(data.monthlyRevenue)}`, "bg-violet-400")}
+        {miniCard("Bugün Kasa Giriş", formatTry(data.dailyCashIn), `Toplam tahsilat: ${formatTry(data.totalCollections)}`, "bg-emerald-400")}
+        {miniCard("Bugün Kasa Çıkış", formatTry(data.dailyCashOut), `Toplam ödeme: ${formatTry(data.totalPayments)}`, "bg-rose-400")}
+      </section>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <KpiCard title="Vadesi Geçen Alacak" value={formatTry(data.overdueReceivablesTotal)} note={`Vade aşımı olan müşteri sayısı: ${data.overdueReceivablesCount}`} />
-        <KpiCard title="Yaklaşan Vade (3 Gün)" value={`${data.dueSoonReceivablesCount}`} note="3 gün içinde vadesi dolacak cari kayıt adedi." />
-        <KpiCard title="Açık POS Oturumu" value={`${data.openPosSessionCount}`} note={`Askı sepet: ${data.suspendedCartCount}`} />
-      </div>
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {summaryCard("Müşteri Açık Bakiye", formatTry(data.customerDebtTotal), "Cari kartlardaki toplam borç")}
+        {summaryCard("Risk Limiti Aşan", String(data.customersOverRiskLimit), "Limit üzerinde müşteri")}
+        {summaryCard("Limite Yaklaşan", String(data.customersNearRiskLimit), "Kritik kullanım oranı")}
+        {summaryCard("Vadesi Geçen Alacak", formatTry(data.overdueReceivablesTotal), `Müşteri: ${data.overdueReceivablesCount}`)}
+        {summaryCard("Açık POS Oturumu", String(data.openPosSessionCount), `Askıda sepet: ${data.suspendedCartCount}`)}
+      </section>
 
       <TrendChart series={data.monthlyCashFlow} />
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Son Satılan Ürünler</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.lastSoldItems.length === 0 ? (
-              <EmptyState text="Henüz satış satırı bulunmuyor." />
-            ) : (
-              <div className="overflow-auto rounded-lg border border-slate-200">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50 text-left">
-                    <tr>
-                      <th className="px-3 py-2">Ürün</th>
-                      <th className="px-3 py-2">Adet</th>
-                      <th className="px-3 py-2">Net</th>
-                      <th className="px-3 py-2">Tarih</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.lastSoldItems.slice(0, 6).map((item) => (
-                      <tr key={`${item.saleId}-${item.productId}`} className="border-t border-slate-100">
-                        <td className="px-3 py-2">{item.productName}</td>
-                        <td className="px-3 py-2">{item.quantity}</td>
-                        <td className="px-3 py-2">{formatTry(item.netAmount)}</td>
-                        <td className="px-3 py-2">{formatDate(item.occurredAt)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <section className="grid gap-3 xl:grid-cols-2">
+        <div className="rounded-xl border border-[#1f3553] bg-[#0b1d35] p-4">
+          <h3 className="text-base font-black text-white">En Çok Satan Ürünler</h3>
+          {data.topProducts.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-400">Satış istatistiği oluşmadı.</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {data.topProducts.slice(0, 6).map((item) => (
+                <div key={item.productId} className="flex items-center justify-between rounded-md border border-[#224060] bg-[#0a203a] px-3 py-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-100">{item.productName}</p>
+                    <p className="text-xs text-slate-400">Adet: {item.quantity}</p>
+                  </div>
+                  <p className="font-black text-cyan-300">{formatTry(item.revenue)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">En Çok Satan Ürünler</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.topProducts.length === 0 ? (
-              <EmptyState text="Henüz ürün satış istatistiği oluşmadı." />
-            ) : (
-              <div className="overflow-auto rounded-lg border border-slate-200">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50 text-left">
-                    <tr>
-                      <th className="px-3 py-2">Ürün</th>
-                      <th className="px-3 py-2">Adet</th>
-                      <th className="px-3 py-2">Ciro</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.topProducts.map((item) => (
-                      <tr key={item.productId} className="border-t border-slate-100">
-                        <td className="px-3 py-2">{item.productName}</td>
-                        <td className="px-3 py-2">{item.quantity}</td>
-                        <td className="px-3 py-2">{formatTry(item.revenue)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Ticari Kapanış Checklist</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.closingChecklist.length === 0 ? (
-              <EmptyState text="Checklist kaydı bulunmuyor." />
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {data.closingChecklist.map((item) => (
-                  <li
-                    key={item.key}
-                    className={`rounded-lg border px-3 py-2 ${
-                      item.status === "critical"
-                        ? "border-rose-200 bg-rose-50 text-rose-900"
-                        : item.status === "warning"
-                          ? "border-amber-200 bg-amber-50 text-amber-900"
-                          : "border-emerald-200 bg-emerald-50 text-emerald-900"
-                    }`}
-                  >
-                    <p className="font-semibold">{item.title}</p>
-                    <p className="text-xs">{item.detail}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Riskteki Müşteriler</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.riskyCustomers.length === 0 ? (
-              <EmptyState text="Risk limiti yaklaşan veya aşan müşteri bulunmuyor." />
-            ) : (
-              <div className="overflow-auto rounded-lg border border-slate-200">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50 text-left">
-                    <tr>
-                      <th className="px-3 py-2">Müşteri</th>
-                      <th className="px-3 py-2">Bakiye</th>
-                      <th className="px-3 py-2">Limit</th>
-                      <th className="px-3 py-2">Kullanım</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.riskyCustomers.map((row) => (
-                      <tr key={row.customerCode} className="border-t border-slate-100">
-                        <td className="px-3 py-2">
-                          <div className="font-semibold">{row.customerName}</div>
-                          <div className="text-xs text-slate-500">{row.customerCode}</div>
-                        </td>
-                        <td className="px-3 py-2 font-semibold">{formatTry(row.currentBalance)}</td>
-                        <td className="px-3 py-2">{formatTry(row.riskLimit)}</td>
-                        <td className={`px-3 py-2 font-semibold ${row.status === "over_limit" ? "text-rose-700" : "text-amber-700"}`}>
-                          %{Math.round(row.usageRate * 100)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Düşük Stok Uyarıları</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.lowStockProducts.length === 0 ? (
-              <EmptyState text="Kritik stok altında ürün bulunmuyor." />
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {data.lowStockProducts.map((item) => (
-                  <li key={item.productId} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
-                    <span className="font-semibold">{item.productName}</span> ({item.productCode}) - Mevcut: {item.quantity} / Kritik:{" "}
-                    {item.minStockLevel}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Son Finans Hareketleri</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.recentFinancialMoves.length === 0 ? (
-              <EmptyState text="Finans hareketi bulunmuyor." />
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {data.recentFinancialMoves.slice(0, 8).map((move) => (
-                  <li key={`${move.code}-${move.occurredAt}`} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-semibold text-slate-800">{move.kind}</span>
-                      <span
-                        className={`font-semibold ${
-                          move.direction === "in" ? "text-emerald-700" : move.direction === "out" ? "text-rose-700" : "text-slate-700"
-                        }`}
-                      >
-                        {move.direction === "out" ? "-" : ""}
-                        {formatTry(move.amount)}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Kod: {move.code} | {formatDate(move.occurredAt)}
-                    </p>
-                    {move.description ? <p className="text-xs text-slate-600">{move.description}</p> : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+        <div className="rounded-xl border border-[#1f3553] bg-[#0b1d35] p-4">
+          <h3 className="text-base font-black text-white">Düşük Stok Uyarıları</h3>
+          {data.lowStockProducts.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-400">Kritik seviyede ürün bulunmuyor.</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {data.lowStockProducts.slice(0, 6).map((item) => (
+                <div key={item.productId} className="rounded-md border border-amber-500/35 bg-amber-950/20 px-3 py-2 text-sm text-amber-100">
+                  <p className="font-semibold">{item.productName}</p>
+                  <p className="text-xs text-amber-200/90">
+                    Kod: {item.productCode} • Mevcut: {item.quantity} • Min: {item.minStockLevel}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       <p className="text-right text-xs text-slate-500">Son güncelleme: {formatDate(data.updatedAt)}</p>
     </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 /* eslint-disable react-hooks/incompatible-library */
 
 import * as React from "react";
@@ -47,27 +47,29 @@ export function DataTable<TData, TValue>({
         value={globalFilterInput}
         onChange={(event) => setGlobalFilterInput(event.target.value)}
         placeholder={globalFilterPlaceholder}
-        className="w-full rounded-lg border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-sm text-[color:var(--mx-text)] outline-none focus:border-[color:var(--mx-brand-500)]"
+        className="w-full rounded-lg border border-[#29466b] bg-[#10243f] px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-cyan-500"
       />
-      <div className="overflow-x-auto rounded-lg border border-[color:var(--mx-border)]">
-        <table className="min-w-full divide-y divide-[color:var(--mx-border)] text-sm">
-          <thead className="bg-[color:var(--mx-surface-soft)]">
+
+      <div className="overflow-x-auto rounded-lg border border-[#29466b]">
+        <table className="min-w-full divide-y divide-[#29466b] text-sm">
+          <thead className="bg-[#10243f]">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <th key={header.id} className="px-3 py-2 text-left font-semibold text-[color:var(--mx-text)]">
+                  <th key={header.id} className="px-3 py-2 text-left font-semibold text-slate-200">
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
                 ))}
               </tr>
             ))}
           </thead>
-          <tbody className="divide-y divide-[color:var(--mx-border)] bg-[color:var(--mx-surface)]">
+
+          <tbody className="divide-y divide-[#29466b] bg-[#0a203a]">
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="hover:bg-[color:var(--mx-surface-soft)]">
+                <tr key={row.id} className="hover:bg-[#10243f]">
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-2 text-[color:var(--mx-text)]">
+                    <td key={cell.id} className="px-3 py-2 text-slate-100">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -75,7 +77,7 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <tr>
-                <td colSpan={columns.length} className="px-3 py-6 text-center text-[color:var(--mx-text-muted)]">
+                <td colSpan={columns.length} className="px-3 py-6 text-center text-slate-400">
                   Kayıt bulunamadı.
                 </td>
               </tr>
@@ -83,27 +85,19 @@ export function DataTable<TData, TValue>({
           </tbody>
         </table>
       </div>
+
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-[color:var(--mx-text-muted)]">
+        <span className="text-xs font-semibold text-slate-400">
           Sayfa {table.getState().pagination.pageIndex + 1} / {Math.max(1, table.getPageCount())}
         </span>
+
         <div className="flex items-center gap-2">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Önceki
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Sonraki
-        </Button>
+          <Button variant="secondary" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+            Önceki
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+            Sonraki
+          </Button>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import * as React from "react";
+import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/tables/data-table";
 import { Button } from "@/components/ui/button";
@@ -47,12 +48,12 @@ const columns: ColumnDef<ProductRow>[] = [
       if (imageUrl) {
         return (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={name} className="h-10 w-10 rounded-md border border-[color:var(--mx-border)] object-cover" />
+          <img src={imageUrl} alt={name} className="h-10 w-10 rounded-md border border-[#29466b] object-cover" />
         );
       }
 
       return (
-        <div className="grid h-10 w-10 place-items-center rounded-md border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] text-xs font-bold text-[color:var(--mx-text-muted)]">
+        <div className="grid h-10 w-10 place-items-center rounded-md border border-[#29466b] bg-[#10253f] text-xs font-bold text-slate-300">
           {name.slice(0, 2).toUpperCase()}
         </div>
       );
@@ -97,7 +98,7 @@ const columns: ColumnDef<ProductRow>[] = [
     accessorKey: "status",
     header: "Durum",
     cell: ({ row }) => (
-      <span className="inline-flex rounded-full bg-[color:var(--mx-surface-soft)] px-2 py-0.5 text-xs font-semibold text-[color:var(--mx-text)]">
+      <span className="inline-flex rounded-full border border-emerald-400/40 bg-emerald-400/20 px-2 py-0.5 text-xs font-semibold text-emerald-200">
         {row.original.status}
       </span>
     ),
@@ -132,16 +133,38 @@ export function ProductsClient() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-[color:var(--mx-text-muted)]">Toplam ürün: {rows.length}</p>
-        <Button size="sm" variant="secondary" onClick={() => void load()} disabled={loading}>
-          Yenile
-        </Button>
+      <div className="rounded-xl border border-[#1f3553] bg-[#0b1d35] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/panel/urunler/yeni-urun-karti"
+              className="rounded-md border border-cyan-400/50 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-500/25"
+            >
+              Yeni Ürün Kartı
+            </Link>
+            <Link
+              href="/panel/urunler/yeni-etiket-dizayni"
+              className="rounded-md border border-[#29466b] bg-[#10243f] px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-[#153056]"
+            >
+              Yeni Etiket Dizaynı
+            </Link>
+            <Button size="sm" variant="secondary" onClick={() => void load()} disabled={loading}>
+              Yenile
+            </Button>
+          </div>
+
+          <p className="text-xs font-semibold text-slate-400">Toplam ürün: {rows.length}</p>
+        </div>
       </div>
 
-      {error ? <p className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
-      {loading ? <p className="text-sm text-[color:var(--mx-text-muted)]">Ürünler yükleniyor...</p> : null}
-      {!loading ? <DataTable columns={columns} data={rows} globalFilterPlaceholder="Ürün kodu, adı veya barkod ara..." /> : null}
+      {error ? (
+        <p className="rounded-md border border-rose-400/40 bg-rose-950/25 px-3 py-2 text-sm text-rose-100">{error}</p>
+      ) : null}
+
+      <div className="rounded-xl border border-[#1f3553] bg-[#0b1d35] p-3">
+        {loading ? <p className="text-sm text-slate-400">Ürünler yükleniyor...</p> : null}
+        {!loading ? <DataTable columns={columns} data={rows} globalFilterPlaceholder="Ürün kodu, adı veya barkod ara..." /> : null}
+      </div>
     </div>
   );
 }

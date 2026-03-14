@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 
@@ -26,7 +26,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             __html: `(() => {
               try {
                 const key = "mx-theme";
-                const fallback = "corporate";
+                const fallback = "dark";
                 const saved = window.localStorage.getItem(key) || fallback;
                 const allowed = ["corporate", "dark", "emerald", "graphite"];
                 const theme = allowed.includes(saved) ? saved : fallback;
