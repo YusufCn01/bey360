@@ -53,18 +53,19 @@ type ForgotOtpResponse = {
   otpPreview?: string;
 };
 
-const announcements = [
-  {
-    title: "Güncelleme Başarılı",
-    message: "v2.4.1 e-Fatura entegrasyon modülü devreye alındı.",
-    tone: "success" as const,
-  },
-  {
-    title: "Bakım Çalışması",
-    message: "Pazar günü 02:00 - 04:00 arası veritabanı optimizasyonu yapılacaktır.",
-    tone: "info" as const,
-  },
-];
+export type LoginAnnouncementItem = {
+  id: string;
+  title: string;
+  message: string;
+  tone: "info" | "success" | "warning" | "danger";
+  isPinned?: boolean;
+  publishAt?: string | null;
+};
+
+type LoginFormProps = {
+  announcements: LoginAnnouncementItem[];
+  appVersion: string;
+};
 
 function readApiErrorMessage(raw: unknown, fallback: string): string {
   if (!raw || typeof raw !== "object") {
@@ -102,17 +103,21 @@ function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
-function InputIcon({ children }: { children: string }) {
-  return (
-    <span className="inline-flex h-4 w-4 items-center justify-center text-slate-400" aria-hidden="true">
-      {children}
-    </span>
-  );
+function toneClass(tone: LoginAnnouncementItem["tone"]) {
+  switch (tone) {
+    case "success":
+      return "border-emerald-400/45 bg-emerald-500/10 text-emerald-300";
+    case "warning":
+      return "border-amber-400/45 bg-amber-500/10 text-amber-300";
+    case "danger":
+      return "border-rose-400/45 bg-rose-500/10 text-rose-300";
+    default:
+      return "border-sky-400/40 bg-sky-500/10 text-sky-300";
+  }
 }
 
-export function LoginForm() {
+export function LoginForm({ announcements, appVersion }: LoginFormProps) {
   const router = useRouter();
-
   const [loginError, setLoginError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -313,22 +318,15 @@ export function LoginForm() {
               <div className="grid h-10 w-10 place-items-center rounded bg-white text-xl font-black text-[#12345a]">B</div>
               <div>
                 <p className="text-4xl font-black leading-none">Bey360</p>
-                <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300">ERP & POS ÇÖZÜMLERİ</p>
+                <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-300">ERP & POS COZUMLERI</p>
               </div>
             </div>
 
             <h2 className="text-3xl font-black text-white">Sistem Duyuruları</h2>
             <div className="mt-5 space-y-3">
               {announcements.map((item) => (
-                <article
-                  key={item.title}
-                  className={`rounded-md border px-3 py-3 ${
-                    item.tone === "success"
-                      ? "border-emerald-400/45 bg-emerald-500/10"
-                      : "border-sky-400/40 bg-sky-500/10"
-                  }`}
-                >
-                  <p className={`text-sm font-black ${item.tone === "success" ? "text-emerald-300" : "text-sky-300"}`}>
+                <article key={item.id} className={`rounded-md border px-3 py-3 ${toneClass(item.tone)}`}>
+                  <p className="text-sm font-black">
                     {item.tone === "success" ? "✓" : "ⓘ"} {item.title}
                   </p>
                   <p className="mt-1 text-sm leading-6 text-slate-200">{item.message}</p>
@@ -342,7 +340,7 @@ export function LoginForm() {
                   <span className="mr-1 text-emerald-400">●</span>
                   Sistem Durumu: Çevrimiçi
                 </p>
-                <p>Sürüm 2.4.1089</p>
+                <p>Sürüm {appVersion}</p>
               </div>
             </div>
           </aside>
@@ -350,7 +348,7 @@ export function LoginForm() {
           <section className="bg-[#f8fafc] p-6 sm:p-8 md:p-10">
             <div className="mb-6 flex items-center justify-end gap-4 text-sm font-semibold text-slate-600">
               <button type="button" className="hover:text-slate-900">
-                🌐 Türkçe
+                Türkçe
               </button>
               <button type="button" className="hover:text-slate-900">
                 Destek
@@ -364,32 +362,20 @@ export function LoginForm() {
               <form onSubmit={submitLogin} className="mt-6 space-y-4">
                 <div>
                   <Label>Firma Kodu</Label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-                      <InputIcon>⌂</InputIcon>
-                    </span>
-                    <TextInput
-                      {...loginForm.register("tenantSlug")}
-                      placeholder="ÖRN: BEY360_MERKEZ"
-                      className="pl-9"
-                      autoComplete="organization"
-                    />
-                  </div>
+                  <TextInput
+                    {...loginForm.register("tenantSlug")}
+                    placeholder="ORN: BEY360_MERKEZ"
+                    autoComplete="organization"
+                  />
                 </div>
 
                 <div>
                   <Label>Kullanıcı Adı</Label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-                      <InputIcon>◔</InputIcon>
-                    </span>
-                    <TextInput
-                      {...loginForm.register("loginId")}
-                      placeholder="Kullanıcı adınızı girin"
-                      className="pl-9"
-                      autoComplete="username"
-                    />
-                  </div>
+                  <TextInput
+                    {...loginForm.register("loginId")}
+                    placeholder="Kullanıcı adınızı girin"
+                    autoComplete="username"
+                  />
                 </div>
 
                 <div>
@@ -404,22 +390,19 @@ export function LoginForm() {
                     </button>
                   </div>
                   <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-                      <InputIcon>🔒</InputIcon>
-                    </span>
                     <TextInput
                       type={showPassword ? "text" : "password"}
                       {...loginForm.register("password")}
-                      className="pl-9 pr-11"
+                      className="pr-16"
                       autoComplete="current-password"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-600 hover:text-slate-800"
                       aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"}
                     >
-                      {showPassword ? "🙈" : "👁"}
+                      {showPassword ? "Gizle" : "Göster"}
                     </button>
                   </div>
                 </div>
@@ -443,7 +426,7 @@ export function LoginForm() {
                   className="h-12 w-full rounded-md bg-[#1658d0] text-base font-black text-white hover:bg-[#1149af]"
                   disabled={loginBusy}
                 >
-                  {loginBusy ? "Giriş Yapılıyor..." : "Giriş Yap  →"}
+                  {loginBusy ? "Giriş Yapılıyor..." : "Giriş Yap"}
                 </Button>
 
                 <div className="relative py-2 text-center text-xs font-black uppercase tracking-[0.14em] text-slate-400">
@@ -456,13 +439,13 @@ export function LoginForm() {
                     href="/bayi-basvuru?tip=hesap"
                     className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 bg-white text-sm font-black text-slate-700 transition hover:bg-slate-100"
                   >
-                    👤 Hesap Oluştur
+                    Hesap Oluştur
                   </Link>
                   <Link
                     href="/bayi-basvuru"
                     className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 bg-white text-sm font-black text-slate-700 transition hover:bg-slate-100"
                   >
-                    💼 Bayilik Başvurusu
+                    Bayilik Başvurusu
                   </Link>
                 </div>
               </form>
