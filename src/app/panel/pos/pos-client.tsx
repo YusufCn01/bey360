@@ -462,6 +462,27 @@ async function requestApi<T>(url: string, init?: RequestInit): Promise<T> {
   return body.data;
 }
 
+function isSerialScaleSupportedInClient(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const host = window.location.hostname.toLowerCase();
+  const isLocalHost =
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "::1" ||
+    host.endsWith(".local") ||
+    host.endsWith(".test");
+  const hasDesktopBridge = Boolean(
+    (window as Window & {
+      bey360Desktop?: unknown;
+    }).bey360Desktop,
+  );
+
+  return isLocalHost || hasDesktopBridge;
+}
+
 export function PosClient() {
   const [registerId, setRegisterId] = React.useState("KASA-01");
   const [registerName, setRegisterName] = React.useState("Merkez Kasa");
@@ -534,6 +555,7 @@ export function PosClient() {
   const [lastScaleStable, setLastScaleStable] = React.useState<boolean | null>(null);
   const [lastScaleLatencyMs, setLastScaleLatencyMs] = React.useState<number | null>(null);
   const [lastScaleRaw, setLastScaleRaw] = React.useState<string>("");
+  const [scaleReadLogs, setScaleReadLogs] = React.useState<string[]>([]);
   const [scaleConnectionState, setScaleConnectionState] = React.useState<"disabled" | "ready" | "connected" | "error">("disabled");
   const [showOperations, setShowOperations] = React.useState(false);
   const [suspendedCarts, setSuspendedCarts] = React.useState<SuspendedCartRow[]>([]);
@@ -2055,6 +2077,13 @@ export function PosClient() {
       return;
     }
 
+    if (scaleConnectionSettings.transport === "serial" && !isSerialScaleSupportedInClient()) {
+      setScaleConnectionState("error");
+      setError("Seri port teraziler bulut sunucuda okunamaz. Bey360 masaustu uygulamasinda veya local kurulumda deneyin ya da TCP/Ethernet terazi kullanin.");
+      setMessage(null);
+      return;
+    }
+
     const targetProduct = resolveScaleTargetProduct();
     if (!targetProduct) {
       setError("Terazili bir urun secin veya arama alaninda tek bir terazili urun filtreleyin.");
@@ -2084,6 +2113,9 @@ export function PosClient() {
       setLastScaleStable(typeof result.stable === "boolean" ? result.stable : null);
       setLastScaleLatencyMs(typeof result.latencyMs === "number" ? result.latencyMs : null);
       setLastScaleRaw(typeof result.raw === "string" ? result.raw : "");
+      if (typeof result.raw === "string" && result.raw.trim().length > 0) {
+        setScaleReadLogs((prev) => [`${new Date().toLocaleTimeString("tr-TR")} | ${result.raw}`, ...prev].slice(0, 12));
+      }
       setScaleConnectionState("connected");
 
       if (typeof result.weightKg !== "number" || !Number.isFinite(result.weightKg) || result.weightKg <= 0) {
@@ -3552,8 +3584,22 @@ export function PosClient() {
               </div>
               {lastScaleRaw ? <p className="mt-2 truncate text-xs text-slate-500">Ham cevap: {lastScaleRaw}</p> : null}
               <p className="mt-1 text-xs text-slate-500">
+                Ortam: {isSerialScaleSupportedInClient() ? "Masaustu / Local" : "Bulut"}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
                 Hedef ürün: {autoScaleTargetProduct?.name ?? "Seçili değil"}
               </p>
+              <div className="mt-2 max-h-28 space-y-1 overflow-auto rounded border border-amber-200 bg-white p-2 text-[11px] font-mono text-slate-600">
+                {scaleReadLogs.length > 0 ? (
+                  scaleReadLogs.map((line) => (
+                    <div key={line} className="truncate">
+                      {line}
+                    </div>
+                  ))
+                ) : (
+                  <div>Ham veri logu bekleniyor.</div>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">

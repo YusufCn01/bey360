@@ -46,6 +46,27 @@ type PortsEnvelope = {
 
 type ScalePortItem = NonNullable<NonNullable<PortsEnvelope["data"]>["ports"]>[number];
 
+function isSerialScaleSupportedHere(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const host = window.location.hostname.toLowerCase();
+  const isLocalHost =
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "::1" ||
+    host.endsWith(".local") ||
+    host.endsWith(".test");
+  const hasDesktopBridge = Boolean(
+    (window as Window & {
+      bey360Desktop?: unknown;
+    }).bey360Desktop,
+  );
+
+  return isLocalHost || hasDesktopBridge;
+}
+
 function formatWeight(weightKg?: number | null): string {
   if (typeof weightKg !== "number" || !Number.isFinite(weightKg)) {
     return "-";
@@ -65,10 +86,18 @@ export function ScaleSettingsClient() {
   const [actionMessage, setActionMessage] = React.useState<string | null>(null);
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [lastRead, setLastRead] = React.useState<ScaleReadEnvelope["data"] | null>(null);
+  const [readLogs, setReadLogs] = React.useState<string[]>([]);
 
   const activePreset = React.useMemo(() => getScaleBrandPreset(form.brand), [form.brand]);
+  const serialSupportedHere = React.useMemo(() => isSerialScaleSupportedHere(), []);
 
   async function fetchPorts() {
+    if (!isSerialScaleSupportedHere()) {
+      setActionError("Seri port tarama sadece masaustu uygulamada veya local sunucuda kullanilabilir. Bulutta TCP/Ethernet terazi kullanin.");
+      setActionMessage(null);
+      return;
+    }
+
     setPortsBusy(true);
     setActionError(null);
 
@@ -88,6 +117,12 @@ export function ScaleSettingsClient() {
   }
 
   async function runDeviceAction(kind: "test" | "read") {
+    if (form.transport === "serial" && !isSerialScaleSupportedHere()) {
+      setActionError("Seri port terazi baglantisi bulut sunucuda calismaz. Bey360 masaustu uygulamasini veya local sunucuyu kullanin ya da TCP/Ethernet terazi ayarlayin.");
+      setActionMessage(null);
+      return;
+    }
+
     setActionBusy(kind);
     setActionError(null);
     setActionMessage(null);
@@ -106,6 +141,10 @@ export function ScaleSettingsClient() {
       }
 
       setLastRead(body.data ?? null);
+      if (body.data?.raw) {
+        const rawText = body.data.raw;
+        setReadLogs((prev) => [`${new Date().toLocaleTimeString("tr-TR")} | ${rawText}`, ...prev].slice(0, 12));
+      }
       if (kind === "test") {
         setActionMessage("Terazi baglantisi basarili.");
       } else {
@@ -145,6 +184,9 @@ export function ScaleSettingsClient() {
                 CAS CL3000 icin iki hazir profil var: "CAS / CL3000" sorgulu mod, "CAS / CL3000 (Stream)" surekli veri akisi modu.
               </p>
             ) : null}
+            <p className="mt-2 text-xs font-semibold text-slate-200">
+              Calisma ortami: {serialSupportedHere ? "Masaustu / Local - seri port desteklenir" : "Bulut - sadece TCP/Ethernet kullanin"}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={() => void load()} disabled={saving || loading}>
@@ -364,6 +406,20 @@ export function ScaleSettingsClient() {
               <div className="rounded-lg border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] p-3 text-xs text-[color:var(--mx-text-muted)]">
                 <p className="font-black text-[color:var(--mx-text)]">Ham cevap</p>
                 <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words font-mono">{lastRead?.raw || "Henüz veri okunmadı."}</pre>
+              </div>
+              <div className="rounded-lg border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] p-3 text-xs text-[color:var(--mx-text-muted)]">
+                <p className="font-black text-[color:var(--mx-text)]">Ham Veri Logu</p>
+                <div className="mt-2 max-h-48 space-y-1 overflow-auto font-mono">
+                  {readLogs.length > 0 ? (
+                    readLogs.map((line) => (
+                      <div key={line} className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1">
+                        {line}
+                      </div>
+                    ))
+                  ) : (
+                    <p>Henüz log oluşmadı.</p>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -290,6 +290,18 @@ async function readFromSerial(settings: ScaleConnectionSettings): Promise<ScaleR
   });
 }
 
+async function withHardTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return await Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      const timer = setTimeout(() => {
+        clearTimeout(timer);
+        reject(new Error(message));
+      }, timeoutMs);
+    }),
+  ]);
+}
+
 export async function listScaleSerialPorts(): Promise<ScalePortSummary[]> {
   const { SerialPort } = await loadSerialPortModule();
   const ports = await SerialPort.list();
@@ -306,10 +318,18 @@ export async function listScaleSerialPorts(): Promise<ScalePortSummary[]> {
 
 export async function testScaleConnection(input: unknown): Promise<ScaleReadResult> {
   const settings = parseScaleConnectionSettings(input);
-  return settings.transport === "tcp" ? readFromTcp(settings) : readFromSerial(settings);
+  return await withHardTimeout(
+    settings.transport === "tcp" ? readFromTcp(settings) : readFromSerial(settings),
+    Math.max(1000, settings.timeoutMs + 250),
+    "Terazi baglanti istegi zaman asimina ugradi.",
+  );
 }
 
 export async function readScaleWeight(input: unknown): Promise<ScaleReadResult> {
   const settings = parseScaleConnectionSettings(input);
-  return settings.transport === "tcp" ? readFromTcp(settings) : readFromSerial(settings);
+  return await withHardTimeout(
+    settings.transport === "tcp" ? readFromTcp(settings) : readFromSerial(settings),
+    Math.max(1000, settings.timeoutMs + 250),
+    "Terazi okuma istegi zaman asimina ugradi.",
+  );
 }
