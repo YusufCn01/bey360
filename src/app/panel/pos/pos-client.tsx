@@ -3074,7 +3074,7 @@ export function PosClient() {
         </div>
       </div>
 
-      <div className="grid min-h-0 gap-1 xl:grid-cols-[minmax(0,1.08fr)_360px_minmax(0,1.18fr)]">
+      <div className="grid min-h-0 gap-1 xl:grid-cols-[minmax(0,1.1fr)_332px_minmax(0,1.16fr)]">
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f8fafc] shadow-sm">
           <div className="space-y-1 border-b border-slate-300 bg-slate-100 p-2">
             <div className="grid gap-1 md:grid-cols-7">
@@ -3535,13 +3535,13 @@ export function PosClient() {
           <div className="border-b border-slate-300 bg-white p-2">
             <div className="rounded-md border border-slate-300 bg-slate-50 px-3 py-1 text-right">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tutar</p>
-              <p className="text-4xl font-black text-slate-900">{formatTry(totals.grandTotal)}</p>
+              <p className="text-3xl font-black text-slate-900">{formatTry(totals.grandTotal)}</p>
             </div>
-            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2">
+            <div className="mt-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-700">Canlı Terazi</p>
-                  <p className="text-sm font-semibold text-slate-700">
+                  <p className="text-xs font-semibold text-slate-700">
                     {scaleConnectionSettings.brand.toUpperCase()} {scaleConnectionSettings.enabled ? "- Aktif" : "- Pasif"}
                   </p>
                 </div>
@@ -3549,14 +3549,14 @@ export function PosClient() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="h-10 px-4 text-sm font-black"
+                    className="h-8 px-3 text-xs font-black"
                     onClick={() => setAutoScaleEnabled((prev) => !prev)}
                   >
                     {autoScaleEnabled ? "Canlı Akış Açık" : "Canlı Akış Kapalı"}
                   </Button>
                   <Button
                     size="sm"
-                    className="h-10 bg-amber-500 px-4 text-base font-black text-slate-900 hover:bg-amber-400"
+                    className="h-8 bg-amber-500 px-3 text-sm font-black text-slate-900 hover:bg-amber-400"
                     onClick={() => void readWeightFromScaleAndApply()}
                     disabled={readingScale}
                   >
@@ -3564,32 +3564,32 @@ export function PosClient() {
                   </Button>
                 </div>
               </div>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                <div className="rounded border border-amber-200 bg-white px-2 py-2">
+              <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-[11px]">
+                <div className="rounded border border-amber-200 bg-white px-2 py-1.5">
                   <p className="text-slate-500">Son Ağırlık</p>
-                  <p className="text-lg font-black text-slate-900">
+                  <p className="text-base font-black text-slate-900">
                     {lastScaleWeightKg !== null ? `${lastScaleWeightKg.toFixed(3).replace(".", ",")} kg` : "-"}
                   </p>
                 </div>
-                <div className="rounded border border-amber-200 bg-white px-2 py-2">
+                <div className="rounded border border-amber-200 bg-white px-2 py-1.5">
                   <p className="text-slate-500">Stabilite</p>
-                  <p className="text-lg font-black text-slate-900">
+                  <p className="text-base font-black text-slate-900">
                     {lastScaleStable === true ? "Stabil" : lastScaleStable === false ? "Hareketli" : "-"}
                   </p>
                 </div>
-                <div className="rounded border border-amber-200 bg-white px-2 py-2">
+                <div className="rounded border border-amber-200 bg-white px-2 py-1.5">
                   <p className="text-slate-500">Gecikme</p>
-                  <p className="text-lg font-black text-slate-900">{lastScaleLatencyMs !== null ? `${lastScaleLatencyMs} ms` : "-"}</p>
+                  <p className="text-base font-black text-slate-900">{lastScaleLatencyMs !== null ? `${lastScaleLatencyMs} ms` : "-"}</p>
                 </div>
               </div>
-              {lastScaleRaw ? <p className="mt-2 truncate text-xs text-slate-500">Ham cevap: {lastScaleRaw}</p> : null}
-              <p className="mt-1 text-xs text-slate-500">
+              {lastScaleRaw ? <p className="mt-1 truncate text-[11px] text-slate-500">Ham cevap: {lastScaleRaw}</p> : null}
+              <p className="mt-0.5 text-[11px] text-slate-500">
                 Ortam: {isSerialScaleSupportedInClient() ? "Masaustu / Local" : "Bulut"}
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-0.5 text-[11px] text-slate-500">
                 Hedef ürün: {autoScaleTargetProduct?.name ?? "Seçili değil"}
               </p>
-              <div className="mt-2 max-h-28 space-y-1 overflow-auto rounded border border-amber-200 bg-white p-2 text-[11px] font-mono text-slate-600">
+              <div className="mt-1 max-h-16 space-y-0.5 overflow-hidden rounded border border-amber-200 bg-white p-1.5 text-[10px] font-mono text-slate-600">
                 {scaleReadLogs.length > 0 ? (
                   scaleReadLogs.map((line) => (
                     <div key={line} className="truncate">
@@ -3602,7 +3602,7 @@ export function PosClient() {
               </div>
             </div>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
+          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden p-1.5">
             <PosNumpad
               mode={numpadMode}
               buffer={numpadBuffer}
@@ -3618,7 +3618,7 @@ export function PosClient() {
                   key={`middle-shortcut-${amount}`}
                   type="button"
                   onClick={() => applyQuickPartialAmount(amount)}
-                  className="h-[clamp(2.5rem,4.7vh,3rem)] rounded border border-slate-300 bg-white text-base font-bold text-slate-900 hover:bg-slate-100"
+                  className="h-[clamp(2.1rem,3.8vh,2.55rem)] rounded border border-slate-300 bg-white text-sm font-bold text-slate-900 hover:bg-slate-100"
                 >
                   {formatTry(amount)}
                 </button>
@@ -3626,34 +3626,34 @@ export function PosClient() {
               <button
                 type="button"
                 onClick={() => applyQuickPartialAmount(totals.grandTotal)}
-                className="col-span-2 h-[clamp(2.5rem,4.7vh,3rem)] rounded border border-indigo-300 bg-indigo-100 text-base font-bold text-indigo-800 hover:bg-indigo-200"
+                className="col-span-2 h-[clamp(2.1rem,3.8vh,2.55rem)] rounded border border-indigo-300 bg-indigo-100 text-sm font-bold text-indigo-800 hover:bg-indigo-200"
               >
                 Tam Tutar (Tutar+Top)
               </button>
             </div>
-            <div className="mt-auto space-y-2">
+            <div className="mt-auto space-y-1.5">
             <Button
               onClick={() => void submitSale({ paymentMethod: "nakit", amount: totals.grandTotal, modeLabel: "Nakit satış" })}
               disabled={busy}
-              className="h-[clamp(4.1rem,9vh,5.4rem)] w-full bg-emerald-700 text-[clamp(1.45rem,2.8vh,1.9rem)] font-black text-white hover:bg-emerald-600"
+              className="h-[clamp(3rem,6.6vh,4rem)] w-full bg-emerald-700 text-[clamp(1.15rem,2.25vh,1.5rem)] font-black text-white hover:bg-emerald-600"
             >
               Nakit Satış (F1)
             </Button>
             <Button
               onClick={() => void submitSale({ paymentMethod: "kart", amount: totals.grandTotal, modeLabel: "POS satış" })}
               disabled={busy}
-              className="h-[clamp(4.1rem,9vh,5.4rem)] w-full bg-blue-700 text-[clamp(1.45rem,2.8vh,1.9rem)] font-black text-white hover:bg-blue-600"
+              className="h-[clamp(3rem,6.6vh,4rem)] w-full bg-blue-700 text-[clamp(1.15rem,2.25vh,1.5rem)] font-black text-white hover:bg-blue-600"
             >
               POS Satış (F2)
             </Button>
             <div className="grid grid-cols-2 gap-2">
-              <Button onClick={openMixedPaymentModal} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-teal-700 text-lg text-white hover:bg-teal-600">Kısmi / Karma (F3)</Button>
-              <Button onClick={openCariCustomerModal} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-amber-600 text-lg text-white hover:bg-amber-500">Cari Satış (F4)</Button>
-              <Button onClick={() => void readWeightFromScaleAndApply()} disabled={busy || readingScale} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-amber-500 text-lg font-black text-slate-900 hover:bg-amber-400">{readingScale ? "Terazi..." : "Terazi Oku"}</Button>
-              <Button onClick={() => void suspendCart()} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-slate-700 text-lg text-white hover:bg-slate-600">Beklemeye Al</Button>
-              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-slate-700 text-lg text-white hover:bg-slate-600">{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
+              <Button onClick={openMixedPaymentModal} disabled={busy} className="h-[clamp(2.35rem,4.3vh,2.85rem)] bg-teal-700 text-sm text-white hover:bg-teal-600">Kısmi / Karma (F3)</Button>
+              <Button onClick={openCariCustomerModal} disabled={busy} className="h-[clamp(2.35rem,4.3vh,2.85rem)] bg-amber-600 text-sm text-white hover:bg-amber-500">Cari Satış (F4)</Button>
+              <Button onClick={() => void readWeightFromScaleAndApply()} disabled={busy || readingScale} className="h-[clamp(2.35rem,4.3vh,2.85rem)] bg-amber-500 text-sm font-black text-slate-900 hover:bg-amber-400">{readingScale ? "Terazi..." : "Terazi Oku"}</Button>
+              <Button onClick={() => void suspendCart()} disabled={busy} className="h-[clamp(2.35rem,4.3vh,2.85rem)] bg-slate-700 text-sm text-white hover:bg-slate-600">Beklemeye Al</Button>
+              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-[clamp(2.35rem,4.3vh,2.85rem)] bg-slate-700 text-sm text-white hover:bg-slate-600">{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
             </div>
-            <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] w-full text-lg font-black">
+            <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-[clamp(2.35rem,4.3vh,2.85rem)] w-full text-sm font-black">
               Sepet İptal (F5)
             </Button>
             </div>
