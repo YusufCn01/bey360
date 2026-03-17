@@ -40,6 +40,10 @@ type ProductFormState = {
   discountRate: string;
   lockedForSale: boolean;
   imageUrl: string;
+  isScaleProduct: boolean;
+  scaleProductCode: string;
+  scaleBarcodeMode: "weight" | "price";
+  scaleTareGrams: string;
 };
 
 function toNumber(value: string, fallback = 0) {
@@ -85,6 +89,10 @@ const initialForm: ProductFormState = {
   discountRate: "0",
   lockedForSale: false,
   imageUrl: "",
+  isScaleProduct: false,
+  scaleProductCode: "",
+  scaleBarcodeMode: "weight",
+  scaleTareGrams: "0",
 };
 
 const currencyOptions = [
@@ -167,6 +175,10 @@ export function NewProductCardClient() {
           expiryDate: form.expiryDate || undefined,
           discountRate: toNumber(form.discountRate, 0),
           lockedForSale: form.lockedForSale,
+          isScaleProduct: form.isScaleProduct,
+          scaleProductCode: form.scaleProductCode || undefined,
+          scaleBarcodeMode: form.scaleBarcodeMode,
+          scaleTareGrams: toNumber(form.scaleTareGrams, 0),
         }),
       });
 
@@ -310,9 +322,9 @@ export function NewProductCardClient() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-semibold">Ölçü Birimi</label>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">Ölçü Birimi</label>
                     <select value={form.unit} onChange={(event) => patchField("unit", event.target.value)}>
                       <option value="ADET">Adet</option>
                       <option value="KG">Kg</option>
@@ -322,10 +334,57 @@ export function NewProductCardClient() {
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-semibold">Başlangıç Bakiyesi</label>
-                    <input type="number" step="0.01" value={form.openingStock} onChange={(event) => patchField("openingStock", event.target.value)} />
-                  </div>
+                  <input type="number" step="0.01" value={form.openingStock} onChange={(event) => patchField("openingStock", event.target.value)} />
                 </div>
               </div>
+
+              <div className="rounded-lg border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] p-3">
+                <label className="flex items-center gap-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={form.isScaleProduct}
+                    onChange={(event) => patchField("isScaleProduct", event.target.checked)}
+                  />
+                  Terazili ürün
+                </label>
+                <p className="mt-1 text-xs text-[color:var(--mx-text-muted)]">
+                  Barkod terazi etiketiyle okutulacak ürünler için aktif edin.
+                </p>
+                {form.isScaleProduct ? (
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold">Terazi Ürün Kodu</label>
+                      <input
+                        value={form.scaleProductCode}
+                        onChange={(event) => patchField("scaleProductCode", event.target.value.replace(/\D/g, ""))}
+                        placeholder="12345"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold">Terazi Modu</label>
+                      <select
+                        value={form.scaleBarcodeMode}
+                        onChange={(event) => patchField("scaleBarcodeMode", event.target.value as "weight" | "price")}
+                      >
+                        <option value="weight">Kilo Barkodu</option>
+                        <option value="price">Tutar Barkodu</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-semibold">Dara (gr)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="1"
+                        value={form.scaleTareGrams}
+                        onChange={(event) => patchField("scaleTareGrams", event.target.value)}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
 
               <div className="space-y-3">
                 <div className="grid h-60 place-items-center rounded-lg border border-dashed border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)]">

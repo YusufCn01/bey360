@@ -9,6 +9,16 @@ import {
   POS_PARAMETERS_SCOPE,
   type PosParameters,
 } from "@/modules/pos/domain/pos-parameters";
+import {
+  defaultScaleSettings,
+  parseScaleBarcode,
+  type ScaleBarcodeParseResult,
+} from "@/modules/pos/domain/scale";
+import {
+  defaultScaleConnectionSettings,
+  parseScaleConnectionSettings,
+  type ScaleConnectionSettings,
+} from "@/modules/scale/domain/scale-settings";
 import { PosCameraScannerModal } from "@/modules/pos/ui/fast-sales/components/pos-camera-scanner-modal";
 import { PosMixedPaymentModal } from "@/modules/pos/ui/fast-sales/components/pos-mixed-payment-modal";
 import { PosMobileActionBar } from "@/modules/pos/ui/fast-sales/components/pos-mobile-action-bar";
@@ -44,6 +54,10 @@ type ProductRow = {
   expiryDate?: string;
   lockedForSale: boolean;
   prices: [number, number, number, number];
+  isScaleProduct: boolean;
+  scaleProductCode: string;
+  scaleBarcodeMode: "weight" | "price";
+  scaleTareGrams: number;
 };
 
 type ProductApiRow = {
@@ -378,39 +392,11 @@ function daysUntilExpiry(dateText?: string): number | null {
   return Math.floor(diff / (24 * 60 * 60 * 1000));
 }
 
-type ScaleBarcodeParseResult = {
-  productCode: string;
-  quantity?: number;
-  encodedAmount?: number;
-  mode: "weight" | "price";
-};
-
-function parseScaleBarcode(raw: string): ScaleBarcodeParseResult | null {
-  const digits = raw.replace(/\D/g, "");
-  if (!/^(27|28|29)\d{11}$/.test(digits)) {
-    return null;
-  }
-
-  const prefix = digits.slice(0, 2);
-  const productCode = digits.slice(2, 7);
-  const encodedValue = Number(digits.slice(7, 12));
-  if (!Number.isFinite(encodedValue) || encodedValue <= 0) {
-    return null;
-  }
-
-  if (prefix === "28") {
-    const quantity = roundQuantity(encodedValue / 1000);
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      return null;
-    }
-    return { productCode, quantity, mode: "weight" };
-  }
-
-  const encodedAmount = Math.round((encodedValue / 100) * 100) / 100;
-  return { productCode, encodedAmount, mode: "price" };
-}
-
 function matchesScaleProductCode(product: ProductRow, scaleProductCode: string): boolean {
+  if (product.isScaleProduct && product.scaleProductCode) {
+    return product.scaleProductCode.replace(/\D/g, "") === scaleProductCode.replace(/\D/g, "");
+  }
+
   const targetText = scaleProductCode.toLocaleLowerCase("tr");
   const targetDigits = scaleProductCode.replace(/\D/g, "");
 
@@ -515,6 +501,7 @@ export function PosClient() {
   const [customPrice, setCustomPrice] = React.useState("0");
   const [customVatRate, setCustomVatRate] = React.useState("20");
   const [posParameters, setPosParameters] = React.useState<PosParameters>(defaultPosParameters);
+  const [scaleConnectionSettings, setScaleConnectionSettings] = React.useState<ScaleConnectionSettings>(defaultScaleConnectionSettings);
   const [printerSettings, setPrinterSettings] = React.useState<ReceiptPrinterSettings>(defaultReceiptPrinterSettings);
 
   const [products, setProducts] = React.useState<ProductRow[]>([]);
@@ -541,6 +528,12 @@ export function PosClient() {
   const [sessionCloseNote, setSessionCloseNote] = React.useState("");
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [readingScale, setReadingScale] = React.useState(false);
+  const [lastScaleWeightKg, setLastScaleWeightKg] = React.useState<number | null>(null);
+  const [lastScaleStable, setLastScaleStable] = React.useState<boolean | null>(null);
+  const [lastScaleLatencyMs, setLastScaleLatencyMs] = React.useState<number | null>(null);
+  const [lastScaleRaw, setLastScaleRaw] = React.useState<string>("");
+  const [scaleConnectionState, setScaleConnectionState] = React.useState<"disabled" | "ready" | "connected" | "error">("disabled");
   const [showOperations, setShowOperations] = React.useState(false);
   const [suspendedCarts, setSuspendedCarts] = React.useState<SuspendedCartRow[]>([]);
   const [loadingOperations, setLoadingOperations] = React.useState(false);
@@ -737,12 +730,13 @@ export function PosClient() {
     setError(null);
     try {
       const productRows = await requestApi<ProductApiRow[]>("/api/tenant/products?limit=1200");
-      const [stockRows, customerRows, settingsRow, companySettings, printerSettingsRow] = await Promise.all([
+      const [stockRows, customerRows, settingsRow, companySettings, printerSettingsRow, scaleSettingsRow] = await Promise.all([
         requestApi<StockBalanceRow[]>("/api/tenant/inventory/stock-balances?limit=3000").catch(() => []),
         requestApi<CustomerApiRow[]>("/api/tenant/customers?limit=3").catch(() => []),
         requestApi<SettingsRow>(`/api/tenant/settings?scope=${encodeURIComponent(POS_PARAMETERS_SCOPE)}`).catch(() => ({ payload: {} })),
         requestApi<SettingsRow>("/api/tenant/settings?scope=firma_ayarlari").catch(() => ({ payload: {} })),
         requestApi<SettingsRow>("/api/tenant/settings?scope=printer_settings").catch(() => ({ payload: {} })),
+        requestApi<SettingsRow>("/api/tenant/settings?scope=scale_connection_settings").catch(() => ({ payload: {} })),
       ]);
 
       const stockMap = new Map<string, number>();
@@ -777,6 +771,10 @@ export function PosClient() {
             expiryDate: asText(payload.expiryDate),
             lockedForSale: Boolean(payload.lockedForSale),
             prices: [p1, p2, p3, p4],
+            isScaleProduct: asBoolean(payload.isScaleProduct, false),
+            scaleProductCode: asText(payload.scaleProductCode),
+            scaleBarcodeMode: asText(payload.scaleBarcodeMode, "weight") === "price" ? "price" : "weight",
+            scaleTareGrams: asNumber(payload.scaleTareGrams, 0),
           } satisfies ProductRow;
         })
         .sort((a, b) => a.name.localeCompare(b.name, "tr"));
@@ -789,6 +787,9 @@ export function PosClient() {
       setProducts(normalizedProducts);
       setQuickCustomers(quick);
       setPosParameters(parsePosParameters(settingsRow.payload));
+      const parsedScaleSettings = parseScaleConnectionSettings(scaleSettingsRow.payload);
+      setScaleConnectionSettings(parsedScaleSettings);
+      setScaleConnectionState(parsedScaleSettings.enabled ? "ready" : "disabled");
       setPrinterSettings(parseReceiptPrinterSettings(printerSettingsRow.payload));
       const companyPayload = asRecord(companySettings.payload);
       setCompanyName(asText(companyPayload.companyName, "Bey360"));
@@ -1294,6 +1295,17 @@ export function PosClient() {
     return map;
   }, [products]);
 
+  const scaleCandidateProducts = React.useMemo(() => {
+    return filteredProducts.filter((product) => product.isScaleProduct);
+  }, [filteredProducts]);
+
+  const selectedScaleProduct = React.useMemo(() => {
+    if (!selectedLineId) {
+      return null;
+    }
+    return products.find((product) => product.id === selectedLineId && product.isScaleProduct) ?? null;
+  }, [products, selectedLineId]);
+
   const totals = React.useMemo(() => {
     const subTotal = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
     const taxTotal = cart.reduce((sum, line) => sum + (line.quantity * line.unitPrice * line.taxRate) / 100, 0);
@@ -1330,6 +1342,35 @@ export function PosClient() {
     unique.add(roundCurrency(totals.grandTotal));
     return Array.from(unique.values()).sort((a, b) => a - b);
   }, [totals.grandTotal]);
+
+  const scaleStatusMeta = React.useMemo(() => {
+    switch (scaleConnectionState) {
+      case "connected":
+        return {
+          label: "Terazi Bagli",
+          className: "bg-emerald-900 text-emerald-100 border border-emerald-700",
+          dotClassName: "bg-emerald-400",
+        };
+      case "error":
+        return {
+          label: "Terazi Hatasi",
+          className: "bg-rose-900 text-rose-100 border border-rose-700",
+          dotClassName: "bg-rose-400",
+        };
+      case "ready":
+        return {
+          label: "Terazi Hazir",
+          className: "bg-amber-900 text-amber-100 border border-amber-700",
+          dotClassName: "bg-amber-300",
+        };
+      default:
+        return {
+          label: "Terazi Pasif",
+          className: "bg-slate-800 text-slate-100 border border-slate-600",
+          dotClassName: "bg-slate-400",
+        };
+    }
+  }, [scaleConnectionState]);
 
   const buildCustomerScreenState = React.useCallback((): CustomerScreenState => {
     return {
@@ -1960,6 +2001,101 @@ export function PosClient() {
     return true;
   }
 
+  function applyScaleWeightToProduct(product: ProductRow, weightKg: number): boolean {
+    const normalizedWeight = normalizeQuantity(weightKg, getQuantityStep(product.unit));
+    const existingLine = cart.find((line) => line.productId === product.id);
+
+    setSelectedLineId(product.id);
+    setError(null);
+
+    if (existingLine) {
+      updateQuantity(product.id, normalizedWeight);
+      setMessage(`Terazi okundu: ${product.name} miktari ${formatQuantity(normalizedWeight)} olarak guncellendi.`);
+      return true;
+    }
+
+    const added = addProductToCart(product, normalizedWeight);
+    if (added) {
+      setMessage(`Terazi okundu: ${product.name} sepete ${formatQuantity(normalizedWeight)} olarak eklendi.`);
+    }
+    return added;
+  }
+
+  function resolveScaleTargetProduct(): ProductRow | null {
+    if (selectedScaleProduct) {
+      return selectedScaleProduct;
+    }
+
+    const exact = exactProductLookup.get(searchText.trim().toLocaleLowerCase("tr"));
+    if (exact?.isScaleProduct) {
+      return exact;
+    }
+
+    if (scaleCandidateProducts.length === 1) {
+      return scaleCandidateProducts[0];
+    }
+
+    return null;
+  }
+
+  async function readWeightFromScaleAndApply() {
+    if (!scaleConnectionSettings.enabled) {
+      setError("Terazi entegrasyonu kapali. Ayarlar > Terazi Ayarlari ekranindan aktif edin.");
+      setMessage(null);
+      return;
+    }
+
+    const targetProduct = resolveScaleTargetProduct();
+    if (!targetProduct) {
+      setError("Terazili bir urun secin veya arama alaninda tek bir terazili urun filtreleyin.");
+      setMessage(null);
+      return;
+    }
+
+    setReadingScale(true);
+    setError(null);
+    setMessage(null);
+    setScaleConnectionState("ready");
+
+    try {
+      const result = await requestApi<{
+        stable?: boolean | null;
+        weightKg?: number | null;
+        raw?: string;
+        latencyMs?: number;
+      }>("/api/tenant/scale/read", {
+        method: "POST",
+        body: JSON.stringify({
+          settings: scaleConnectionSettings,
+        }),
+      });
+
+      setLastScaleWeightKg(typeof result.weightKg === "number" ? result.weightKg : null);
+      setLastScaleStable(typeof result.stable === "boolean" ? result.stable : null);
+      setLastScaleLatencyMs(typeof result.latencyMs === "number" ? result.latencyMs : null);
+      setLastScaleRaw(typeof result.raw === "string" ? result.raw : "");
+      setScaleConnectionState("connected");
+
+      if (typeof result.weightKg !== "number" || !Number.isFinite(result.weightKg) || result.weightKg <= 0) {
+        setError("Teraziden gecerli bir agirlik okunamadi.");
+        return;
+      }
+
+      if (result.stable === false) {
+        setError("Terazi agirligi henuz stabil degil. Urunu sabitleyip tekrar deneyin.");
+        return;
+      }
+
+      applyScaleWeightToProduct(targetProduct, result.weightKg);
+    } catch (requestError) {
+      setScaleConnectionState("error");
+      setError(requestError instanceof Error ? requestError.message : "Teraziden veri okunamadi.");
+      setMessage(null);
+    } finally {
+      setReadingScale(false);
+    }
+  }
+
   function addCustomLine() {
     const unitPrice = asNumber(customPrice, 0);
     const taxRate = asNumber(customVatRate, 20);
@@ -1999,7 +2135,15 @@ export function PosClient() {
       return false;
     }
 
-    const scaleParsed = parseScaleBarcode(input.trim());
+    const scaleParsed = parseScaleBarcode(input.trim(), {
+      ...defaultScaleSettings,
+      enabled: posParameters.scaleBarcodeEnabled,
+      weightPrefix: posParameters.scaleWeightPrefix,
+      pricePrefixPrimary: posParameters.scalePricePrefixPrimary,
+      pricePrefixSecondary: posParameters.scalePricePrefixSecondary,
+      productCodeDigits: posParameters.scaleProductCodeDigits,
+      valueDigits: posParameters.scaleValueDigits,
+    });
     if (scaleParsed) {
       const weightedProduct = products.find((product) => matchesScaleProductCode(product, scaleParsed.productCode));
       if (weightedProduct) {
@@ -2849,6 +2993,10 @@ export function PosClient() {
             </Button>
           </div>
           <div className="flex items-center gap-2 text-lg font-semibold">
+            <span className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-black ${scaleStatusMeta.className}`}>
+              <span className={`h-2.5 w-2.5 rounded-full ${scaleStatusMeta.dotClassName}`} />
+              {scaleStatusMeta.label}
+            </span>
             <span className="rounded-md bg-slate-800 px-3 py-2">{registerName} ({registerId})</span>
             <span>{clock.toLocaleDateString("tr-TR")} {clock.toLocaleTimeString("tr-TR")}</span>
             <Button size="sm" variant="danger" className="h-12 px-5 text-lg" onClick={() => { window.location.href = "/giris"; }}>
@@ -2880,7 +3028,7 @@ export function PosClient() {
               <Button size="sm" className={`h-12 text-base ${priceTier === 4 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
             </div>
 
-            <div className="grid gap-1 md:grid-cols-[1fr_repeat(5,minmax(0,1fr))]">
+            <div className="grid gap-1 md:grid-cols-[1fr_repeat(6,minmax(0,1fr))]">
               <div className="flex items-center gap-1 rounded-md bg-white/95 p-1">
                 <button type="button" className="inline-flex h-11 w-12 items-center justify-center rounded-md bg-sky-700 text-xl text-white" onClick={openCameraScanner}>📷</button>
                 <input
@@ -2914,6 +3062,14 @@ export function PosClient() {
                 H.İade
               </Button>
               <Button size="sm" className={`h-12 text-base ${exchangeTargetId ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={quickExchangeSelectedLine}>H.Değşm</Button>
+              <Button
+                size="sm"
+                className="h-12 bg-amber-500 text-base font-black text-slate-900 hover:bg-amber-400"
+                onClick={() => void readWeightFromScaleAndApply()}
+                disabled={readingScale}
+              >
+                {readingScale ? "Terazi..." : "Terazi Oku"}
+              </Button>
             </div>
 
             {showMissingBarcodeActions ? (
@@ -3032,12 +3188,13 @@ export function PosClient() {
               </div>
             </div>
 
-            <div className="grid gap-2 md:grid-cols-8 xl:hidden">
+            <div className="grid gap-2 md:grid-cols-9 xl:hidden">
               <Button onClick={() => void submitSale({ paymentMethod: "nakit", amount: totals.grandTotal, modeLabel: "Nakit satış" })} disabled={busy} className="h-12 bg-emerald-700 text-white hover:bg-emerald-600">Nakit Satış (F1)</Button>
               <Button onClick={() => void submitSale({ paymentMethod: "kart", amount: totals.grandTotal, modeLabel: "POS satış" })} disabled={busy} className="h-12 bg-emerald-700 text-white hover:bg-emerald-600">POS Satış (F2)</Button>
               <Button onClick={openMixedPaymentModal} disabled={busy} className="h-12 bg-indigo-700 text-white hover:bg-indigo-600">Karma Ödeme</Button>
               <Button onClick={() => void handlePartialSale()} disabled={busy} className="h-12 bg-emerald-700 text-white hover:bg-emerald-600">Kısmi Ödeme (F3)</Button>
               <Button onClick={openCariCustomerModal} disabled={busy} className="h-12 bg-emerald-700 text-white hover:bg-emerald-600">Cari Satış (F4)</Button>
+              <Button onClick={() => void readWeightFromScaleAndApply()} disabled={busy || readingScale} className="h-12 bg-amber-500 font-black text-slate-900 hover:bg-amber-400">{readingScale ? "Terazi..." : "Terazi Oku"}</Button>
               <Button onClick={() => void suspendCart()} disabled={busy} className="h-12 bg-sky-700 text-white hover:bg-sky-600">Beklemeye Al</Button>
               <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-12 bg-slate-700 text-white hover:bg-slate-600">{showOperations ? "İşlemleri Gizle" : "İşlemler"}</Button>
               <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-12">Sepet İptal (F5)</Button>
@@ -3321,6 +3478,46 @@ export function PosClient() {
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tutar</p>
               <p className="text-4xl font-black text-slate-900">{formatTry(totals.grandTotal)}</p>
             </div>
+            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-700">Canlı Terazi</p>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {scaleConnectionSettings.brand.toUpperCase()} {scaleConnectionSettings.enabled ? "- Aktif" : "- Pasif"}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="h-10 bg-amber-500 px-4 text-base font-black text-slate-900 hover:bg-amber-400"
+                  onClick={() => void readWeightFromScaleAndApply()}
+                  disabled={readingScale}
+                >
+                  {readingScale ? "Okunuyor..." : "Terazi Oku"}
+                </Button>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                <div className="rounded border border-amber-200 bg-white px-2 py-2">
+                  <p className="text-slate-500">Son Ağırlık</p>
+                  <p className="text-lg font-black text-slate-900">
+                    {lastScaleWeightKg !== null ? `${lastScaleWeightKg.toFixed(3).replace(".", ",")} kg` : "-"}
+                  </p>
+                </div>
+                <div className="rounded border border-amber-200 bg-white px-2 py-2">
+                  <p className="text-slate-500">Stabilite</p>
+                  <p className="text-lg font-black text-slate-900">
+                    {lastScaleStable === true ? "Stabil" : lastScaleStable === false ? "Hareketli" : "-"}
+                  </p>
+                </div>
+                <div className="rounded border border-amber-200 bg-white px-2 py-2">
+                  <p className="text-slate-500">Gecikme</p>
+                  <p className="text-lg font-black text-slate-900">{lastScaleLatencyMs !== null ? `${lastScaleLatencyMs} ms` : "-"}</p>
+                </div>
+              </div>
+              {lastScaleRaw ? <p className="mt-2 truncate text-xs text-slate-500">Ham cevap: {lastScaleRaw}</p> : null}
+              <p className="mt-1 text-xs text-slate-500">
+                Hedef ürün: {selectedScaleProduct?.name ?? (scaleCandidateProducts.length === 1 ? scaleCandidateProducts[0]?.name : "Seçili değil")}
+              </p>
+            </div>
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
             <PosNumpad
@@ -3369,6 +3566,7 @@ export function PosClient() {
             <div className="grid grid-cols-2 gap-2">
               <Button onClick={openMixedPaymentModal} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-teal-700 text-lg text-white hover:bg-teal-600">Kısmi / Karma (F3)</Button>
               <Button onClick={openCariCustomerModal} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-amber-600 text-lg text-white hover:bg-amber-500">Cari Satış (F4)</Button>
+              <Button onClick={() => void readWeightFromScaleAndApply()} disabled={busy || readingScale} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-amber-500 text-lg font-black text-slate-900 hover:bg-amber-400">{readingScale ? "Terazi..." : "Terazi Oku"}</Button>
               <Button onClick={() => void suspendCart()} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-slate-700 text-lg text-white hover:bg-slate-600">Beklemeye Al</Button>
               <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-[clamp(2.9rem,5.2vh,3.6rem)] bg-slate-700 text-lg text-white hover:bg-slate-600">{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
             </div>

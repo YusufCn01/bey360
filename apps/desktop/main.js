@@ -147,6 +147,14 @@ ipcMain.handle("desktop:toggle-fullscreen", () => {
 
 ipcMain.handle("desktop:get-version", () => app.getVersion());
 ipcMain.handle("desktop:get-start-url", () => activeStartUrl);
+ipcMain.handle("desktop:close-app", () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.close();
+  } else {
+    app.quit();
+  }
+  return true;
+});
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {

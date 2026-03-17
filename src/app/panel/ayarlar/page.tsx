@@ -18,6 +18,12 @@ export default function SettingsPage() {
           POS Ayarları
         </Link>
         <Link
+          href="/panel/ayarlar/terazi-ayarlar"
+          className="rounded-md border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] px-3 py-2 text-sm font-semibold"
+        >
+          Terazi Ayarları
+        </Link>
+        <Link
           href="/panel/ayarlar/e-fatura-ayarlar"
           className="rounded-md border border-[color:var(--mx-border)] bg-[color:var(--mx-surface-soft)] px-3 py-2 text-sm font-semibold"
         >

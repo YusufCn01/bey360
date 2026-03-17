@@ -37,6 +37,10 @@ const updateProductSchema = z.object({
   discountRate: z.number().nonnegative().max(100).optional(),
   lockedForSale: z.boolean().optional(),
   expiryTracking: z.boolean().optional(),
+  isScaleProduct: z.boolean().optional(),
+  scaleProductCode: z.string().max(20).optional(),
+  scaleBarcodeMode: z.enum(["weight", "price"]).optional(),
+  scaleTareGrams: z.number().nonnegative().max(20000).optional(),
 });
 
 export async function GET(

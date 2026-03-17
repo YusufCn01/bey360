@@ -118,6 +118,14 @@ function toneClass(tone: LoginAnnouncementItem["tone"]) {
 
 export function LoginForm({ announcements, appVersion }: LoginFormProps) {
   const router = useRouter();
+  const desktopBridge =
+    typeof window !== "undefined"
+      ? (window as Window & {
+          bey360Desktop?: {
+            closeApp?: () => Promise<boolean>;
+          };
+        }).bey360Desktop
+      : undefined;
   const [loginError, setLoginError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -302,6 +310,22 @@ export function LoginForm({ announcements, appVersion }: LoginFormProps) {
     }
   });
 
+  async function handleCloseApp() {
+    try {
+      if (desktopBridge?.closeApp) {
+        await desktopBridge.closeApp();
+        return;
+      }
+
+      window.close();
+      setTimeout(() => {
+        window.location.href = "about:blank";
+      }, 150);
+    } catch {
+      window.location.href = "about:blank";
+    }
+  }
+
   return (
     <>
       <div className="mx-auto w-full max-w-[980px] overflow-hidden rounded-xl border border-slate-300 bg-white shadow-[0_20px_70px_rgba(12,18,38,0.22)]">
@@ -352,6 +376,13 @@ export function LoginForm({ announcements, appVersion }: LoginFormProps) {
               </button>
               <button type="button" className="hover:text-slate-900">
                 Destek
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleCloseApp()}
+                className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                Kapat
               </button>
             </div>
 

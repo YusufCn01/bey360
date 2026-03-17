@@ -63,6 +63,10 @@ export async function createProduct(input: ProductCreateInput) {
       expiryDate: input.expiryDate,
       discountRate: input.discountRate ?? 0,
       lockedForSale: input.lockedForSale ?? false,
+      isScaleProduct: input.isScaleProduct ?? false,
+      scaleProductCode: input.scaleProductCode,
+      scaleBarcodeMode: input.scaleBarcodeMode ?? "weight",
+      scaleTareGrams: input.scaleTareGrams ?? 0,
     };
 
     const product = await tx.products.create({

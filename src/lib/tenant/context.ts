@@ -56,8 +56,7 @@ export async function getTenantContext(): Promise<TenantContext> {
   const forwardedHost = headerStore.get("x-forwarded-host")?.split(",")[0]?.trim();
   const host = forwardedHost || headerStore.get("host") || undefined;
   const tenantSlugFromHost = extractTenantSlugFromHost(host);
-
-  const tenantSlug = tenantSlugFromHeaders ?? tenantSlugFromHost ?? getDefaultTenantSlug();
+  const tenantSlug = tenantSlugFromHeaders ?? tenantSlugFromHost;
 
   if (tenantSlug) {
     const tenant = await resolveTenantBySlug(tenantSlug);
@@ -77,7 +76,15 @@ export async function getTenantContext(): Promise<TenantContext> {
         return toTenantContext(tenantById);
       }
     } catch {
-      // Ignore token parse errors and fail with deterministic tenant error below.
+      // Ignore token parse errors and continue to deterministic fallbacks below.
+    }
+  }
+
+  const defaultTenantSlug = getDefaultTenantSlug();
+  if (defaultTenantSlug) {
+    const defaultTenant = await resolveTenantBySlug(defaultTenantSlug);
+    if (defaultTenant) {
+      return toTenantContext(defaultTenant);
     }
   }
 
@@ -87,6 +94,6 @@ export async function getTenantContext(): Promise<TenantContext> {
   }
 
   throw new Error(
-    "Tenant bilgisi bulunamadı. DEFAULT_TENANT_SLUG ayarlayın veya giriş ekranından demo/tenant kaydı oluşturun.",
+    "Tenant bilgisi bulunamadi. DEFAULT_TENANT_SLUG ayarlayin veya giris ekranindan demo tenant olusturun.",
   );
 }

@@ -13,7 +13,7 @@ function getDefaultTenantSlug(): string | null {
   return normalizeTenantSlug(process.env.DEFAULT_TENANT_SLUG);
 }
 
-function resolveTenantSlug(request: NextRequest): string | null {
+function resolveTenantSlug(request: NextRequest, allowDefaultTenant = true): string | null {
   const explicit = normalizeTenantSlug(request.headers.get("x-tenant") || request.nextUrl.searchParams.get("tenant"));
   if (explicit) {
     return explicit;
@@ -26,17 +26,20 @@ function resolveTenantSlug(request: NextRequest): string | null {
     return hostSlug;
   }
 
-  const defaultTenant = getDefaultTenantSlug();
-  if (defaultTenant) {
-    return defaultTenant;
+  if (allowDefaultTenant) {
+    const defaultTenant = getDefaultTenantSlug();
+    if (defaultTenant) {
+      return defaultTenant;
+    }
   }
 
-  return process.env.NODE_ENV === "development" ? "demo-market" : null;
+  return allowDefaultTenant && process.env.NODE_ENV === "development" ? "demo-market" : null;
 }
 
 export function proxy(request: NextRequest) {
-  const tenantSlug = resolveTenantSlug(request);
   const correlationId = request.headers.get("x-correlation-id") ?? crypto.randomUUID();
+  const hasSession = Boolean(request.cookies.get("mx_access")?.value);
+  const tenantSlug = resolveTenantSlug(request, !hasSession);
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-correlation-id", correlationId);
@@ -47,7 +50,6 @@ export function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const requiresAuth = protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
-  const hasSession = Boolean(request.cookies.get("mx_access")?.value);
 
   if (requiresAuth && !hasSession) {
     const loginUrl = new URL("/giris", request.url);

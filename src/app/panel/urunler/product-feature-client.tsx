@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmModal, type ConfirmModalTone } from "@/components/ui/confirm-modal";
 import { LabelDesignListFeature, LabelDesignerFeature } from "@/app/panel/urunler/label-designer-feature";
+import { buildScaleBarcode } from "@/modules/pos/domain/scale";
 
 type ProductRecord = {
   id: string;
@@ -31,6 +32,10 @@ type ProductView = {
   productGroup: string;
   productSubGroup: string;
   lockedForSale: boolean;
+  isScaleProduct: boolean;
+  scaleProductCode: string;
+  scaleBarcodeMode: "weight" | "price";
+  scaleTareGrams: number;
 };
 
 type ProductFeatureClientProps = {
@@ -104,6 +109,10 @@ function mapProduct(row: ProductRecord): ProductView {
     productGroup: asText(payload.productGroup, "Grupsuz"),
     productSubGroup: asText(payload.productSubGroup, "Grupsuz"),
     lockedForSale: asBool(payload.lockedForSale, false),
+    isScaleProduct: asBool(payload.isScaleProduct, false),
+    scaleProductCode: asText(payload.scaleProductCode),
+    scaleBarcodeMode: asText(payload.scaleBarcodeMode, "weight") === "price" ? "price" : "weight",
+    scaleTareGrams: asNumber(payload.scaleTareGrams, 0),
   };
 }
 
@@ -312,6 +321,10 @@ function ExistingProductCardFeature() {
           productSubGroup: form.productSubGroup,
           discountRate: form.discountRate,
           lockedForSale: form.lockedForSale,
+          isScaleProduct: form.isScaleProduct,
+          scaleProductCode: form.scaleProductCode || undefined,
+          scaleBarcodeMode: form.scaleBarcodeMode,
+          scaleTareGrams: form.scaleTareGrams,
         }),
       });
       setMessage("Ürün kartı güncellendi.");
@@ -358,6 +371,16 @@ function ExistingProductCardFeature() {
               <input type="checkbox" className="h-4 w-4" checked={form.lockedForSale} onChange={(event) => patch("lockedForSale", event.target.checked)} />
               Satışa kapalı
             </label>
+            <label className="inline-flex items-center gap-2 text-sm font-semibold">
+              <input type="checkbox" className="h-4 w-4" checked={form.isScaleProduct} onChange={(event) => patch("isScaleProduct", event.target.checked)} />
+              Terazili ürün
+            </label>
+            <input value={form.scaleProductCode} onChange={(event) => patch("scaleProductCode", event.target.value.replace(/\D/g, ""))} placeholder="Terazi ürün kodu" />
+            <select value={form.scaleBarcodeMode} onChange={(event) => patch("scaleBarcodeMode", event.target.value as "weight" | "price")}>
+              <option value="weight">Kilo barkodu</option>
+              <option value="price">Tutar barkodu</option>
+            </select>
+            <input type="number" value={form.scaleTareGrams} onChange={(event) => patch("scaleTareGrams", asNumber(event.target.value))} placeholder="Dara (gr)" />
             <div className="md:col-span-2">
               <input value={form.imageUrl} onChange={(event) => patch("imageUrl", event.target.value)} placeholder="Görsel URL" />
             </div>
@@ -830,6 +853,8 @@ function TopluEtiketYazdirFeature() {
   const { products, loading, error } = useProducts();
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const [fontSize, setFontSize] = React.useState("12");
+  const [labelMode, setLabelMode] = React.useState<"regular" | "scale">("regular");
+  const [sampleWeight, setSampleWeight] = React.useState("1");
   const [printError, setPrintError] = React.useState<string | null>(null);
 
   function print() {
@@ -839,18 +864,38 @@ function TopluEtiketYazdirFeature() {
       return;
     }
     const size = asNumber(fontSize, 12);
+    const weight = Math.max(0.001, asNumber(sampleWeight, 1));
     const html = `
       <html><head><title>Etiket Yazdır</title></head>
       <body>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(58mm,1fr));gap:6px;">
           ${selected
             .map(
-              (item) => `
+              (item) => {
+                const scaleBarcode =
+                  item.isScaleProduct && item.scaleProductCode
+                    ? buildScaleBarcode({
+                        productCode: item.scaleProductCode,
+                        mode: item.scaleBarcodeMode,
+                        quantity: weight,
+                        amount: item.salePrice * weight,
+                      })
+                    : "";
+
+                return `
             <div style="border:1px solid #999;padding:4px;height:40mm;display:flex;flex-direction:column;justify-content:space-between;">
               <div style="font-size:${size}px;font-weight:700;">${item.name}</div>
-              <div style="font-size:${Math.max(size - 1, 9)}px;">${item.barcode || item.code}</div>
+              <div style="font-size:${Math.max(size - 1, 9)}px;">${
+                labelMode === "scale" && scaleBarcode ? scaleBarcode : item.barcode || item.code
+              }</div>
+              ${
+                labelMode === "scale" && item.isScaleProduct
+                  ? `<div style="font-size:${Math.max(size - 2, 8)}px;">${weight.toFixed(3)} KG x ${item.salePrice.toFixed(2)} ₺</div>`
+                  : ""
+              }
               <div style="font-size:${size + 1}px;font-weight:700;">${item.salePrice.toFixed(2)} ₺</div>
-            </div>`,
+            </div>`;
+              },
             )
             .join("")}
         </div>
@@ -874,7 +919,14 @@ function TopluEtiketYazdirFeature() {
       <CardContent className="space-y-3">
         {loading ? <p className="text-sm text-[color:var(--mx-text-muted)]">Ürünler yükleniyor...</p> : null}
         {error ? <p className="text-sm text-rose-700">{error}</p> : null}
-        <input value={fontSize} onChange={(event) => setFontSize(event.target.value)} placeholder="Font boyutu" />
+        <div className="grid gap-2 md:grid-cols-3">
+          <input value={fontSize} onChange={(event) => setFontSize(event.target.value)} placeholder="Font boyutu" />
+          <select value={labelMode} onChange={(event) => setLabelMode(event.target.value as "regular" | "scale")}>
+            <option value="regular">Standart etiket</option>
+            <option value="scale">Terazi etiketi</option>
+          </select>
+          <input value={sampleWeight} onChange={(event) => setSampleWeight(event.target.value)} placeholder="Örnek kilo" />
+        </div>
         {!loading ? <ProductPicker products={products} selectedIds={selectedIds} setSelectedIds={setSelectedIds} /> : null}
         {printError ? <p className="text-sm text-rose-700">{printError}</p> : null}
         <div className="flex justify-end">

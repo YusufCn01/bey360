@@ -603,6 +603,12 @@ export const panelNavSections: PanelNavSection[] = [
         icon: "settings",
       },
       {
+        href: "/panel/ayarlar/terazi-ayarlar",
+        label: "Terazi Ayarları",
+        description: "TEM, CAS, Dikomsan, Hana, Betsa ve TESS cihaz bağlantıları.",
+        icon: "settings",
+      },
+      {
         href: "/panel/ayarlar/e-fatura-ayarlar",
         label: "e-Fatura Ayarları",
         description: "Sağlayıcı, alias ve belge konfigürasyonları.",

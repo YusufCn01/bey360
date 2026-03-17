@@ -476,6 +476,71 @@ export function PosParametersClient() {
                   />
                 </div>
 
+                <label className="flex items-center gap-2 rounded-md border border-[color:var(--mx-border)] px-3 py-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5"
+                    checked={form.scaleBarcodeEnabled}
+                    onChange={(event) => setForm((prev) => patchValue(prev, "scaleBarcodeEnabled", event.target.checked))}
+                  />
+                  Terazi barkodu aktif
+                </label>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold">Terazi Kilo Prefix</label>
+                    <input
+                      value={form.scaleWeightPrefix}
+                      onChange={(event) => setForm((prev) => patchValue(prev, "scaleWeightPrefix", event.target.value))}
+                      placeholder="28"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold">Terazi Fiyat Prefix</label>
+                    <input
+                      value={form.scalePricePrefixPrimary}
+                      onChange={(event) => setForm((prev) => patchValue(prev, "scalePricePrefixPrimary", event.target.value))}
+                      placeholder="27"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold">Alternatif Fiyat Prefix</label>
+                    <input
+                      value={form.scalePricePrefixSecondary}
+                      onChange={(event) => setForm((prev) => patchValue(prev, "scalePricePrefixSecondary", event.target.value))}
+                      placeholder="29"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-semibold">Ürün Kod Hane</label>
+                    <input
+                      type="number"
+                      min={4}
+                      max={7}
+                      value={form.scaleProductCodeDigits}
+                      onChange={(event) =>
+                        setForm((prev) => patchValue(prev, "scaleProductCodeDigits", Math.max(4, Number(event.target.value) || 5)))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold">Değer Hane</label>
+                  <input
+                    type="number"
+                    min={4}
+                    max={6}
+                    value={form.scaleValueDigits}
+                    onChange={(event) =>
+                      setForm((prev) => patchValue(prev, "scaleValueDigits", Math.max(4, Number(event.target.value) || 5)))
+                    }
+                  />
+                </div>
+
                 <div className="flex items-center gap-2">
                   <Button
                     variant="secondary"

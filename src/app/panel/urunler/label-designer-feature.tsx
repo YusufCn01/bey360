@@ -21,6 +21,9 @@ type LabelElementType =
   | "salePrice2"
   | "salePrice3"
   | "salePrice4"
+  | "scaleBarcode"
+  | "scaleWeight"
+  | "scaleUnitPrice"
   | "custom";
 
 type LabelElement = {
@@ -71,6 +74,9 @@ const defaultPalette: Array<{ type: LabelElementType; label: string }> = [
   { type: "salePrice2", label: "Satış Fiyat 2" },
   { type: "salePrice3", label: "Satış Fiyat 3" },
   { type: "salePrice4", label: "Satış Fiyat 4" },
+  { type: "scaleBarcode", label: "Terazi Barkodu" },
+  { type: "scaleWeight", label: "Terazi Gramaj" },
+  { type: "scaleUnitPrice", label: "Birim Fiyat" },
 ];
 
 const scopeCode = "urun_etiket_tasarimlari";

@@ -33,6 +33,10 @@
   expiryDate?: string;
   discountRate?: number;
   lockedForSale?: boolean;
+  isScaleProduct?: boolean;
+  scaleProductCode?: string;
+  scaleBarcodeMode?: "weight" | "price";
+  scaleTareGrams?: number;
 };
 
 export type ProductListFilter = {

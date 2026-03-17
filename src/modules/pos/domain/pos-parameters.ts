@@ -18,6 +18,12 @@ export type PosParameters = {
   okcIpAddress: string;
   okcPort: string;
   okcSerialNo: string;
+  scaleBarcodeEnabled: boolean;
+  scaleWeightPrefix: string;
+  scalePricePrefixPrimary: string;
+  scalePricePrefixSecondary: string;
+  scaleProductCodeDigits: number;
+  scaleValueDigits: number;
   lastProgramResetAt: string;
   lastMovementResetAt: string;
 };
@@ -37,6 +43,12 @@ export const defaultPosParameters: PosParameters = {
   okcIpAddress: "",
   okcPort: "",
   okcSerialNo: "",
+  scaleBarcodeEnabled: true,
+  scaleWeightPrefix: "28",
+  scalePricePrefixPrimary: "27",
+  scalePricePrefixSecondary: "29",
+  scaleProductCodeDigits: 5,
+  scaleValueDigits: 5,
   lastProgramResetAt: "",
   lastMovementResetAt: "",
 };
@@ -91,6 +103,12 @@ export function parsePosParameters(value: unknown): PosParameters {
     okcIpAddress: asText(row.okcIpAddress, defaultPosParameters.okcIpAddress),
     okcPort: asText(row.okcPort, defaultPosParameters.okcPort),
     okcSerialNo: asText(row.okcSerialNo, defaultPosParameters.okcSerialNo),
+    scaleBarcodeEnabled: asBool(row.scaleBarcodeEnabled, defaultPosParameters.scaleBarcodeEnabled),
+    scaleWeightPrefix: asText(row.scaleWeightPrefix, defaultPosParameters.scaleWeightPrefix),
+    scalePricePrefixPrimary: asText(row.scalePricePrefixPrimary, defaultPosParameters.scalePricePrefixPrimary),
+    scalePricePrefixSecondary: asText(row.scalePricePrefixSecondary, defaultPosParameters.scalePricePrefixSecondary),
+    scaleProductCodeDigits: Math.max(4, Math.floor(asNumber(row.scaleProductCodeDigits, defaultPosParameters.scaleProductCodeDigits))),
+    scaleValueDigits: Math.max(4, Math.floor(asNumber(row.scaleValueDigits, defaultPosParameters.scaleValueDigits))),
     lastProgramResetAt: asText(row.lastProgramResetAt, defaultPosParameters.lastProgramResetAt),
     lastMovementResetAt: asText(row.lastMovementResetAt, defaultPosParameters.lastMovementResetAt),
   };

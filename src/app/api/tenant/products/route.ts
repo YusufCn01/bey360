@@ -38,6 +38,10 @@ const createProductSchema = z.object({
   expiryDate: z.string().max(60).optional(),
   discountRate: z.number().nonnegative().max(100).optional(),
   lockedForSale: z.boolean().optional(),
+  isScaleProduct: z.boolean().optional(),
+  scaleProductCode: z.string().max(20).optional(),
+  scaleBarcodeMode: z.enum(["weight", "price"]).optional(),
+  scaleTareGrams: z.number().nonnegative().max(20000).optional(),
 });
 
 export async function GET(request: NextRequest) {
