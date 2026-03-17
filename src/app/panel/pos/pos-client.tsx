@@ -513,6 +513,7 @@ export function PosClient() {
     { id: "pay-1", method: "nakit", amount: "0", reference: "" },
   ]);
   const [showAdvancedPos, setShowAdvancedPos] = React.useState(true);
+  const [kioskMode, setKioskMode] = React.useState(false);
   const [showCameraScanner, setShowCameraScanner] = React.useState(false);
   const [cameraBusy, setCameraBusy] = React.useState(false);
   const [torchEnabled, setTorchEnabled] = React.useState(false);
@@ -644,7 +645,35 @@ export function PosClient() {
     }
     const params = new URLSearchParams(window.location.search);
     setFocusParam(params.get("focus") ?? "");
+    const kioskParam = params.get("kiosk");
+    const storedKiosk = window.localStorage.getItem("pos:kiosk-mode");
+    if (kioskParam === "1") {
+      setKioskMode(true);
+    } else if (kioskParam === "0") {
+      setKioskMode(false);
+    } else if (storedKiosk === "1") {
+      setKioskMode(true);
+    }
   }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem("pos:kiosk-mode", kioskMode ? "1" : "0");
+  }, [kioskMode]);
+
+  React.useEffect(() => {
+    if (!kioskMode) {
+      return;
+    }
+    if (showOperations) {
+      setShowOperations(false);
+    }
+    if (showAdvancedPos) {
+      setShowAdvancedPos(false);
+    }
+  }, [kioskMode, showAdvancedPos, showOperations]);
 
   const openConfirmDialog = React.useCallback(
     (options: Omit<ConfirmDialogState, "open">) =>
@@ -3015,7 +3044,7 @@ export function PosClient() {
   ]);
 
   return (
-    <div className="grid h-[100dvh] grid-rows-[auto_auto_minmax(0,1fr)] gap-1 overflow-hidden bg-slate-100 pb-24 text-[16px] md:pb-0 xl:text-[17px]">
+    <div className={`grid h-[100dvh] grid-rows-[auto_auto_minmax(0,1fr)] gap-1 overflow-hidden bg-slate-100 text-[16px] xl:text-[17px] ${kioskMode ? "pb-0" : "pb-24 md:pb-0"}`}>
       <PosSaleTabs
         tabs={saleTabs}
         activeTabId={activeSaleTabId}
@@ -3024,78 +3053,92 @@ export function PosClient() {
         onRename={renameSaleTab}
         onClose={(tabId) => void closeSaleTab(tabId)}
         canCloseTabs={saleTabs.length > 1}
+        compact={kioskMode}
       />
 
       <div className="overflow-hidden rounded-xl border border-slate-700 bg-[#17253c] text-slate-100 shadow-md">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 px-3 py-2">
+        <div className={`flex flex-wrap items-center justify-between gap-2 ${kioskMode ? "" : "border-b border-slate-700"} ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"}`}>
           <div className="flex flex-wrap items-center gap-2">
-            <p className="pr-2 text-4xl font-black leading-none text-white">{companyName || "Bey360"}</p>
-            <Button size="sm" className="h-12 bg-sky-700 px-5 text-lg text-white hover:bg-sky-600" onClick={() => setSearchText("")}>
+            <p className={`pr-2 font-black leading-none text-white ${kioskMode ? "text-3xl" : "text-4xl"}`}>{companyName || "Bey360"}</p>
+            <Button size="sm" className={`${kioskMode ? "h-10 px-4 text-base" : "h-12 px-5 text-lg"} bg-sky-700 text-white hover:bg-sky-600`} onClick={() => setSearchText("")}>
               Hızlı Satış
             </Button>
-            <Button size="sm" className="h-12 bg-slate-700 px-5 text-lg text-white hover:bg-slate-600" onClick={openCustomerScreen}>
-              Müşteri Ekranı
-            </Button>
+            {!kioskMode ? (
+              <>
+                <Button size="sm" className="h-12 bg-slate-700 px-5 text-lg text-white hover:bg-slate-600" onClick={openCustomerScreen}>
+                  Müşteri Ekranı
+                </Button>
+                <Button
+                  size="sm"
+                  className={`h-12 px-5 text-lg ${showAdvancedPos ? "bg-indigo-600 text-white hover:bg-indigo-500" : "bg-slate-700 text-white hover:bg-slate-600"}`}
+                  onClick={() => setShowAdvancedPos((prev) => !prev)}
+                >
+                  Gelişmiş Mod
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-12 bg-amber-500 px-5 text-lg text-slate-900 hover:bg-amber-400"
+                  onClick={() => (lastSaleReceipt ? printSaleReceipt(lastSaleReceipt) : setError("Yazdırmak için önce satış tamamlayın."))}
+                >
+                  Fiş Yazdır/Önizleme
+                </Button>
+              </>
+            ) : null}
             <Button
               size="sm"
-              className={`h-12 px-5 text-lg ${showAdvancedPos ? "bg-indigo-600 text-white hover:bg-indigo-500" : "bg-slate-700 text-white hover:bg-slate-600"}`}
-              onClick={() => setShowAdvancedPos((prev) => !prev)}
+              className={`${kioskMode ? "h-10 px-4 text-sm" : "h-12 px-5 text-lg"} ${kioskMode ? "bg-cyan-700 hover:bg-cyan-600" : "bg-slate-700 hover:bg-slate-600"} text-white`}
+              onClick={() => setKioskMode((prev) => !prev)}
             >
-              Gelişmiş Mod
-            </Button>
-            <Button
-              size="sm"
-              className="h-12 bg-amber-500 px-5 text-lg text-slate-900 hover:bg-amber-400"
-              onClick={() => (lastSaleReceipt ? printSaleReceipt(lastSaleReceipt) : setError("Yazdırmak için önce satış tamamlayın."))}
-            >
-              Fiş Yazdır/Önizleme
+              {kioskMode ? "Kiosk Açık" : "Kiosk Modu"}
             </Button>
           </div>
-          <div className="flex items-center gap-2 text-lg font-semibold">
-            <span className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-black ${scaleStatusMeta.className}`}>
+          <div className={`flex items-center gap-2 font-semibold ${kioskMode ? "text-base" : "text-lg"}`}>
+            <span className={`inline-flex items-center gap-2 rounded-md ${kioskMode ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm"} font-black ${scaleStatusMeta.className}`}>
               <span className={`h-2.5 w-2.5 rounded-full ${scaleStatusMeta.dotClassName}`} />
               {scaleStatusMeta.label}
             </span>
-            <span className="rounded-md bg-slate-800 px-3 py-2">{registerName} ({registerId})</span>
+            <span className={`rounded-md bg-slate-800 ${kioskMode ? "px-2.5 py-1.5 text-sm" : "px-3 py-2"}`}>{registerName} ({registerId})</span>
             <span>{clock.toLocaleDateString("tr-TR")} {clock.toLocaleTimeString("tr-TR")}</span>
-            <Button size="sm" variant="danger" className="h-12 px-5 text-lg" onClick={() => { window.location.href = "/giris"; }}>
+            <Button size="sm" variant="danger" className={`${kioskMode ? "h-10 px-4 text-base" : "h-12 px-5 text-lg"}`} onClick={() => { window.location.href = "/giris"; }}>
               Çıkış
             </Button>
           </div>
         </div>
-        <div className="grid gap-2 bg-[#1e2f49] px-3 py-2 md:grid-cols-[140px_1fr_120px_1fr_auto]">
-          <input value={registerId} onChange={(event) => setRegisterId(event.target.value)} className="h-12 rounded border border-slate-500 bg-slate-100 px-3 text-lg text-slate-900" placeholder="Kasa Kodu" />
-          <input value={searchText} onChange={(event) => setSearchText(event.target.value)} className="h-12 rounded border border-slate-500 bg-slate-100 px-3 text-lg text-slate-900" placeholder="Barkod / Ürün Adı Okutun..." />
-          <Button size="sm" className="h-12 bg-slate-300 px-3 text-lg text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
-          <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} className="h-12 rounded border border-slate-500 bg-slate-100 px-3 text-lg text-slate-900" placeholder="Müşteri Seçiniz..." />
-          <Button size="sm" className="h-12 bg-slate-700 px-4 text-lg text-white hover:bg-slate-600" onClick={() => void loadData()} disabled={loadingProducts}>
-            Yenile
-          </Button>
-        </div>
+        {!kioskMode ? (
+          <div className="grid gap-2 bg-[#1e2f49] px-3 py-2 md:grid-cols-[140px_1fr_120px_1fr_auto]">
+            <input value={registerId} onChange={(event) => setRegisterId(event.target.value)} className="h-12 rounded border border-slate-500 bg-slate-100 px-3 text-lg text-slate-900" placeholder="Kasa Kodu" />
+            <input value={searchText} onChange={(event) => setSearchText(event.target.value)} className="h-12 rounded border border-slate-500 bg-slate-100 px-3 text-lg text-slate-900" placeholder="Barkod / Ürün Adı Okutun..." />
+            <Button size="sm" className="h-12 bg-slate-300 px-3 text-lg text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
+            <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} className="h-12 rounded border border-slate-500 bg-slate-100 px-3 text-lg text-slate-900" placeholder="Müşteri Seçiniz..." />
+            <Button size="sm" className="h-12 bg-slate-700 px-4 text-lg text-white hover:bg-slate-600" onClick={() => void loadData()} disabled={loadingProducts}>
+              Yenile
+            </Button>
+          </div>
+        ) : null}
       </div>
 
-      <div className="grid min-h-0 gap-1 xl:grid-cols-[minmax(0,1.1fr)_332px_minmax(0,1.16fr)]">
+      <div className={`grid min-h-0 gap-1 ${kioskMode ? "xl:grid-cols-[minmax(0,1.16fr)_304px_minmax(0,1.22fr)]" : "xl:grid-cols-[minmax(0,1.1fr)_332px_minmax(0,1.16fr)]"}`}>
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f8fafc] shadow-sm">
-          <div className="space-y-1 border-b border-slate-300 bg-slate-100 p-2">
-            <div className="grid gap-1 md:grid-cols-7">
-              <Button size="sm" className="h-12 bg-sky-700 text-base text-white hover:bg-sky-600" onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
-              <Button size="sm" className="h-12 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
-              <Button size="sm" className="h-12 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={() => setShowCustomPanel((prev) => !prev)}>Muhtelif</Button>
-              <Button size="sm" className={`h-12 text-base ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
-              <Button size="sm" className={`h-12 text-base ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
-              <Button size="sm" className={`h-12 text-base ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
-              <Button size="sm" className={`h-12 text-base ${priceTier === 4 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
+          <div className={`space-y-1 border-b border-slate-300 bg-slate-100 ${kioskMode ? "p-1.5" : "p-2"}`}>
+            <div className={`grid gap-1 ${kioskMode ? "md:grid-cols-6" : "md:grid-cols-7"}`}>
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-sky-700 text-white hover:bg-sky-600`} onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-slate-300 text-slate-900 hover:bg-slate-200`} onClick={showSelectedLinePrice}>Fiyat Gör</Button>
+              {!kioskMode ? <Button size="sm" className="h-12 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={() => setShowCustomPanel((prev) => !prev)}>Muhtelif</Button> : null}
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${priceTier === 4 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
             </div>
 
-            <div className="grid gap-1 md:grid-cols-[1fr_repeat(6,minmax(0,1fr))]">
+            <div className={`grid gap-1 ${kioskMode ? "md:grid-cols-[1fr_repeat(5,minmax(0,1fr))]" : "md:grid-cols-[1fr_repeat(6,minmax(0,1fr))]"}`}>
               <div className="flex items-center gap-1 rounded-md bg-white/95 p-1">
-                <button type="button" className="inline-flex h-11 w-12 items-center justify-center rounded-md bg-sky-700 text-xl text-white" onClick={openCameraScanner}>📷</button>
+                <button type="button" className={`inline-flex ${kioskMode ? "h-10 w-11 text-lg" : "h-11 w-12 text-xl"} items-center justify-center rounded-md bg-sky-700 text-white`} onClick={openCameraScanner}>📷</button>
                 <input
                   ref={searchInputRef}
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
                   placeholder="Barkod / Ürün adı / Ürün kodu"
-                  className="h-11 flex-1 rounded border border-slate-300 px-3 text-base"
+                  className={`${kioskMode ? "h-10 text-sm" : "h-11 text-base"} flex-1 rounded border border-slate-300 px-3`}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
@@ -3105,25 +3148,25 @@ export function PosClient() {
                     }
                   }}
                 />
-                <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-rose-300 bg-rose-50 text-lg text-rose-700" onClick={() => setSearchText("")}>✕</button>
+                <button type="button" className={`inline-flex ${kioskMode ? "h-10 w-10 text-base" : "h-11 w-11 text-lg"} items-center justify-center rounded-md border border-rose-300 bg-rose-50 text-rose-700`} onClick={() => setSearchText("")}>✕</button>
               </div>
 
-              <Button size="sm" className="h-12 bg-indigo-100 text-base text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(0)}>{quickCustomers[0]?.name ?? "Müşteri 1"}</Button>
-              <Button size="sm" className="h-12 bg-indigo-100 text-base text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(1)}>{quickCustomers[1]?.name ?? "Müşteri 2"}</Button>
-              <Button size="sm" className="h-12 bg-indigo-100 text-base text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(2)}>{quickCustomers[2]?.name ?? "Müşteri 3"}</Button>
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-indigo-100 text-indigo-800 hover:bg-indigo-200`} onClick={() => applyQuickCustomer(0)}>{quickCustomers[0]?.name ?? "Müşteri 1"}</Button>
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-indigo-100 text-indigo-800 hover:bg-indigo-200`} onClick={() => applyQuickCustomer(1)}>{quickCustomers[1]?.name ?? "Müşteri 2"}</Button>
+              {!kioskMode ? <Button size="sm" className="h-12 bg-indigo-100 text-base text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(2)}>{quickCustomers[2]?.name ?? "Müşteri 3"}</Button> : null}
               <Button
                 size="sm"
-                className="h-12 bg-emerald-700 text-base text-white hover:bg-emerald-600"
+                className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-emerald-700 text-white hover:bg-emerald-600`}
                 onClick={quickReturnSelectedLine}
                 disabled={!canReturnOperations}
                 title={!canReturnOperations ? "Hızlı iade için yetkiniz yok." : undefined}
               >
                 H.İade
               </Button>
-              <Button size="sm" className={`h-12 text-base ${exchangeTargetId ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={quickExchangeSelectedLine}>H.Değşm</Button>
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${exchangeTargetId ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={quickExchangeSelectedLine}>H.Değşm</Button>
               <Button
                 size="sm"
-                className="h-12 bg-amber-500 text-base font-black text-slate-900 hover:bg-amber-400"
+                className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-amber-500 font-black text-slate-900 hover:bg-amber-400`}
                 onClick={() => void readWeightFromScaleAndApply()}
                 disabled={readingScale}
               >
@@ -3175,7 +3218,7 @@ export function PosClient() {
               <tbody>
                 {cart.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="h-[44vh] px-3 py-8 text-center text-[color:var(--mx-text-muted)]">Sepet boş. Sağ taraftan ürün seçin veya barkod okutun.</td>
+                    <td colSpan={8} className={`${kioskMode ? "h-[34vh] text-sm" : "h-[44vh]"} px-3 py-8 text-center text-[color:var(--mx-text-muted)]`}>Sepet boş. Sağ taraftan ürün seçin veya barkod okutun.</td>
                   </tr>
                 ) : (
                   cart.map((line, index) => {
@@ -3208,16 +3251,16 @@ export function PosClient() {
             </table>
           </div>
 
-          <div className="shrink-0 space-y-2 border-t border-slate-300 bg-[#1c2a44] p-2 text-white">
-            <div className="grid gap-2 md:grid-cols-8">
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Toplam Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Genel İskonto</p><p className="font-bold">{formatTry(0)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Tahsil Edilen</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
-              <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Para Üstü</p><p className="font-bold text-indigo-700">{formatTry(paymentPreview.change)}</p></div>
-              <div className="rounded border border-emerald-700 bg-emerald-800 px-3 py-2 text-base text-white"><p className="text-sm text-emerald-100">Genel Toplam</p><p className="text-xl font-extrabold">{formatTry(totals.grandTotal)}</p></div>
+          <div className={`shrink-0 space-y-2 border-t border-slate-300 bg-[#1c2a44] text-white ${kioskMode ? "p-1.5" : "p-2"}`}>
+            <div className={`grid gap-2 md:grid-cols-8 ${kioskMode ? "text-sm" : ""}`}>
+              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Toplam Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
+              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
+              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
+              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Genel İskonto</p><p className="font-bold">{formatTry(0)}</p></div>
+              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Tahsil Edilen</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
+              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
+              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Para Üstü</p><p className="font-bold text-indigo-700">{formatTry(paymentPreview.change)}</p></div>
+              <div className={`rounded border border-emerald-700 bg-emerald-800 ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base text-white`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-emerald-100`}>Genel Toplam</p><p className={`${kioskMode ? "text-lg" : "text-xl"} font-extrabold`}>{formatTry(totals.grandTotal)}</p></div>
             </div>
 
             <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-2 xl:hidden">
@@ -3532,12 +3575,12 @@ export function PosClient() {
         </div>
 
         <div className="hidden h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#eef2f6] shadow-sm xl:flex">
-          <div className="border-b border-slate-300 bg-white p-2">
-            <div className="rounded-md border border-slate-300 bg-slate-50 px-3 py-1 text-right">
+          <div className={`border-b border-slate-300 bg-white ${kioskMode ? "p-1.5" : "p-2"}`}>
+            <div className={`rounded-md border border-slate-300 bg-slate-50 text-right ${kioskMode ? "px-2.5 py-1" : "px-3 py-1"}`}>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tutar</p>
-              <p className="text-3xl font-black text-slate-900">{formatTry(totals.grandTotal)}</p>
+              <p className={`${kioskMode ? "text-[1.7rem]" : "text-3xl"} font-black text-slate-900`}>{formatTry(totals.grandTotal)}</p>
             </div>
-            <div className="mt-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2">
+            <div className={`mt-1.5 rounded-md border border-amber-300 bg-amber-50 ${kioskMode ? "px-2 py-1.5" : "px-2.5 py-2"}`}>
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.12em] text-amber-700">Canlı Terazi</p>
@@ -3564,22 +3607,22 @@ export function PosClient() {
                   </Button>
                 </div>
               </div>
-              <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-[11px]">
-                <div className="rounded border border-amber-200 bg-white px-2 py-1.5">
+              <div className={`mt-1.5 grid grid-cols-3 gap-1.5 ${kioskMode ? "text-[10px]" : "text-[11px]"}`}>
+                <div className={`rounded border border-amber-200 bg-white ${kioskMode ? "px-1.5 py-1" : "px-2 py-1.5"}`}>
                   <p className="text-slate-500">Son Ağırlık</p>
-                  <p className="text-base font-black text-slate-900">
+                  <p className={`${kioskMode ? "text-sm" : "text-base"} font-black text-slate-900`}>
                     {lastScaleWeightKg !== null ? `${lastScaleWeightKg.toFixed(3).replace(".", ",")} kg` : "-"}
                   </p>
                 </div>
-                <div className="rounded border border-amber-200 bg-white px-2 py-1.5">
+                <div className={`rounded border border-amber-200 bg-white ${kioskMode ? "px-1.5 py-1" : "px-2 py-1.5"}`}>
                   <p className="text-slate-500">Stabilite</p>
-                  <p className="text-base font-black text-slate-900">
+                  <p className={`${kioskMode ? "text-sm" : "text-base"} font-black text-slate-900`}>
                     {lastScaleStable === true ? "Stabil" : lastScaleStable === false ? "Hareketli" : "-"}
                   </p>
                 </div>
-                <div className="rounded border border-amber-200 bg-white px-2 py-1.5">
+                <div className={`rounded border border-amber-200 bg-white ${kioskMode ? "px-1.5 py-1" : "px-2 py-1.5"}`}>
                   <p className="text-slate-500">Gecikme</p>
-                  <p className="text-base font-black text-slate-900">{lastScaleLatencyMs !== null ? `${lastScaleLatencyMs} ms` : "-"}</p>
+                  <p className={`${kioskMode ? "text-sm" : "text-base"} font-black text-slate-900`}>{lastScaleLatencyMs !== null ? `${lastScaleLatencyMs} ms` : "-"}</p>
                 </div>
               </div>
               {lastScaleRaw ? <p className="mt-1 truncate text-[11px] text-slate-500">Ham cevap: {lastScaleRaw}</p> : null}
@@ -3589,7 +3632,7 @@ export function PosClient() {
               <p className="mt-0.5 text-[11px] text-slate-500">
                 Hedef ürün: {autoScaleTargetProduct?.name ?? "Seçili değil"}
               </p>
-              <div className="mt-1 max-h-16 space-y-0.5 overflow-hidden rounded border border-amber-200 bg-white p-1.5 text-[10px] font-mono text-slate-600">
+              <div className={`mt-1 space-y-0.5 overflow-hidden rounded border border-amber-200 bg-white font-mono text-slate-600 ${kioskMode ? "max-h-12 p-1 text-[9px]" : "max-h-16 p-1.5 text-[10px]"}`}>
                 {scaleReadLogs.length > 0 ? (
                   scaleReadLogs.map((line) => (
                     <div key={line} className="truncate">
@@ -3602,7 +3645,7 @@ export function PosClient() {
               </div>
             </div>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden p-1.5">
+          <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${kioskMode ? "gap-1 p-1" : "gap-1.5 p-1.5"}`}>
             <PosNumpad
               mode={numpadMode}
               buffer={numpadBuffer}
@@ -3611,6 +3654,7 @@ export function PosClient() {
                 setNumpadBuffer("");
               }}
               onKey={handleNumpadKey}
+              compact={kioskMode}
             />
             <div className="grid grid-cols-2 gap-1">
               {paymentShortcutValues.slice(0, 6).map((amount) => (
@@ -3618,7 +3662,7 @@ export function PosClient() {
                   key={`middle-shortcut-${amount}`}
                   type="button"
                   onClick={() => applyQuickPartialAmount(amount)}
-                  className="h-[clamp(2.1rem,3.8vh,2.55rem)] rounded border border-slate-300 bg-white text-sm font-bold text-slate-900 hover:bg-slate-100"
+                  className={`${kioskMode ? "h-[clamp(1.85rem,3vh,2.2rem)] text-xs" : "h-[clamp(2.1rem,3.8vh,2.55rem)] text-sm"} rounded border border-slate-300 bg-white font-bold text-slate-900 hover:bg-slate-100`}
                 >
                   {formatTry(amount)}
                 </button>
@@ -3626,34 +3670,34 @@ export function PosClient() {
               <button
                 type="button"
                 onClick={() => applyQuickPartialAmount(totals.grandTotal)}
-                className="col-span-2 h-[clamp(2.1rem,3.8vh,2.55rem)] rounded border border-indigo-300 bg-indigo-100 text-sm font-bold text-indigo-800 hover:bg-indigo-200"
+                className={`${kioskMode ? "h-[clamp(1.9rem,3vh,2.25rem)] text-xs" : "h-[clamp(2.1rem,3.8vh,2.55rem)] text-sm"} col-span-2 rounded border border-indigo-300 bg-indigo-100 font-bold text-indigo-800 hover:bg-indigo-200`}
               >
                 Tam Tutar (Tutar+Top)
               </button>
             </div>
-            <div className="mt-auto space-y-1.5">
+            <div className={`mt-auto ${kioskMode ? "space-y-1" : "space-y-1.5"}`}>
             <Button
               onClick={() => void submitSale({ paymentMethod: "nakit", amount: totals.grandTotal, modeLabel: "Nakit satış" })}
               disabled={busy}
-              className="h-[clamp(3rem,6.6vh,4rem)] w-full bg-emerald-700 text-[clamp(1.15rem,2.25vh,1.5rem)] font-black text-white hover:bg-emerald-600"
+              className={`${kioskMode ? "h-[clamp(2.55rem,5vh,3.15rem)] text-[clamp(1rem,1.85vh,1.2rem)]" : "h-[clamp(3rem,6.6vh,4rem)] text-[clamp(1.15rem,2.25vh,1.5rem)]"} w-full bg-emerald-700 font-black text-white hover:bg-emerald-600`}
             >
               Nakit Satış (F1)
             </Button>
             <Button
               onClick={() => void submitSale({ paymentMethod: "kart", amount: totals.grandTotal, modeLabel: "POS satış" })}
               disabled={busy}
-              className="h-[clamp(3rem,6.6vh,4rem)] w-full bg-blue-700 text-[clamp(1.15rem,2.25vh,1.5rem)] font-black text-white hover:bg-blue-600"
+              className={`${kioskMode ? "h-[clamp(2.55rem,5vh,3.15rem)] text-[clamp(1rem,1.85vh,1.2rem)]" : "h-[clamp(3rem,6.6vh,4rem)] text-[clamp(1.15rem,2.25vh,1.5rem)]"} w-full bg-blue-700 font-black text-white hover:bg-blue-600`}
             >
               POS Satış (F2)
             </Button>
             <div className="grid grid-cols-2 gap-2">
-              <Button onClick={openMixedPaymentModal} disabled={busy} className="h-[clamp(2.35rem,4.3vh,2.85rem)] bg-teal-700 text-sm text-white hover:bg-teal-600">Kısmi / Karma (F3)</Button>
-              <Button onClick={openCariCustomerModal} disabled={busy} className="h-[clamp(2.35rem,4.3vh,2.85rem)] bg-amber-600 text-sm text-white hover:bg-amber-500">Cari Satış (F4)</Button>
-              <Button onClick={() => void readWeightFromScaleAndApply()} disabled={busy || readingScale} className="h-[clamp(2.35rem,4.3vh,2.85rem)] bg-amber-500 text-sm font-black text-slate-900 hover:bg-amber-400">{readingScale ? "Terazi..." : "Terazi Oku"}</Button>
-              <Button onClick={() => void suspendCart()} disabled={busy} className="h-[clamp(2.35rem,4.3vh,2.85rem)] bg-slate-700 text-sm text-white hover:bg-slate-600">Beklemeye Al</Button>
-              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className="h-[clamp(2.35rem,4.3vh,2.85rem)] bg-slate-700 text-sm text-white hover:bg-slate-600">{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
+              <Button onClick={openMixedPaymentModal} disabled={busy} className={`${kioskMode ? "h-[clamp(2rem,3.55vh,2.35rem)] text-xs" : "h-[clamp(2.35rem,4.3vh,2.85rem)] text-sm"} bg-teal-700 text-white hover:bg-teal-600`}>Kısmi / Karma (F3)</Button>
+              <Button onClick={openCariCustomerModal} disabled={busy} className={`${kioskMode ? "h-[clamp(2rem,3.55vh,2.35rem)] text-xs" : "h-[clamp(2.35rem,4.3vh,2.85rem)] text-sm"} bg-amber-600 text-white hover:bg-amber-500`}>Cari Satış (F4)</Button>
+              <Button onClick={() => void readWeightFromScaleAndApply()} disabled={busy || readingScale} className={`${kioskMode ? "h-[clamp(2rem,3.55vh,2.35rem)] text-xs" : "h-[clamp(2.35rem,4.3vh,2.85rem)] text-sm"} bg-amber-500 font-black text-slate-900 hover:bg-amber-400`}>{readingScale ? "Terazi..." : "Terazi Oku"}</Button>
+              <Button onClick={() => void suspendCart()} disabled={busy} className={`${kioskMode ? "h-[clamp(2rem,3.55vh,2.35rem)] text-xs" : "h-[clamp(2.35rem,4.3vh,2.85rem)] text-sm"} bg-slate-700 text-white hover:bg-slate-600`}>Beklemeye Al</Button>
+              <Button onClick={() => void toggleOperationsPanel()} disabled={busy} className={`${kioskMode ? "h-[clamp(2rem,3.55vh,2.35rem)] text-xs" : "h-[clamp(2.35rem,4.3vh,2.85rem)] text-sm"} bg-slate-700 text-white hover:bg-slate-600`}>{showOperations ? "İşlemler Açık" : "İşlemler"}</Button>
             </div>
-            <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-[clamp(2.35rem,4.3vh,2.85rem)] w-full text-sm font-black">
+            <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className={`${kioskMode ? "h-[clamp(2rem,3.55vh,2.35rem)] text-xs" : "h-[clamp(2.35rem,4.3vh,2.85rem)] text-sm"} w-full font-black`}>
               Sepet İptal (F5)
             </Button>
             </div>
