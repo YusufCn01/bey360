@@ -3054,13 +3054,14 @@ export function PosClient() {
         onClose={(tabId) => void closeSaleTab(tabId)}
         canCloseTabs={saleTabs.length > 1}
         compact={kioskMode}
+        minimal={kioskMode}
       />
 
       <div className="overflow-hidden rounded-xl border border-slate-700 bg-[#17253c] text-slate-100 shadow-md">
-        <div className={`flex flex-wrap items-center justify-between gap-2 ${kioskMode ? "" : "border-b border-slate-700"} ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"}`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className={`pr-2 font-black leading-none text-white ${kioskMode ? "text-3xl" : "text-4xl"}`}>{companyName || "Bey360"}</p>
-            <Button size="sm" className={`${kioskMode ? "h-10 px-4 text-base" : "h-12 px-5 text-lg"} bg-sky-700 text-white hover:bg-sky-600`} onClick={() => setSearchText("")}>
+        <div className={`flex items-center justify-between gap-2 ${kioskMode ? "" : "border-b border-slate-700"} ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"}`}>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className={`shrink-0 font-black leading-none text-white ${kioskMode ? "text-2xl" : "pr-2 text-4xl"}`}>{companyName || "Bey360"}</p>
+            <Button size="sm" className={`${kioskMode ? "h-9 px-3 text-sm" : "h-12 px-5 text-lg"} bg-sky-700 text-white hover:bg-sky-600`} onClick={() => setSearchText("")}>
               Hızlı Satış
             </Button>
             {!kioskMode ? (
@@ -3086,20 +3087,20 @@ export function PosClient() {
             ) : null}
             <Button
               size="sm"
-              className={`${kioskMode ? "h-10 px-4 text-sm" : "h-12 px-5 text-lg"} ${kioskMode ? "bg-cyan-700 hover:bg-cyan-600" : "bg-slate-700 hover:bg-slate-600"} text-white`}
+              className={`${kioskMode ? "h-9 px-3 text-sm" : "h-12 px-5 text-lg"} ${kioskMode ? "bg-cyan-700 hover:bg-cyan-600" : "bg-slate-700 hover:bg-slate-600"} text-white`}
               onClick={() => setKioskMode((prev) => !prev)}
             >
               {kioskMode ? "Kiosk Açık" : "Kiosk Modu"}
             </Button>
           </div>
-          <div className={`flex items-center gap-2 font-semibold ${kioskMode ? "text-base" : "text-lg"}`}>
-            <span className={`inline-flex items-center gap-2 rounded-md ${kioskMode ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm"} font-black ${scaleStatusMeta.className}`}>
+          <div className={`flex shrink-0 items-center gap-2 font-semibold ${kioskMode ? "text-sm" : "text-lg"}`}>
+            <span className={`inline-flex items-center gap-2 rounded-md ${kioskMode ? "px-2 py-1 text-[11px]" : "px-3 py-2 text-sm"} font-black ${scaleStatusMeta.className}`}>
               <span className={`h-2.5 w-2.5 rounded-full ${scaleStatusMeta.dotClassName}`} />
               {scaleStatusMeta.label}
             </span>
-            <span className={`rounded-md bg-slate-800 ${kioskMode ? "px-2.5 py-1.5 text-sm" : "px-3 py-2"}`}>{registerName} ({registerId})</span>
-            <span>{clock.toLocaleDateString("tr-TR")} {clock.toLocaleTimeString("tr-TR")}</span>
-            <Button size="sm" variant="danger" className={`${kioskMode ? "h-10 px-4 text-base" : "h-12 px-5 text-lg"}`} onClick={() => { window.location.href = "/giris"; }}>
+            <span className={`rounded-md bg-slate-800 ${kioskMode ? "px-2 py-1 text-[11px]" : "px-3 py-2"}`}>{registerName}</span>
+            {kioskMode ? <span className="text-xs tabular-nums">{clock.toLocaleTimeString("tr-TR")}</span> : <span>{clock.toLocaleDateString("tr-TR")} {clock.toLocaleTimeString("tr-TR")}</span>}
+            <Button size="sm" variant="danger" className={`${kioskMode ? "h-9 px-3 text-sm" : "h-12 px-5 text-lg"}`} onClick={() => { window.location.href = "/giris"; }}>
               Çıkış
             </Button>
           </div>
@@ -3785,25 +3786,25 @@ export function PosClient() {
         </div>
 
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f3f5f8] shadow-sm">
-          <div className="space-y-2 border-b border-slate-300 bg-white p-2">
-            <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto_auto_auto]">
-              <select className="h-11 rounded border border-slate-300 bg-white px-3 text-base font-semibold">
+          <div className={`space-y-2 border-b border-slate-300 bg-white ${kioskMode ? "p-1.5" : "p-2"}`}>
+            <div className={`grid gap-2 ${kioskMode ? "md:grid-cols-[1fr_auto_auto_auto]" : "md:grid-cols-[1fr_auto_auto_auto_auto_auto]"}`}>
+              <select className={`${kioskMode ? "h-10 text-sm" : "h-11 text-base"} rounded border border-slate-300 bg-white px-3 font-semibold`}>
                 <option>₺ Fyt1</option>
                 <option>₺ Fyt2</option>
                 <option>₺ Fyt3</option>
                 <option>₺ Fyt4</option>
               </select>
-              <Button size="sm" className={`h-12 text-base ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
-              <Button size="sm" className={`h-12 text-base ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
-              <Button size="sm" className={`h-12 text-base ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
-              <Button size="sm" className="h-12 bg-amber-100 text-base text-amber-800 hover:bg-amber-200" onClick={quickReturnSelectedLine} disabled={!canReturnOperations}>H. İade</Button>
-              <Button size="sm" className={`h-12 text-base ${exchangeTargetId ? "bg-sky-600 text-white" : "bg-indigo-100 text-indigo-800 hover:bg-indigo-200"}`} onClick={quickExchangeSelectedLine}>H. Değişim</Button>
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
+              {!kioskMode ? <Button size="sm" className={`h-12 text-base ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button> : null}
+              {!kioskMode ? <Button size="sm" className={`h-12 text-base ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-800 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button> : null}
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-amber-100 text-amber-800 hover:bg-amber-200`} onClick={quickReturnSelectedLine} disabled={!canReturnOperations}>H. İade</Button>
+              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${exchangeTargetId ? "bg-sky-600 text-white" : "bg-indigo-100 text-indigo-800 hover:bg-indigo-200"}`} onClick={quickExchangeSelectedLine}>H. Değişim</Button>
             </div>
             <div className="flex items-center gap-2">
-              <select className="h-12 flex-1 rounded border border-slate-300 bg-white px-3 text-base font-semibold">
+              <select className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} flex-1 rounded border border-slate-300 bg-white px-3 font-semibold`}>
                 <option>Market & Tekel Büfe</option>
               </select>
-              <Button size="sm" className="h-12 bg-emerald-700 px-3 text-base text-white hover:bg-emerald-600">Yeni Kısayol</Button>
+              <Button size="sm" className={`${kioskMode ? "h-10 px-3 text-sm" : "h-12 px-3 text-base"} bg-emerald-700 text-white hover:bg-emerald-600`}>Yeni Kısayol</Button>
             </div>
           </div>
 
@@ -3857,7 +3858,7 @@ export function PosClient() {
             {loadingProducts ? (
               <p className="rounded-md border border-[color:var(--mx-border)] bg-white px-3 py-10 text-center text-base text-[color:var(--mx-text-muted)]">Ürünler yükleniyor...</p>
             ) : (
-              <div className="grid grid-cols-2 gap-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <div className={`grid gap-2 ${kioskMode ? "grid-cols-2 2xl:grid-cols-3" : "grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}`}>
                 {filteredProducts.map((product) => {
                   const expiryDayCount = daysUntilExpiry(product.expiryDate);
                   const nearExpiry =
@@ -3874,7 +3875,7 @@ export function PosClient() {
                       key={product.id}
                       onClick={() => addProductToCart(product)}
                       disabled={isBlocked}
-                      className={`rounded-md border border-slate-300 bg-white p-2 text-left transition ${
+                      className={`rounded-md border border-slate-300 bg-white ${kioskMode ? "p-3" : "p-2"} text-left transition ${
                         isBlocked
                           ? "cursor-not-allowed opacity-60"
                           : "hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-sm"
@@ -3882,18 +3883,18 @@ export function PosClient() {
                     >
                       {product.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={product.imageUrl} alt={product.name} className="mb-2 h-28 w-full rounded object-contain" />
+                        <img src={product.imageUrl} alt={product.name} className={`mb-2 w-full rounded object-contain ${kioskMode ? "h-32" : "h-28"}`} />
                       ) : (
                         <div
-                          className="mb-2 grid h-28 place-items-center rounded text-3xl font-black text-white"
+                          className={`mb-2 grid place-items-center rounded font-black text-white ${kioskMode ? "h-32 text-4xl" : "h-28 text-3xl"}`}
                           style={{ background: hashColor(product.name) }}
                         >
                           {productInitials(product.name)}
                         </div>
                       )}
-                      <p className="line-clamp-2 text-base font-semibold text-slate-800">{product.name}</p>
-                      <div className="mt-1 flex items-center justify-between text-base">
-                        <span className="text-lg font-black text-emerald-700">{formatTry(getProductPrice(product, priceTier))}</span>
+                      <p className={`line-clamp-2 font-semibold text-slate-800 ${kioskMode ? "text-lg" : "text-base"}`}>{product.name}</p>
+                      <div className={`mt-1 flex items-center justify-between ${kioskMode ? "text-sm" : "text-base"}`}>
+                        <span className={`${kioskMode ? "text-2xl" : "text-lg"} font-black text-emerald-700`}>{formatTry(getProductPrice(product, priceTier))}</span>
                         <span className="text-slate-500">Stok: {product.stock.toFixed(0)}</span>
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1 text-xs font-semibold">
