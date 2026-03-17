@@ -3117,62 +3117,117 @@ export function PosClient() {
         ) : null}
       </div>
 
-      <div className={`grid min-h-0 gap-1 ${kioskMode ? "xl:grid-cols-[minmax(0,1.16fr)_304px_minmax(0,1.22fr)]" : "xl:grid-cols-[minmax(0,1.1fr)_332px_minmax(0,1.16fr)]"}`}>
+      <div className={`grid min-h-0 gap-1 ${kioskMode ? "xl:grid-cols-[minmax(0,1.28fr)_minmax(0,1fr)]" : "xl:grid-cols-[minmax(0,1.1fr)_332px_minmax(0,1.16fr)]"}`}>
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#f8fafc] shadow-sm">
           <div className={`space-y-1 border-b border-slate-300 bg-slate-100 ${kioskMode ? "p-1.5" : "p-2"}`}>
-            <div className={`grid gap-1 ${kioskMode ? "md:grid-cols-6" : "md:grid-cols-7"}`}>
-              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-sky-700 text-white hover:bg-sky-600`} onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
-              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-slate-300 text-slate-900 hover:bg-slate-200`} onClick={showSelectedLinePrice}>Fiyat Gör</Button>
-              {!kioskMode ? <Button size="sm" className="h-12 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={() => setShowCustomPanel((prev) => !prev)}>Muhtelif</Button> : null}
-              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
-              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
-              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
-              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${priceTier === 4 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
-            </div>
+            {kioskMode ? (
+              <>
+                <div className="grid gap-1 md:grid-cols-[auto_auto_repeat(4,minmax(0,1fr))]">
+                  <Button size="sm" className="h-10 bg-sky-700 text-sm text-white hover:bg-sky-600" onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
+                  <Button size="sm" className="h-10 bg-slate-300 text-sm text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
+                  <Button size="sm" className={`h-10 text-sm ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
+                  <Button size="sm" className={`h-10 text-sm ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
+                  <Button size="sm" className={`h-10 text-sm ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
+                  <Button size="sm" className={`h-10 text-sm ${priceTier === 4 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
+                </div>
+                <div className="grid gap-1 md:grid-cols-[1fr_auto_auto_auto_auto]">
+                  <div className="flex items-center gap-1 rounded-md bg-white/95 p-1">
+                    <button type="button" className="inline-flex h-10 w-11 items-center justify-center rounded-md bg-sky-700 text-lg text-white" onClick={openCameraScanner}>📷</button>
+                    <input
+                      ref={searchInputRef}
+                      value={searchText}
+                      onChange={(event) => setSearchText(event.target.value)}
+                      placeholder="Barkod okutun veya ürün arayın"
+                      className="h-10 flex-1 rounded border border-slate-300 px-3 text-sm"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          if (tryScanAdd(searchText)) {
+                            setSearchText("");
+                          }
+                        }
+                      }}
+                    />
+                    <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-rose-300 bg-rose-50 text-base text-rose-700" onClick={() => setSearchText("")}>✕</button>
+                  </div>
+                  <Button size="sm" className="h-10 bg-indigo-100 px-4 text-sm text-indigo-800 hover:bg-indigo-200" onClick={openCariCustomerModal}>Cari Seç</Button>
+                  <Button
+                    size="sm"
+                    className="h-10 bg-emerald-700 px-4 text-sm text-white hover:bg-emerald-600"
+                    onClick={quickReturnSelectedLine}
+                    disabled={!canReturnOperations}
+                    title={!canReturnOperations ? "Hızlı iade için yetkiniz yok." : undefined}
+                  >
+                    H.İade
+                  </Button>
+                  <Button size="sm" className={`h-10 px-4 text-sm ${exchangeTargetId ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={quickExchangeSelectedLine}>Değişim</Button>
+                  <Button
+                    size="sm"
+                    className="h-10 bg-amber-500 px-4 text-sm font-black text-slate-900 hover:bg-amber-400"
+                    onClick={() => void readWeightFromScaleAndApply()}
+                    disabled={readingScale}
+                  >
+                    {readingScale ? "Terazi..." : "Terazi Oku"}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid gap-1 md:grid-cols-7">
+                  <Button size="sm" className="h-12 bg-sky-700 text-base text-white hover:bg-sky-600" onClick={() => searchInputRef.current?.focus()}>Bul (F6)</Button>
+                  <Button size="sm" className="h-12 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={showSelectedLinePrice}>Fiyat Gör</Button>
+                  <Button size="sm" className="h-12 bg-slate-300 text-base text-slate-900 hover:bg-slate-200" onClick={() => setShowCustomPanel((prev) => !prev)}>Muhtelif</Button>
+                  <Button size="sm" className={`h-12 text-base ${priceTier === 1 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(1)}>₺ Fyt1</Button>
+                  <Button size="sm" className={`h-12 text-base ${priceTier === 2 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(2)}>₺ Fyt2</Button>
+                  <Button size="sm" className={`h-12 text-base ${priceTier === 3 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(3)}>₺ Fyt3</Button>
+                  <Button size="sm" className={`h-12 text-base ${priceTier === 4 ? "bg-sky-600 text-white" : "bg-slate-300 text-slate-900 hover:bg-slate-200"}`} onClick={() => setActivePriceTier(4)}>₺ Fyt4</Button>
+                </div>
 
-            <div className={`grid gap-1 ${kioskMode ? "md:grid-cols-[1fr_repeat(5,minmax(0,1fr))]" : "md:grid-cols-[1fr_repeat(6,minmax(0,1fr))]"}`}>
-              <div className="flex items-center gap-1 rounded-md bg-white/95 p-1">
-                <button type="button" className={`inline-flex ${kioskMode ? "h-10 w-11 text-lg" : "h-11 w-12 text-xl"} items-center justify-center rounded-md bg-sky-700 text-white`} onClick={openCameraScanner}>📷</button>
-                <input
-                  ref={searchInputRef}
-                  value={searchText}
-                  onChange={(event) => setSearchText(event.target.value)}
-                  placeholder="Barkod / Ürün adı / Ürün kodu"
-                  className={`${kioskMode ? "h-10 text-sm" : "h-11 text-base"} flex-1 rounded border border-slate-300 px-3`}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      if (tryScanAdd(searchText)) {
-                        setSearchText("");
-                      }
-                    }
-                  }}
-                />
-                <button type="button" className={`inline-flex ${kioskMode ? "h-10 w-10 text-base" : "h-11 w-11 text-lg"} items-center justify-center rounded-md border border-rose-300 bg-rose-50 text-rose-700`} onClick={() => setSearchText("")}>✕</button>
-              </div>
+                <div className="grid gap-1 md:grid-cols-[1fr_repeat(6,minmax(0,1fr))]">
+                  <div className="flex items-center gap-1 rounded-md bg-white/95 p-1">
+                    <button type="button" className="inline-flex h-11 w-12 items-center justify-center rounded-md bg-sky-700 text-xl text-white" onClick={openCameraScanner}>📷</button>
+                    <input
+                      ref={searchInputRef}
+                      value={searchText}
+                      onChange={(event) => setSearchText(event.target.value)}
+                      placeholder="Barkod / Ürün adı / Ürün kodu"
+                      className="h-11 flex-1 rounded border border-slate-300 px-3 text-base"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          if (tryScanAdd(searchText)) {
+                            setSearchText("");
+                          }
+                        }
+                      }}
+                    />
+                    <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-rose-300 bg-rose-50 text-lg text-rose-700" onClick={() => setSearchText("")}>✕</button>
+                  </div>
 
-              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-indigo-100 text-indigo-800 hover:bg-indigo-200`} onClick={() => applyQuickCustomer(0)}>{quickCustomers[0]?.name ?? "Müşteri 1"}</Button>
-              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-indigo-100 text-indigo-800 hover:bg-indigo-200`} onClick={() => applyQuickCustomer(1)}>{quickCustomers[1]?.name ?? "Müşteri 2"}</Button>
-              {!kioskMode ? <Button size="sm" className="h-12 bg-indigo-100 text-base text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(2)}>{quickCustomers[2]?.name ?? "Müşteri 3"}</Button> : null}
-              <Button
-                size="sm"
-                className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-emerald-700 text-white hover:bg-emerald-600`}
-                onClick={quickReturnSelectedLine}
-                disabled={!canReturnOperations}
-                title={!canReturnOperations ? "Hızlı iade için yetkiniz yok." : undefined}
-              >
-                H.İade
-              </Button>
-              <Button size="sm" className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} ${exchangeTargetId ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={quickExchangeSelectedLine}>H.Değşm</Button>
-              <Button
-                size="sm"
-                className={`${kioskMode ? "h-10 text-sm" : "h-12 text-base"} bg-amber-500 font-black text-slate-900 hover:bg-amber-400`}
-                onClick={() => void readWeightFromScaleAndApply()}
-                disabled={readingScale}
-              >
-                {readingScale ? "Terazi..." : "Terazi Oku"}
-              </Button>
-            </div>
+                  <Button size="sm" className="h-12 bg-indigo-100 text-base text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(0)}>{quickCustomers[0]?.name ?? "Müşteri 1"}</Button>
+                  <Button size="sm" className="h-12 bg-indigo-100 text-base text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(1)}>{quickCustomers[1]?.name ?? "Müşteri 2"}</Button>
+                  <Button size="sm" className="h-12 bg-indigo-100 text-base text-indigo-800 hover:bg-indigo-200" onClick={() => applyQuickCustomer(2)}>{quickCustomers[2]?.name ?? "Müşteri 3"}</Button>
+                  <Button
+                    size="sm"
+                    className="h-12 bg-emerald-700 text-base text-white hover:bg-emerald-600"
+                    onClick={quickReturnSelectedLine}
+                    disabled={!canReturnOperations}
+                    title={!canReturnOperations ? "Hızlı iade için yetkiniz yok." : undefined}
+                  >
+                    H.İade
+                  </Button>
+                  <Button size="sm" className={`h-12 text-base ${exchangeTargetId ? "bg-lime-400 text-emerald-950" : "bg-emerald-700 text-white"}`} onClick={quickExchangeSelectedLine}>H.Değşm</Button>
+                  <Button
+                    size="sm"
+                    className="h-12 bg-amber-500 text-base font-black text-slate-900 hover:bg-amber-400"
+                    onClick={() => void readWeightFromScaleAndApply()}
+                    disabled={readingScale}
+                  >
+                    {readingScale ? "Terazi..." : "Terazi Oku"}
+                  </Button>
+                </div>
+              </>
+            )}
 
             {showMissingBarcodeActions ? (
               <div className="grid gap-2 rounded-md border border-amber-300/50 bg-amber-100/90 p-2 text-slate-900 md:grid-cols-[1fr_auto_auto_auto]">
@@ -3252,16 +3307,41 @@ export function PosClient() {
           </div>
 
           <div className={`shrink-0 space-y-2 border-t border-slate-300 bg-[#1c2a44] text-white ${kioskMode ? "p-1.5" : "p-2"}`}>
-            <div className={`grid gap-2 md:grid-cols-8 ${kioskMode ? "text-sm" : ""}`}>
-              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Toplam Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
-              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
-              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
-              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Genel İskonto</p><p className="font-bold">{formatTry(0)}</p></div>
-              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Tahsil Edilen</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
-              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
-              <div className={`rounded border border-[color:var(--mx-border)] bg-white ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-[color:var(--mx-text-muted)]`}>Para Üstü</p><p className="font-bold text-indigo-700">{formatTry(paymentPreview.change)}</p></div>
-              <div className={`rounded border border-emerald-700 bg-emerald-800 ${kioskMode ? "px-2 py-1.5" : "px-3 py-2"} text-base text-white`}><p className={`${kioskMode ? "text-xs" : "text-sm"} text-emerald-100`}>Genel Toplam</p><p className={`${kioskMode ? "text-lg" : "text-xl"} font-extrabold`}>{formatTry(totals.grandTotal)}</p></div>
-            </div>
+            {kioskMode ? (
+              <>
+                <div className="grid gap-1 md:grid-cols-[repeat(5,minmax(0,1fr))_1.15fr]">
+                  <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
+                  <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
+                  <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-[11px] text-[color:var(--mx-text-muted)]">KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
+                  <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Tahsil</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
+                  <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
+                  <div className="rounded border border-emerald-700 bg-emerald-800 px-2.5 py-1.5 text-white"><p className="text-[11px] text-emerald-100">Genel Toplam</p><p className="text-2xl font-extrabold">{formatTry(totals.grandTotal)}</p></div>
+                </div>
+                <div className="grid gap-1 md:grid-cols-4">
+                  <Button onClick={() => void submitSale({ paymentMethod: "nakit", amount: totals.grandTotal, modeLabel: "Nakit satış" })} disabled={busy} className="h-12 bg-emerald-700 text-base font-black text-white hover:bg-emerald-600">Nakit (F1)</Button>
+                  <Button onClick={() => void submitSale({ paymentMethod: "kart", amount: totals.grandTotal, modeLabel: "POS satış" })} disabled={busy} className="h-12 bg-blue-700 text-base font-black text-white hover:bg-blue-600">POS (F2)</Button>
+                  <Button onClick={openCariCustomerModal} disabled={busy} className="h-12 bg-amber-600 text-base font-black text-white hover:bg-amber-500">Cari (F4)</Button>
+                  <Button variant="danger" onClick={() => void requestClearCart()} disabled={busy} className="h-12 text-base font-black">Sepet İptal</Button>
+                </div>
+                <div className="grid gap-1 md:grid-cols-4">
+                  <Button onClick={openMixedPaymentModal} disabled={busy} className="h-10 bg-teal-700 text-sm text-white hover:bg-teal-600">Karma Ödeme</Button>
+                  <Button onClick={() => void suspendCart()} disabled={busy} className="h-10 bg-slate-700 text-sm text-white hover:bg-slate-600">Beklemeye Al</Button>
+                  <Button onClick={() => void readWeightFromScaleAndApply()} disabled={busy || readingScale} className="h-10 bg-amber-500 text-sm font-black text-slate-900 hover:bg-amber-400">{readingScale ? "Terazi..." : "Terazi Oku"}</Button>
+                  <Button onClick={() => setPriceCheckMode((prev) => !prev)} disabled={busy} className={`h-10 text-sm ${priceCheckMode ? "bg-lime-400 text-emerald-950 hover:bg-lime-300" : "bg-slate-700 text-white hover:bg-slate-600"}`}>{priceCheckMode ? "Fiyat Gör Açık" : "Fiyat Gör"}</Button>
+                </div>
+              </>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-8">
+                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Toplam Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Genel İskonto</p><p className="font-bold">{formatTry(0)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Tahsil Edilen</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Para Üstü</p><p className="font-bold text-indigo-700">{formatTry(paymentPreview.change)}</p></div>
+                <div className="rounded border border-emerald-700 bg-emerald-800 px-3 py-2 text-base text-white"><p className="text-sm text-emerald-100">Genel Toplam</p><p className="text-xl font-extrabold">{formatTry(totals.grandTotal)}</p></div>
+              </div>
+            )}
 
             <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-2 xl:hidden">
               <div className="flex flex-wrap items-center gap-2">
@@ -3574,7 +3654,7 @@ export function PosClient() {
           </div>
         </div>
 
-        <div className="hidden h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#eef2f6] shadow-sm xl:flex">
+        <div className={`h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-300 bg-[#eef2f6] shadow-sm ${kioskMode ? "hidden" : "hidden xl:flex"}`}>
           <div className={`border-b border-slate-300 bg-white ${kioskMode ? "p-1.5" : "p-2"}`}>
             <div className={`rounded-md border border-slate-300 bg-slate-50 text-right ${kioskMode ? "px-2.5 py-1" : "px-3 py-1"}`}>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Tutar</p>
