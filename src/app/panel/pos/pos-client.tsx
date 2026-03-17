@@ -529,6 +529,7 @@ export function PosClient() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [readingScale, setReadingScale] = React.useState(false);
+  const [autoScaleEnabled, setAutoScaleEnabled] = React.useState(true);
   const [lastScaleWeightKg, setLastScaleWeightKg] = React.useState<number | null>(null);
   const [lastScaleStable, setLastScaleStable] = React.useState<boolean | null>(null);
   const [lastScaleLatencyMs, setLastScaleLatencyMs] = React.useState<number | null>(null);
@@ -580,6 +581,7 @@ export function PosClient() {
   const cameraVideoRef = React.useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = React.useRef<MediaStream | null>(null);
   const cameraScanIntervalRef = React.useRef<number | null>(null);
+  const readingScaleRef = React.useRef(false);
   const [clock, setClock] = React.useState(() => new Date());
 
   React.useEffect(() => {
@@ -594,6 +596,10 @@ export function PosClient() {
   React.useEffect(() => {
     activeSaleTabRef.current = activeSaleTabId;
   }, [activeSaleTabId]);
+
+  React.useEffect(() => {
+    readingScaleRef.current = readingScale;
+  }, [readingScale]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") {
@@ -1306,6 +1312,23 @@ export function PosClient() {
     return products.find((product) => product.id === selectedLineId && product.isScaleProduct) ?? null;
   }, [products, selectedLineId]);
 
+  const autoScaleTargetProduct = React.useMemo(() => {
+    if (selectedScaleProduct) {
+      return selectedScaleProduct;
+    }
+
+    const exact = exactProductLookup.get(searchText.trim().toLocaleLowerCase("tr"));
+    if (exact?.isScaleProduct) {
+      return exact;
+    }
+
+    if (scaleCandidateProducts.length === 1) {
+      return scaleCandidateProducts[0];
+    }
+
+    return null;
+  }, [exactProductLookup, scaleCandidateProducts, searchText, selectedScaleProduct]);
+
   const totals = React.useMemo(() => {
     const subTotal = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
     const taxTotal = cart.reduce((sum, line) => sum + (line.quantity * line.unitPrice * line.taxRate) / 100, 0);
@@ -2001,7 +2024,7 @@ export function PosClient() {
     return true;
   }
 
-  function applyScaleWeightToProduct(product: ProductRow, weightKg: number): boolean {
+  const applyScaleWeightToProduct = React.useCallback((product: ProductRow, weightKg: number): boolean => {
     const normalizedWeight = normalizeQuantity(weightKg, getQuantityStep(product.unit));
     const existingLine = cart.find((line) => line.productId === product.id);
 
@@ -2019,26 +2042,13 @@ export function PosClient() {
       setMessage(`Terazi okundu: ${product.name} sepete ${formatQuantity(normalizedWeight)} olarak eklendi.`);
     }
     return added;
-  }
+  }, [cart]);
 
   function resolveScaleTargetProduct(): ProductRow | null {
-    if (selectedScaleProduct) {
-      return selectedScaleProduct;
-    }
-
-    const exact = exactProductLookup.get(searchText.trim().toLocaleLowerCase("tr"));
-    if (exact?.isScaleProduct) {
-      return exact;
-    }
-
-    if (scaleCandidateProducts.length === 1) {
-      return scaleCandidateProducts[0];
-    }
-
-    return null;
+    return autoScaleTargetProduct;
   }
 
-  async function readWeightFromScaleAndApply() {
+  const readWeightFromScaleAndApply = React.useCallback(async () => {
     if (!scaleConnectionSettings.enabled) {
       setError("Terazi entegrasyonu kapali. Ayarlar > Terazi Ayarlari ekranindan aktif edin.");
       setMessage(null);
@@ -2094,7 +2104,24 @@ export function PosClient() {
     } finally {
       setReadingScale(false);
     }
-  }
+  }, [applyScaleWeightToProduct, autoScaleTargetProduct, scaleConnectionSettings]);
+
+  React.useEffect(() => {
+    if (!autoScaleEnabled || !scaleConnectionSettings.enabled || !autoScaleTargetProduct) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      if (readingScaleRef.current) {
+        return;
+      }
+      void readWeightFromScaleAndApply();
+    }, 1200);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [autoScaleEnabled, autoScaleTargetProduct, readWeightFromScaleAndApply, scaleConnectionSettings.enabled]);
 
   function addCustomLine() {
     const unitPrice = asNumber(customPrice, 0);
@@ -3486,14 +3513,24 @@ export function PosClient() {
                     {scaleConnectionSettings.brand.toUpperCase()} {scaleConnectionSettings.enabled ? "- Aktif" : "- Pasif"}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  className="h-10 bg-amber-500 px-4 text-base font-black text-slate-900 hover:bg-amber-400"
-                  onClick={() => void readWeightFromScaleAndApply()}
-                  disabled={readingScale}
-                >
-                  {readingScale ? "Okunuyor..." : "Terazi Oku"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-10 px-4 text-sm font-black"
+                    onClick={() => setAutoScaleEnabled((prev) => !prev)}
+                  >
+                    {autoScaleEnabled ? "Canlı Akış Açık" : "Canlı Akış Kapalı"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-10 bg-amber-500 px-4 text-base font-black text-slate-900 hover:bg-amber-400"
+                    onClick={() => void readWeightFromScaleAndApply()}
+                    disabled={readingScale}
+                  >
+                    {readingScale ? "Okunuyor..." : "Terazi Oku"}
+                  </Button>
+                </div>
               </div>
               <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                 <div className="rounded border border-amber-200 bg-white px-2 py-2">
@@ -3515,7 +3552,7 @@ export function PosClient() {
               </div>
               {lastScaleRaw ? <p className="mt-2 truncate text-xs text-slate-500">Ham cevap: {lastScaleRaw}</p> : null}
               <p className="mt-1 text-xs text-slate-500">
-                Hedef ürün: {selectedScaleProduct?.name ?? (scaleCandidateProducts.length === 1 ? scaleCandidateProducts[0]?.name : "Seçili değil")}
+                Hedef ürün: {autoScaleTargetProduct?.name ?? "Seçili değil"}
               </p>
             </div>
           </div>
