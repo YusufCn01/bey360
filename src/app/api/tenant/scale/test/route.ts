@@ -4,6 +4,7 @@ import { AuthorizationError, requireTenantAccess } from "@/lib/auth/tenant-acces
 import { fail, ok } from "@/lib/http/response";
 import { readScaleWeight } from "@/modules/scale/application/scale-device-service";
 import { loadTenantScaleSettings, mergeScaleSettings } from "@/app/api/tenant/scale/_lib";
+import { isSerialScaleSupportedOnRequest } from "@/app/api/tenant/scale/runtime";
 
 export const runtime = "nodejs";
 
@@ -41,6 +42,13 @@ export async function POST(request: NextRequest) {
 
     const savedSettings = await loadTenantScaleSettings(access.tenantId);
     const resolvedSettings = mergeScaleSettings(savedSettings, parsed.data ?? undefined);
+    if (resolvedSettings.transport === "serial" && !isSerialScaleSupportedOnRequest(request)) {
+      return fail(
+        "Seri port teraziler bulut sunucuda test edilemez. Bey360 masaustu/local kurulum kullanin veya TCP/Ethernet terazi baglayin.",
+        "SCALE_SERIAL_NOT_SUPPORTED",
+        422,
+      );
+    }
     const result = await readScaleWeight(resolvedSettings);
 
     return ok({

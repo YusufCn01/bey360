@@ -151,7 +151,16 @@ function parseWeightText(raw: string, settings: ScaleConnectionSettings): ScaleR
 }
 
 async function loadSerialPortModule(): Promise<SerialPortModule> {
-  return (await import("serialport")) as unknown as SerialPortModule;
+  try {
+    const loader = Function("return require")() as (moduleId: string) => unknown;
+    return loader("serialport") as SerialPortModule;
+  } catch (error) {
+    throw new Error(
+      error instanceof Error
+        ? `Serial port modulu yuklenemedi: ${error.message}`
+        : "Serial port modulu yuklenemedi.",
+    );
+  }
 }
 
 async function readFromTcp(settings: ScaleConnectionSettings): Promise<ScaleReadResult> {
