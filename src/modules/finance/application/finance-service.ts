@@ -13,6 +13,8 @@ type CollectionInput = {
   method: "nakit" | "kart" | "havale_eft" | "cek" | "dekont";
   currency?: string;
   note?: string;
+  sourceModule?: string;
+  sourceId?: string;
 };
 
 type SupplierPaymentInput = {
@@ -24,6 +26,8 @@ type SupplierPaymentInput = {
   method: "nakit" | "havale_eft" | "kart" | "dekont";
   currency?: string;
   note?: string;
+  sourceModule?: string;
+  sourceId?: string;
 };
 
 type CashTransferInput = {
@@ -65,10 +69,7 @@ function addDays(base: Date, days: number) {
   return result;
 }
 
-async function resolveCardTrackingSettings(
-  tx: Prisma.TransactionClient,
-  tenantId: string,
-) {
+async function resolveCardTrackingSettings(tx: Prisma.TransactionClient, tenantId: string) {
   const row = await tx.tenantSettings.findFirst({
     where: {
       tenantId,
@@ -92,6 +93,8 @@ export async function recordCustomerCollection(input: CollectionInput) {
   return prisma.$transaction(async (tx) => {
     const now = new Date();
     const code = `TAH-${Date.now()}`;
+    const sourceModule = input.sourceModule ?? "collection";
+    const sourceId = input.sourceId ?? undefined;
 
     const collection = await tx.collections.create({
       data: {
@@ -106,6 +109,8 @@ export async function recordCustomerCollection(input: CollectionInput) {
           method: input.method,
           currency: input.currency ?? "TRY",
           note: input.note,
+          sourceModule,
+          sourceId,
         },
         occurredAt: now,
       },
@@ -136,8 +141,8 @@ export async function recordCustomerCollection(input: CollectionInput) {
           movementName: "Müşteri Tahsilatı",
           direction: "in",
           amount: input.amount,
-          sourceModule: "collection",
-          sourceId: collection.id,
+          sourceModule,
+          sourceId: sourceId ?? collection.id,
           currency: input.currency ?? "TRY",
           note: input.note,
         },
@@ -156,8 +161,8 @@ export async function recordCustomerCollection(input: CollectionInput) {
             method: input.method,
             currency: input.currency ?? "TRY",
             note: input.note,
-            sourceModule: "collection",
-            sourceId: collection.id,
+            sourceModule,
+            sourceId: sourceId ?? collection.id,
           },
           occurredAt: now,
         },
@@ -174,8 +179,8 @@ export async function recordCustomerCollection(input: CollectionInput) {
         movementName: "Müşteri Tahsilat Kaydı",
         direction: "credit",
         amount: input.amount,
-        sourceModule: "collection",
-        sourceId: collection.id,
+        sourceModule,
+        sourceId: sourceId ?? collection.id,
         currency: input.currency ?? "TRY",
       },
     });
@@ -196,6 +201,8 @@ export async function recordSupplierPayment(input: SupplierPaymentInput) {
   return prisma.$transaction(async (tx) => {
     const now = new Date();
     const code = `ODE-${Date.now()}`;
+    const sourceModule = input.sourceModule ?? "supplier_payment";
+    const sourceId = input.sourceId ?? undefined;
 
     const payment = await tx.paymentsOut.create({
       data: {
@@ -210,6 +217,8 @@ export async function recordSupplierPayment(input: SupplierPaymentInput) {
           method: input.method,
           currency: input.currency ?? "TRY",
           note: input.note,
+          sourceModule,
+          sourceId,
         },
         occurredAt: now,
       },
@@ -240,8 +249,8 @@ export async function recordSupplierPayment(input: SupplierPaymentInput) {
           movementName: "Tedarikçi Ödeme Çıkışı",
           direction: "out",
           amount: input.amount,
-          sourceModule: "supplier_payment",
-          sourceId: payment.id,
+          sourceModule,
+          sourceId: sourceId ?? payment.id,
           currency: input.currency ?? "TRY",
           note: input.note,
         },
@@ -270,8 +279,8 @@ export async function recordSupplierPayment(input: SupplierPaymentInput) {
             note: input.note,
             statementDate,
             paymentDueDate,
-            sourceModule: "supplier_payment",
-            sourceId: payment.id,
+            sourceModule,
+            sourceId: sourceId ?? payment.id,
           },
           occurredAt: now,
         },
@@ -288,8 +297,8 @@ export async function recordSupplierPayment(input: SupplierPaymentInput) {
         movementName: "Tedarikçi Ödeme Cari Kaydı",
         direction: "credit",
         amount: input.amount,
-        sourceModule: "supplier_payment",
-        sourceId: payment.id,
+        sourceModule,
+        sourceId: sourceId ?? payment.id,
         currency: input.currency ?? "TRY",
       },
     });
