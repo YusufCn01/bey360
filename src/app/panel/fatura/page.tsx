@@ -7,7 +7,7 @@ export default function InvoicePage() {
       <CardHeader>
         <CardTitle>Fatura ve e-Belge İşlemleri</CardTitle>
         <p className="text-sm text-slate-500">
-          Satış/alış faturası, numara serisi, e-Arşiv/e-Fatura taslakları ve belge yaşam döngüsü.
+          Satış / iade faturası, numara serisi, e-Arşiv / e-Fatura taslakları ve belge yaşam döngüsü.
         </p>
       </CardHeader>
       <CardContent>
