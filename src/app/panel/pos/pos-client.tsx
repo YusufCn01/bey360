@@ -169,6 +169,13 @@ type SaleResult = {
   changeAmount: number;
 };
 
+type InvoiceCreateResult = {
+  invoiceId: string;
+  documentId: string;
+  invoiceNo: string;
+  netTotal: number;
+};
+
 type PosSessionCurrentResponse = {
   registerId: string | null;
   openSession: null | {
@@ -250,6 +257,13 @@ type ReceiptPrinterSettings = {
   printPreviewEnabled: boolean;
 };
 
+type EInvoiceSettings = {
+  provider: string;
+  environment: "test" | "production";
+  autoSend: boolean;
+  autoDraft: boolean;
+};
+
 const defaultReceiptPrinterSettings: ReceiptPrinterSettings = {
   receiptPrinterName: "",
   receiptPaperMm: "58",
@@ -257,6 +271,24 @@ const defaultReceiptPrinterSettings: ReceiptPrinterSettings = {
   autoPrintReceipt: true,
   printPreviewEnabled: true,
 };
+
+const defaultEInvoiceSettings: EInvoiceSettings = {
+  provider: "none",
+  environment: "test",
+  autoSend: false,
+  autoDraft: true,
+};
+
+function parseEInvoiceSettings(payload: unknown): EInvoiceSettings {
+  const row = asRecord(payload);
+  const environment = asText(row.environment, "test");
+  return {
+    provider: asText(row.provider, "none"),
+    environment: environment === "production" ? "production" : "test",
+    autoSend: asBoolean(row.autoSend, false),
+    autoDraft: asBoolean(row.autoDraft, true),
+  };
+}
 
 type BarcodeDetectorResult = { rawValue?: string };
 type BarcodeDetectorLike = { detect: (source: ImageBitmapSource) => Promise<BarcodeDetectorResult[]> };
@@ -525,6 +557,7 @@ export function PosClient() {
   const [posParameters, setPosParameters] = React.useState<PosParameters>(defaultPosParameters);
   const [scaleConnectionSettings, setScaleConnectionSettings] = React.useState<ScaleConnectionSettings>(defaultScaleConnectionSettings);
   const [printerSettings, setPrinterSettings] = React.useState<ReceiptPrinterSettings>(defaultReceiptPrinterSettings);
+  const [eInvoiceSettings, setEInvoiceSettings] = React.useState<EInvoiceSettings>(defaultEInvoiceSettings);
 
   const [products, setProducts] = React.useState<ProductRow[]>([]);
   const [quickCustomers, setQuickCustomers] = React.useState<Array<{ code: string; name: string }>>([]);
@@ -787,13 +820,14 @@ export function PosClient() {
     setError(null);
     try {
       const productRows = await requestApi<ProductApiRow[]>("/api/tenant/products?limit=1200");
-      const [stockRows, customerRows, settingsRow, companySettings, printerSettingsRow, scaleSettingsRow] = await Promise.all([
+      const [stockRows, customerRows, settingsRow, companySettings, printerSettingsRow, scaleSettingsRow, eInvoiceSettingsRow] = await Promise.all([
         requestApi<StockBalanceRow[]>("/api/tenant/inventory/stock-balances?limit=3000").catch(() => []),
         requestApi<CustomerApiRow[]>("/api/tenant/customers?limit=3").catch(() => []),
         requestApi<SettingsRow>(`/api/tenant/settings?scope=${encodeURIComponent(POS_PARAMETERS_SCOPE)}`).catch(() => ({ payload: {} })),
         requestApi<SettingsRow>("/api/tenant/settings?scope=firma_ayarlari").catch(() => ({ payload: {} })),
         requestApi<SettingsRow>("/api/tenant/settings?scope=printer_settings").catch(() => ({ payload: {} })),
         requestApi<SettingsRow>("/api/tenant/settings?scope=scale_connection_settings").catch(() => ({ payload: {} })),
+        requestApi<SettingsRow>("/api/tenant/settings?scope=e_invoice_settings").catch(() => ({ payload: {} })),
       ]);
 
       const stockMap = new Map<string, number>();
@@ -848,6 +882,7 @@ export function PosClient() {
       setScaleConnectionSettings(parsedScaleSettings);
       setScaleConnectionState(parsedScaleSettings.enabled ? "ready" : "disabled");
       setPrinterSettings(parseReceiptPrinterSettings(printerSettingsRow.payload));
+      setEInvoiceSettings(parseEInvoiceSettings(eInvoiceSettingsRow.payload));
       const companyPayload = asRecord(companySettings.payload);
       setCompanyName(asText(companyPayload.companyName, "Bey360"));
       setBranchName(asText(companyPayload.branchName, "MERKEZ"));
@@ -2682,6 +2717,41 @@ export function PosClient() {
     }));
   }
 
+  async function createInvoiceForSale(params: {
+    receipt: PosSaleHistoryRow;
+    customerCode: string;
+    customerName: string;
+  }) {
+    const result = await requestApi<InvoiceCreateResult>("/api/tenant/invoices", {
+      method: "POST",
+      body: JSON.stringify({
+        customerCode: params.customerCode,
+        customerName: params.customerName,
+        invoiceType: "satis",
+        scenario: params.customerCode === "PERAKENDE" ? "EARSIV" : "TEMELFATURA",
+        profile: params.customerCode === "PERAKENDE" ? "EARSIV" : "TEMELFATURA",
+        currency: params.receipt.currency || "TRY",
+        notes: `POS satış belgesi ${params.receipt.saleCode}`,
+        lines: params.receipt.items.map((line) => ({
+          productId: line.productId,
+          productName: line.productName,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          taxRate: line.taxRate,
+        })),
+      }),
+    });
+
+    if (eInvoiceSettings.autoSend && result.documentId) {
+      await requestApi(`/api/tenant/einvoice/documents/${result.documentId}/send`, {
+        method: "POST",
+        body: JSON.stringify({ providerCode: "mock-einvoice" }),
+      });
+    }
+
+    return result;
+  }
+
   async function submitSale(params: {
     paymentMethod?: "nakit" | "kart" | "havale_eft" | "cari" | "cek" | "dekont";
     amount?: number;
@@ -2742,7 +2812,6 @@ export function PosClient() {
         }),
       });
 
-      setMessage(`${params.modeLabel} tamamlandı. Belge: ${result.saleCode} | Ödenen: ${formatTry(result.paidTotal)} | Kalan: ${formatTry(result.outstanding)}`);
       const receiptSnapshot: PosSaleHistoryRow = {
         id: result.saleId,
         saleCode: result.saleCode,
@@ -2756,6 +2825,21 @@ export function PosClient() {
         items: saleItemsSnapshot,
         payments: resolvedPayments.map((row) => ({ method: row.method, amount: row.amount, reference: row.reference })),
       };
+      const invoiceCustomerCode = resolvedCustomerCode.trim() || "PERAKENDE";
+      const invoiceCustomerName = resolvedCustomerName.trim() || "Perakende Müşteri";
+      let invoiceResult: InvoiceCreateResult | null = null;
+      if (eInvoiceSettings.autoDraft) {
+        invoiceResult = await createInvoiceForSale({
+          receipt: receiptSnapshot,
+          customerCode: invoiceCustomerCode,
+          customerName: invoiceCustomerName,
+        });
+      }
+      setMessage(
+        `${params.modeLabel} tamamlandı. Belge: ${result.saleCode} | Ödenen: ${formatTry(result.paidTotal)} | Kalan: ${formatTry(result.outstanding)}${
+          invoiceResult ? ` | e-Belge: ${invoiceResult.invoiceNo}` : ""
+        }`,
+      );
       setLastSaleReceipt(receiptSnapshot);
       await handlePostSaleReceiptFlow(receiptSnapshot);
       setCart([]);
@@ -3064,6 +3148,16 @@ export function PosClient() {
             <Button size="sm" className={`${kioskMode ? "h-9 px-3 text-sm" : "h-12 px-5 text-lg"} bg-sky-700 text-white hover:bg-sky-600`} onClick={() => setSearchText("")}>
               Hızlı Satış
             </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              className={`${kioskMode ? "h-9 px-3 text-sm" : "h-12 px-5 text-lg"}`}
+              onClick={() => {
+                window.location.href = "/panel";
+              }}
+            >
+              Ana Menüye Dön
+            </Button>
             {!kioskMode ? (
               <>
                 <Button size="sm" className="h-12 bg-slate-700 px-5 text-lg text-white hover:bg-slate-600" onClick={openCustomerScreen}>
@@ -3257,9 +3351,9 @@ export function PosClient() {
             ) : null}
           </div>
 
-          <div className="flex-1 overflow-auto bg-white">
-            <table className="min-w-full text-base">
-              <thead className="sticky top-0 z-10 bg-[#e6edf5] text-slate-700">
+          <div className="flex-1 overflow-auto bg-[color:var(--mx-surface)] text-[color:var(--mx-text)]">
+            <table className="min-w-full text-base text-[color:var(--mx-text)]">
+              <thead className="sticky top-0 z-10 bg-[color:var(--mx-surface-soft)] text-[color:var(--mx-text)]">
                 <tr>
                   <th className="w-14 px-2 py-3 text-left">Sıra</th>
                   <th className="w-40 px-2 py-3 text-left">Ürün Kodu</th>
@@ -3282,15 +3376,19 @@ export function PosClient() {
                     const isSelected = selectedLineId === line.productId;
                     const quantityStep = getQuantityStep(line.unit);
                     return (
-                      <tr key={line.productId} className={`border-b border-slate-200 ${isSelected ? "bg-sky-100" : "hover:bg-slate-50"}`} onClick={() => setSelectedLineId(line.productId)}>
+                      <tr
+                        key={line.productId}
+                        className={`border-b border-[color:var(--mx-border)] ${isSelected ? "bg-sky-100 text-slate-900" : "hover:bg-[color:var(--mx-surface-soft)]"}`}
+                        onClick={() => setSelectedLineId(line.productId)}
+                      >
                         <td className="px-2 py-3">{index + 1}</td>
                         <td className="px-2 py-3">{line.productCode}</td>
                         <td className="px-2 py-3 font-medium">{line.productName}</td>
                         <td className="px-2 py-3">
-                          <div className="inline-flex items-center gap-1 rounded border border-[color:var(--mx-border)] bg-white px-1 py-0.5">
-                            <button type="button" className="h-10 w-10 rounded bg-slate-100 text-xl font-bold" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity - quantityStep); }}>-</button>
+                          <div className="inline-flex items-center gap-1 rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-1 py-0.5">
+                            <button type="button" className="h-10 w-10 rounded bg-[color:var(--mx-surface-soft)] text-xl font-bold text-[color:var(--mx-text)]" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity - quantityStep); }}>-</button>
                             <span className="min-w-10 text-center font-semibold">{formatQuantity(line.quantity)}</span>
-                            <button type="button" className="h-10 w-10 rounded bg-slate-100 text-xl font-bold" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity + quantityStep); }}>+</button>
+                            <button type="button" className="h-10 w-10 rounded bg-[color:var(--mx-surface-soft)] text-xl font-bold text-[color:var(--mx-text)]" onClick={(event) => { event.stopPropagation(); updateQuantity(line.productId, line.quantity + quantityStep); }}>+</button>
                           </div>
                         </td>
                         <td className="px-2 py-3">{line.unit}</td>
@@ -3311,11 +3409,11 @@ export function PosClient() {
             {kioskMode ? (
               <>
                 <div className="grid gap-1 md:grid-cols-[repeat(5,minmax(0,1fr))_1.15fr]">
-                  <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
-                  <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
-                  <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-[11px] text-[color:var(--mx-text-muted)]">KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
-                  <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Tahsil</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
-                  <div className="rounded border border-[color:var(--mx-border)] bg-white px-2 py-1.5 text-sm"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
+                  <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-2 py-1.5 text-sm text-[color:var(--mx-text)]"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
+                  <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-2 py-1.5 text-sm text-[color:var(--mx-text)]"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
+                  <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-2 py-1.5 text-sm text-[color:var(--mx-text)]"><p className="text-[11px] text-[color:var(--mx-text-muted)]">KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
+                  <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-2 py-1.5 text-sm text-[color:var(--mx-text)]"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Tahsil</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
+                  <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-2 py-1.5 text-sm text-[color:var(--mx-text)]"><p className="text-[11px] text-[color:var(--mx-text-muted)]">Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
                   <div className="rounded border border-emerald-700 bg-emerald-800 px-2.5 py-1.5 text-white"><p className="text-[11px] text-emerald-100">Genel Toplam</p><p className="text-2xl font-extrabold">{formatTry(totals.grandTotal)}</p></div>
                 </div>
                 <div className="grid gap-1 md:grid-cols-4">
@@ -3333,13 +3431,13 @@ export function PosClient() {
               </>
             ) : (
               <div className="grid gap-2 md:grid-cols-8">
-                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Toplam Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
-                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
-                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
-                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Genel İskonto</p><p className="font-bold">{formatTry(0)}</p></div>
-                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Tahsil Edilen</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
-                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
-                <div className="rounded border border-[color:var(--mx-border)] bg-white px-3 py-2 text-base"><p className="text-sm text-[color:var(--mx-text-muted)]">Para Üstü</p><p className="font-bold text-indigo-700">{formatTry(paymentPreview.change)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-base text-[color:var(--mx-text)]"><p className="text-sm text-[color:var(--mx-text-muted)]">Toplam Miktar</p><p className="font-bold">{formatQuantity(totals.totalQuantity)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-base text-[color:var(--mx-text)]"><p className="text-sm text-[color:var(--mx-text-muted)]">Ara Toplam</p><p className="font-bold">{formatTry(totals.subTotal)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-base text-[color:var(--mx-text)]"><p className="text-sm text-[color:var(--mx-text-muted)]">KDV</p><p className="font-bold">{formatTry(totals.taxTotal)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-base text-[color:var(--mx-text)]"><p className="text-sm text-[color:var(--mx-text-muted)]">Genel İskonto</p><p className="font-bold">{formatTry(0)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-base text-[color:var(--mx-text)]"><p className="text-sm text-[color:var(--mx-text-muted)]">Tahsil Edilen</p><p className="font-bold text-emerald-700">{formatTry(paymentPreview.collected)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-base text-[color:var(--mx-text)]"><p className="text-sm text-[color:var(--mx-text-muted)]">Kalan</p><p className="font-bold text-rose-700">{formatTry(paymentPreview.remaining)}</p></div>
+                <div className="rounded border border-[color:var(--mx-border)] bg-[color:var(--mx-surface)] px-3 py-2 text-base text-[color:var(--mx-text)]"><p className="text-sm text-[color:var(--mx-text-muted)]">Para Üstü</p><p className="font-bold text-indigo-700">{formatTry(paymentPreview.change)}</p></div>
                 <div className="rounded border border-emerald-700 bg-emerald-800 px-3 py-2 text-base text-white"><p className="text-sm text-emerald-100">Genel Toplam</p><p className="text-xl font-extrabold">{formatTry(totals.grandTotal)}</p></div>
               </div>
             )}

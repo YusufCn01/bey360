@@ -99,7 +99,7 @@ export async function createSalesInvoice(input: CreateInvoiceInput) {
       });
     }
 
-    await tx.eInvoiceDocuments.create({
+    const eInvoiceDocument = await tx.eInvoiceDocuments.create({
       data: {
         tenantId: input.tenantId,
         code: invoiceNo,
@@ -136,6 +136,7 @@ export async function createSalesInvoice(input: CreateInvoiceInput) {
 
     return {
       invoiceId: invoice.id,
+      documentId: eInvoiceDocument.id,
       invoiceNo,
       netTotal,
     };
