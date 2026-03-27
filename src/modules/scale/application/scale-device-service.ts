@@ -150,6 +150,18 @@ function parseWeightText(raw: string, settings: ScaleConnectionSettings): ScaleR
   };
 }
 
+function emptyScaleReadResult(settings: ScaleConnectionSettings, raw = "", latencyMs = 0): ScaleReadResult {
+  return {
+    transport: settings.transport,
+    stable: null,
+    weightKg: null,
+    weightText: null,
+    unit: settings.unit,
+    raw: sanitizeRawText(raw),
+    latencyMs,
+  };
+}
+
 async function loadSerialPortModule(): Promise<SerialPortModule> {
   try {
     const loader = Function("return require")() as (moduleId: string) => unknown;
@@ -170,12 +182,26 @@ async function readFromTcp(settings: ScaleConnectionSettings): Promise<ScaleRead
     const commandBuffer = parseCommandBuffer(settings.commandMode, settings.pollCommand);
     const chunks: Buffer[] = [];
     let settled = false;
+    let idleTimer: NodeJS.Timeout | null = null;
+
+    const clearIdleTimer = () => {
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+        idleTimer = null;
+      }
+    };
+
+    const scheduleIdleFinalize = (delayMs: number) => {
+      clearIdleTimer();
+      idleTimer = setTimeout(() => finalize(), delayMs);
+    };
 
     const finalize = (error?: Error | null) => {
       if (settled) {
         return;
       }
       settled = true;
+      clearIdleTimer();
       socket.destroy();
 
       if (error) {
@@ -184,22 +210,33 @@ async function readFromTcp(settings: ScaleConnectionSettings): Promise<ScaleRead
       }
 
       const raw = Buffer.concat(chunks).toString("utf8");
-      const parsed = parseWeightText(raw, settings);
+      const parsed = raw.trim().length > 0 ? parseWeightText(raw, settings) : emptyScaleReadResult(settings, raw);
       resolve({
         ...parsed,
         latencyMs: Date.now() - startedAt,
       });
     };
 
+    socket.setNoDelay(true);
     socket.setTimeout(settings.timeoutMs);
     socket.once("timeout", () => finalize(new Error("Terazi baglanti zaman asimina ugradi.")));
     socket.once("error", (error) => finalize(error));
+    socket.once("close", () => {
+      if (!settled && chunks.length > 0) {
+        finalize();
+      }
+    });
+    socket.once("end", () => {
+      if (!settled) {
+        finalize();
+      }
+    });
     socket.once("connect", () => {
       if (commandBuffer) {
         socket.write(commandBuffer);
       }
-      if (settings.readMode === "stream" && !commandBuffer) {
-        setTimeout(() => finalize(), Math.min(settings.timeoutMs, 900));
+      if (settings.readMode === "stream" || !commandBuffer) {
+        scheduleIdleFinalize(Math.min(settings.timeoutMs, 900));
       }
     });
     socket.on("data", (chunk) => {
@@ -207,7 +244,9 @@ async function readFromTcp(settings: ScaleConnectionSettings): Promise<ScaleRead
       const preview = parseWeightText(Buffer.concat(chunks).toString("utf8"), settings);
       if (preview.weightKg !== null) {
         finalize();
+        return;
       }
+      scheduleIdleFinalize(250);
     });
 
     socket.connect(settings.port, settings.host);
@@ -327,8 +366,52 @@ export async function listScaleSerialPorts(): Promise<ScalePortSummary[]> {
 
 export async function testScaleConnection(input: unknown): Promise<ScaleReadResult> {
   const settings = parseScaleConnectionSettings(input);
+  const startedAt = Date.now();
+
+  if (settings.transport === "tcp") {
+    return await withHardTimeout(
+      new Promise<ScaleReadResult>((resolve, reject) => {
+        const socket = new net.Socket();
+        let settled = false;
+
+        const finalize = (error?: Error | null) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          socket.destroy();
+
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve({
+            ...emptyScaleReadResult(settings, "TCP baglantisi kuruldu.", Date.now() - startedAt),
+            stable: true,
+          });
+        };
+
+        socket.setNoDelay(true);
+        socket.setTimeout(settings.timeoutMs);
+        socket.once("timeout", () => finalize(new Error("Terazi baglanti zaman asimina ugradi.")));
+        socket.once("error", (error) => finalize(error));
+        socket.once("connect", () => {
+          const commandBuffer = parseCommandBuffer(settings.commandMode, settings.pollCommand);
+          if (commandBuffer) {
+            socket.write(commandBuffer);
+          }
+          setTimeout(() => finalize(), 150);
+        });
+        socket.connect(settings.port, settings.host);
+      }),
+      Math.max(1000, settings.timeoutMs + 250),
+      "Terazi baglanti istegi zaman asimina ugradi.",
+    );
+  }
+
   return await withHardTimeout(
-    settings.transport === "tcp" ? readFromTcp(settings) : readFromSerial(settings),
+    readFromSerial(settings),
     Math.max(1000, settings.timeoutMs + 250),
     "Terazi baglanti istegi zaman asimina ugradi.",
   );

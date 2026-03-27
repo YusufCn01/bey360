@@ -2,7 +2,7 @@ import { z } from "zod";
 import { NextRequest } from "next/server";
 import { AuthorizationError, requireTenantAccess } from "@/lib/auth/tenant-access";
 import { fail, ok } from "@/lib/http/response";
-import { readScaleWeight } from "@/modules/scale/application/scale-device-service";
+import { testScaleConnection } from "@/modules/scale/application/scale-device-service";
 import { loadTenantScaleSettings, mergeScaleSettings } from "@/app/api/tenant/scale/_lib";
 import { isSerialScaleSupportedOnRequest } from "@/app/api/tenant/scale/runtime";
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         422,
       );
     }
-    const result = await readScaleWeight(resolvedSettings);
+    const result = await testScaleConnection(resolvedSettings);
 
     return ok({
       reachable: true,
