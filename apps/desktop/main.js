@@ -1,8 +1,12 @@
 const fs = require("fs");
 const path = require("path");
 const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require("electron");
-const { ensureLocalDatabase } = require("./local-db");
-const { ensureLocalWebServer, stopLocalWebServer } = require("./local-server");
+const { ensureLocalDatabase, setDesktopLogWriter: setLocalDbLogWriter } = require("./local-db");
+const {
+  ensureLocalWebServer,
+  stopLocalWebServer,
+  setDesktopLogWriter: setLocalWebLogWriter,
+} = require("./local-server");
 
 const DEFAULT_CLOUD_URL = "https://bey360.com/giris";
 const DEFAULT_LOCAL_URL = "http://127.0.0.1:3015/giris";
@@ -33,6 +37,12 @@ function writeStartupLog(message) {
   } catch {
     // ignore logging errors
   }
+}
+
+function bindDesktopModuleLogs() {
+  const writer = (message) => writeStartupLog(message);
+  setLocalDbLogWriter(writer);
+  setLocalWebLogWriter(writer);
 }
 
 function createLocalFailurePage(detail) {
@@ -190,7 +200,7 @@ function createSplashMarkup(title, detail, progress) {
         </div>
         <div class="bar"><span></span></div>
         <div class="foot">
-          <span>Veritabani • Migration • Seed • Uygulama Baslangici</span>
+          <span>Veritabani ï¿½ Migration ï¿½ Seed ï¿½ Uygulama Baslangici</span>
           <span>Bey360 Desktop</span>
         </div>
       </section>
@@ -413,13 +423,14 @@ if (!gotLock) {
       logFilePath = path.join(userDataPath, "desktop-startup.log");
       writeStartupLog("Uygulama baslatildi");
       writeStartupLog(`Run mode: ${RUN_MODE}`);
+      bindDesktopModuleLogs();
 
       createSplashWindow();
-      updateSplash("Yerel veritabani kontrol ediliyor", "PostgreSQL kurulumu ve baglanti dogrulamasi yapiliyor", 18);
+      updateSplash("Yerel veritabani kontrol ediliyor", "Mevcut PostgreSQL baglantilari taraniyor", 18);
       const localDb = await ensureLocalDatabase();
       writeStartupLog(`Local DB sonucu: ${JSON.stringify(localDb)}`);
 
-      updateSplash("Yerel uygulama hazirlaniyor", "Migration, seed ve lokal web sunucusu baslatiliyor", 56);
+      updateSplash("Yerel veritabani hazir", "Migration, seed ve lokal web sunucusu baslatiliyor", 56);
       const localWeb = await ensureLocalWebServer();
       writeStartupLog(`Local web sonucu: ${JSON.stringify(localWeb)}`);
 

@@ -7,6 +7,18 @@ const { LOCAL_DB_URL, findPsqlExecutable } = require("./local-db");
 const LOCAL_BASE_URL = "http://127.0.0.1:3015";
 const DEMO_PASSWORD_HASH = "$2b$10$nAjWhrjU2hSdrQ14/Pkkd.BHd4P.EzQcK9lPk/0keAki7sG/JuJ7y";
 let serverProcess = null;
+let externalLogWriter = null;
+
+function writeDesktopLog(message) {
+  if (typeof externalLogWriter === "function") {
+    try {
+      externalLogWriter(message);
+      return;
+    } catch {
+      // ignore delegated logging failures
+    }
+  }
+}
 
 function fileExists(targetPath) {
   try {
@@ -71,16 +83,33 @@ async function waitForLocalHealth(timeoutMs) {
 }
 
 function spawnServer(command, args, workdir, env) {
-  return spawn(command, args, {
+  writeDesktopLog(`Yerel sunucu baslatiliyor: ${command} ${args.join(" ")}`);
+  const child = spawn(command, args, {
     cwd: workdir,
-    stdio: "ignore",
+    stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
     env,
   });
+
+  child.stdout.on("data", (chunk) => {
+    writeDesktopLog(`[local-web:stdout] ${chunk.toString().trim()}`);
+  });
+
+  child.stderr.on("data", (chunk) => {
+    writeDesktopLog(`[local-web:stderr] ${chunk.toString().trim()}`);
+  });
+
+  child.on("close", (code) => {
+    writeDesktopLog(`Yerel sunucu kapandi (code=${code ?? "null"})`);
+  });
+
+  return child;
 }
 
-function runCommand(command, args, workdir, env) {
+function runCommand(command, args, workdir, env, options = {}) {
+  const timeoutMs = Number(options.timeoutMs || 120000);
   return new Promise((resolve, reject) => {
+    writeDesktopLog(`Komut baslatildi: ${command} ${args.join(" ")}`);
     const child = spawn(command, args, {
       cwd: workdir,
       stdio: ["ignore", "pipe", "pipe"],
@@ -99,13 +128,21 @@ function runCommand(command, args, workdir, env) {
       stderr += chunk.toString();
     });
 
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error(`Komut zaman asimina ugradi (${timeoutMs}ms): ${command} ${args.join(" ")}`));
+    }, timeoutMs);
+
     child.on("error", reject);
     child.on("close", (code) => {
+      clearTimeout(timer);
       if ((code ?? 1) === 0) {
+        writeDesktopLog(`Komut tamamlandi: ${command} ${args.join(" ")}`);
         resolve({ stdout, stderr });
         return;
       }
 
+      writeDesktopLog(`Komut basarisiz: ${command} ${args.join(" ")} | ${stderr || stdout}`);
       reject(new Error(stderr || stdout || `Komut basarisiz: ${command} ${args.join(" ")}`));
     });
   });
@@ -144,6 +181,7 @@ function getMigrationFiles(runtimeRoot) {
 }
 
 async function ensureDatabaseExists(psqlPath, connection, workdir, env) {
+  writeDesktopLog("Bundled veritabani hazirlaniyor");
   const baseArgs = ["-h", connection.host, "-p", String(connection.port), "-U", connection.user];
   const envWithPassword = {
     ...env,
@@ -204,6 +242,7 @@ async function ensureDatabaseExists(psqlPath, connection, workdir, env) {
 }
 
 async function seedDatabase(runtimeRoot, env) {
+  writeDesktopLog("Demo tenant seed islemi basladi");
   const requireFromRuntime = getRequireFromRuntime(runtimeRoot);
   const { PrismaClient, RoleScope, TenantStatus, UserStatus } = requireFromRuntime("@prisma/client");
   const prisma = new PrismaClient({
@@ -453,6 +492,7 @@ async function seedDatabase(runtimeRoot, env) {
       reason: "Demo tenant ve yonetici kullanici hazirlandi",
     };
   } catch (error) {
+    writeDesktopLog(`Seed hatasi: ${error instanceof Error ? `${error.message}\n${error.stack || ""}` : String(error)}`);
     return {
       status: "error",
       reason: error instanceof Error ? error.message : "Seed basarisiz",
@@ -463,6 +503,7 @@ async function seedDatabase(runtimeRoot, env) {
 }
 
 async function prepareRepoDatabase(repoRoot, env) {
+  writeDesktopLog("Repo veritabani hazirlaniyor");
   const prismaRun = path.join(repoRoot, "scripts", "prisma-run.mjs");
   if (!fileExists(prismaRun)) {
     return {
@@ -489,6 +530,7 @@ async function prepareRepoDatabase(repoRoot, env) {
 }
 
 async function prepareBundledDatabase(runtimeRoot, env) {
+  writeDesktopLog("Paketlenmis veritabani hazirlaniyor");
   const psqlPath = findPsqlExecutable();
   if (!psqlPath) {
     return {
@@ -522,6 +564,7 @@ async function prepareBundledDatabase(runtimeRoot, env) {
 }
 
 async function ensureLocalWebServer() {
+  writeDesktopLog("Yerel web sunucusu bootstrap basladi");
   const runMode = (process.env.B360_DESKTOP_RUN_MODE ?? "local").trim().toLowerCase();
   if (runMode === "cloud") {
     return {
@@ -582,6 +625,7 @@ async function ensureLocalWebServer() {
       : await prepareRepoDatabase(runtime.root, env);
 
   if (dbPreparation.status !== "ready") {
+    writeDesktopLog(`DB hazirlama basarisiz: ${dbPreparation.reason}`);
     return {
       status: "error",
       url: null,
@@ -618,6 +662,7 @@ async function ensureLocalWebServer() {
       };
     }
 
+    writeDesktopLog("Yerel web sunucusu saglik kontrolunu gecti");
     return {
       status: "ready",
       url: `${LOCAL_BASE_URL}/giris`,
@@ -643,4 +688,7 @@ module.exports = {
   ensureLocalWebServer,
   stopLocalWebServer,
   LOCAL_BASE_URL,
+  setDesktopLogWriter(writer) {
+    externalLogWriter = typeof writer === "function" ? writer : null;
+  },
 };

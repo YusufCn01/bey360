@@ -13,6 +13,7 @@ const APP_DATA_ROOT = path.join(process.env.APPDATA || path.join(os.homedir(), "
 const MANAGED_PG_ROOT = path.join(APP_DATA_ROOT, "postgres-managed");
 const MANAGED_PG_DATA = path.join(MANAGED_PG_ROOT, "data");
 const MANAGED_PG_LOG = path.join(MANAGED_PG_ROOT, "postgres.log");
+const DEFAULT_RUN_TIMEOUT_MS = 90000;
 const FALLBACK_LOCAL_URLS = [
   () => process.env.LOCAL_DATABASE_URL,
   () => process.env.DATABASE_URL,
@@ -22,8 +23,30 @@ const FALLBACK_LOCAL_URLS = [
   () => "postgresql://postgres:postgres@127.0.0.1:5432/muhasebe_local?schema=public",
 ];
 
-function run(command, args) {
+let externalLogWriter = null;
+
+function writeDesktopLog(message) {
+  if (typeof externalLogWriter === "function") {
+    try {
+      externalLogWriter(message);
+      return;
+    } catch {
+      // ignore delegated logging failures
+    }
+  }
+
+  try {
+    fs.mkdirSync(APP_DATA_ROOT, { recursive: true });
+    fs.appendFileSync(path.join(APP_DATA_ROOT, "desktop-startup.log"), `[local-db] ${message}\n`, "utf8");
+  } catch {
+    // ignore fallback logging failures
+  }
+}
+
+function run(command, args, options = {}) {
+  const timeoutMs = Number(options.timeoutMs || DEFAULT_RUN_TIMEOUT_MS);
   return new Promise((resolve, reject) => {
+    writeDesktopLog(`Komut baslatildi: ${command} ${args.join(" ")}`);
     const child = spawn(command, args, {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
@@ -40,12 +63,20 @@ function run(command, args) {
       stderr += chunk.toString();
     });
 
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error(`Komut zaman asimina ugradi (${timeoutMs}ms): ${command} ${args.join(" ")}`));
+    }, timeoutMs);
+
     child.on("error", (error) => reject(error));
     child.on("close", (code) => {
+      clearTimeout(timer);
       if (code === 0) {
+        writeDesktopLog(`Komut tamamlandi: ${command} ${args.join(" ")}`);
         resolve({ stdout, stderr });
         return;
       }
+      writeDesktopLog(`Komut basarisiz: ${command} ${args.join(" ")} | ${stderr || stdout}`);
       reject(new Error(stderr || stdout || `Komut basarisiz: ${command} ${args.join(" ")}`));
     });
   });
@@ -205,6 +236,7 @@ async function installPostgresWithWinget() {
   }
 
   try {
+    writeDesktopLog("winget ile PostgreSQL kurulumu deneniyor");
     await run("winget", [
       "install",
       "--id",
@@ -214,7 +246,7 @@ async function installPostgresWithWinget() {
       "--accept-source-agreements",
       "--disable-interactivity",
       "--silent",
-    ]);
+    ], { timeoutMs: 180000 });
 
     return {
       status: "ready",
@@ -237,6 +269,7 @@ async function installPostgresWithWinget() {
 }
 
 async function ensureManagedPostgresInstance() {
+  writeDesktopLog("Managed PostgreSQL instance kontrolu basladi");
   const initdbPath = findInitDbExecutable();
   const pgCtlPath = findPgCtlExecutable();
   const psqlPath = findPsqlExecutable();
@@ -267,6 +300,7 @@ async function ensureManagedPostgresInstance() {
   fs.mkdirSync(MANAGED_PG_ROOT, { recursive: true });
 
   if (!fs.existsSync(path.join(MANAGED_PG_DATA, "PG_VERSION"))) {
+    writeDesktopLog("Managed PostgreSQL data klasoru hazirlaniyor");
     fs.rmSync(MANAGED_PG_DATA, { recursive: true, force: true });
     fs.mkdirSync(MANAGED_PG_DATA, { recursive: true });
 
@@ -280,7 +314,7 @@ async function ensureManagedPostgresInstance() {
         "trust",
         "--encoding=UTF8",
         "--locale=C",
-      ]);
+      ], { timeoutMs: 180000 });
 
       fs.appendFileSync(
         path.join(MANAGED_PG_DATA, "postgresql.conf"),
@@ -298,6 +332,7 @@ async function ensureManagedPostgresInstance() {
 
   const alreadyRunning = await canReachTcp("127.0.0.1", MANAGED_PORT);
   if (!alreadyRunning) {
+    writeDesktopLog(`Managed PostgreSQL ${MANAGED_PORT} portunda baslatiliyor`);
     try {
       await run(resolvedPgCtlPath, [
         "-D",
@@ -307,8 +342,9 @@ async function ensureManagedPostgresInstance() {
         "-o",
         `-p ${MANAGED_PORT}`,
         "start",
-      ]);
+      ], { timeoutMs: 60000 });
     } catch (error) {
+      writeDesktopLog(`pg_ctl start ilk denemede hata verdi: ${formatCliError(error)}`);
       const reachable = await waitForPort("127.0.0.1", MANAGED_PORT, 20000);
       if (!reachable) {
         return {
@@ -331,6 +367,7 @@ async function ensureManagedPostgresInstance() {
 
   process.env.LOCAL_DATABASE_URL = MANAGED_DB_URL;
   process.env.DATABASE_TARGET = "local";
+  writeDesktopLog(`Managed PostgreSQL hazir: ${MANAGED_DB_URL}`);
 
   return {
     status: "ready",
@@ -340,6 +377,7 @@ async function ensureManagedPostgresInstance() {
 }
 
 async function ensureLocalDatabase() {
+  writeDesktopLog("Yerel veritabani bootstrap basladi");
   const mode = (process.env.B360_DESKTOP_DB_MODE ?? "local").trim().toLowerCase();
   if (mode === "cloud") {
     return {
@@ -351,6 +389,7 @@ async function ensureLocalDatabase() {
 
   const existingUrl = await findExistingLocalDatabaseUrl();
   if (existingUrl) {
+    writeDesktopLog(`Mevcut local PostgreSQL bulundu: ${existingUrl}`);
     process.env.LOCAL_DATABASE_URL = existingUrl;
     process.env.DATABASE_TARGET = "local";
     return {
@@ -362,6 +401,7 @@ async function ensureLocalDatabase() {
 
   const managed = await ensureManagedPostgresInstance();
   if (managed.status === "ready") {
+    writeDesktopLog(`Managed local DB sonucu: ${managed.reason}`);
     return managed;
   }
 
@@ -375,6 +415,7 @@ async function ensureLocalDatabase() {
   }
 
   try {
+    writeDesktopLog("Docker fallback ile local PostgreSQL deneniyor");
     const check = await run("docker", ["ps", "-a", "--filter", `name=^/${CONTAINER_NAME}$`, "--format", "{{.Names}}"]);
     const exists = check.stdout.trim() === CONTAINER_NAME;
 
@@ -419,4 +460,7 @@ module.exports = {
   ensureLocalDatabase,
   LOCAL_DB_URL: MANAGED_DB_URL,
   findPsqlExecutable,
+  setDesktopLogWriter(writer) {
+    externalLogWriter = typeof writer === "function" ? writer : null;
+  },
 };
