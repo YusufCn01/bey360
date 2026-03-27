@@ -11,7 +11,7 @@
     "dev:web": "npm --prefix ../.. run dev",
     "dev:desktop": "wait-on http://localhost:3015 && cross-env ELECTRON_START_URL=http://localhost:3015 electron .",
     "dev": "concurrently -k \"npm run dev:web\" \"npm run dev:desktop\"",
-    "build:prepare": "npm --prefix ../.. run build && node ../../scripts/prepare-desktop-bundle.mjs",
+    "build:prepare": "node ../../scripts/prepare-desktop-bundle.mjs",
     "pack": "electron-builder --dir",
     "build:win": "npm run build:prepare && electron-builder --win nsis"
   },
