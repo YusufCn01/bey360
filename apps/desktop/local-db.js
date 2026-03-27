@@ -91,7 +91,7 @@ async function findExistingLocalDatabaseUrl() {
 }
 
 async function ensureLocalDatabase() {
-  const mode = (process.env.B360_DESKTOP_DB_MODE ?? "hybrid").trim().toLowerCase();
+  const mode = (process.env.B360_DESKTOP_DB_MODE ?? "local").trim().toLowerCase();
   if (mode === "cloud") {
     return {
       status: "skipped",

@@ -5,7 +5,7 @@
   "description": "Bey360 masaustu uygulamasi (Electron)",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "cross-env B360_DESKTOP_RUN_MODE=local B360_DESKTOP_DB_MODE=local electron .",
     "start:cloud": "cross-env B360_DESKTOP_RUN_MODE=cloud B360_DESKTOP_DB_MODE=cloud electron .",
     "start:local": "cross-env B360_DESKTOP_RUN_MODE=local B360_DESKTOP_DB_MODE=local ELECTRON_START_URL=http://127.0.0.1:3015 electron .",
     "dev:web": "npm --prefix ../.. run dev",

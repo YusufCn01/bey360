@@ -111,7 +111,7 @@ async function prepareLocalDatabase(repoRoot, env) {
 }
 
 async function ensureLocalWebServer() {
-  const runMode = (process.env.B360_DESKTOP_RUN_MODE ?? "hybrid").trim().toLowerCase();
+  const runMode = (process.env.B360_DESKTOP_RUN_MODE ?? "local").trim().toLowerCase();
   if (runMode === "cloud") {
     return {
       status: "skipped",

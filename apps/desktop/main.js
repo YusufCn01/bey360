@@ -6,7 +6,7 @@ const { ensureLocalWebServer, stopLocalWebServer } = require("./local-server");
 const DEFAULT_CLOUD_URL = "https://bey360.com/giris";
 const DEFAULT_LOCAL_URL = "http://127.0.0.1:3015/giris";
 const START_URL_OVERRIDE = process.env.ELECTRON_START_URL?.trim();
-const RUN_MODE = (process.env.B360_DESKTOP_RUN_MODE ?? "hybrid").trim().toLowerCase();
+const RUN_MODE = (process.env.B360_DESKTOP_RUN_MODE ?? "local").trim().toLowerCase();
 
 let mainWindow = null;
 let activeStartUrl = START_URL_OVERRIDE || DEFAULT_CLOUD_URL;
