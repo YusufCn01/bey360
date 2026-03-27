@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
 const { createRequire } = require("module");
+const Module = require("module");
 const { LOCAL_DB_URL, findPsqlExecutable } = require("./local-db");
 
 const LOCAL_BASE_URL = "http://127.0.0.1:3015";
@@ -53,6 +54,27 @@ function getRuntimeRoot() {
 
 function getRequireFromRuntime(runtimeRoot) {
   return createRequire(path.join(runtimeRoot, "package.json"));
+}
+
+function loadPrismaClient(runtimeRoot) {
+  const vendorRoot = path.join(runtimeRoot, "prisma-runtime");
+  const prismaEntry = path.join(vendorRoot, "@prisma", "client", "index.js");
+  if (fileExists(prismaEntry)) {
+    const queryEngineBinary = path.join(vendorRoot, ".prisma", "client", "query-engine-windows.exe");
+    if (fileExists(queryEngineBinary)) {
+      process.env.PRISMA_QUERY_ENGINE_BINARY = queryEngineBinary;
+      process.env.PRISMA_QUERY_ENGINE_LIBRARY = "";
+    }
+    const previousNodePath = process.env.NODE_PATH || "";
+    process.env.NODE_PATH = previousNodePath
+      ? `${vendorRoot}${path.delimiter}${previousNodePath}`
+      : vendorRoot;
+    Module._initPaths();
+    return require(prismaEntry);
+  }
+
+  const requireFromRuntime = getRequireFromRuntime(runtimeRoot);
+  return requireFromRuntime("@prisma/client");
 }
 
 async function canReachLocalHealth() {
@@ -243,8 +265,7 @@ async function ensureDatabaseExists(psqlPath, connection, workdir, env) {
 
 async function seedDatabase(runtimeRoot, env) {
   writeDesktopLog("Demo tenant seed islemi basladi");
-  const requireFromRuntime = getRequireFromRuntime(runtimeRoot);
-  const { PrismaClient, RoleScope, TenantStatus, UserStatus } = requireFromRuntime("@prisma/client");
+  const { PrismaClient, RoleScope, TenantStatus, UserStatus } = loadPrismaClient(runtimeRoot);
   const prisma = new PrismaClient({
     datasources: {
       db: {
