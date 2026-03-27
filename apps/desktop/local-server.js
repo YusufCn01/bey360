@@ -29,6 +29,27 @@ function fileExists(targetPath) {
   }
 }
 
+function resolveNodeExecutable() {
+  const candidates = [
+    process.env.B360_DESKTOP_NODE_PATH,
+    path.join(process.env.ProgramFiles || "C:\\Program Files", "nodejs", "node.exe"),
+    path.join(process.env.LOCALAPPDATA || "", "Programs", "nodejs", "node.exe"),
+    "node",
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (candidate === "node") {
+      return candidate;
+    }
+
+    if (fileExists(candidate)) {
+      return candidate;
+    }
+  }
+
+  return process.execPath;
+}
+
 function getRuntimeRoot() {
   const packagedRoot = path.join(process.resourcesPath || "", "app-bundle");
   if (fileExists(path.join(packagedRoot, "server.js"))) {
@@ -668,7 +689,8 @@ async function ensureLocalWebServer() {
 
   try {
     if (runtime.kind === "bundle") {
-      serverProcess = spawnServer(process.execPath, [bundledServerPath], runtime.root, env);
+      const nodeExecutable = resolveNodeExecutable();
+      serverProcess = spawnServer(nodeExecutable, [bundledServerPath], runtime.root, env);
     } else if (fileExists(nextBuildPath)) {
       serverProcess = spawnServer(process.execPath, [startScriptPath], runtime.root, env);
     } else {
