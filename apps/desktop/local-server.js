@@ -105,12 +105,24 @@ async function waitForLocalHealth(timeoutMs) {
 }
 
 function spawnServer(command, args, workdir, env) {
-  writeDesktopLog(`Yerel sunucu baslatiliyor: ${command} ${args.join(" ")}`);
+  const executableName = path.basename(command).toLowerCase();
+  const isPackagedElectronBinary =
+    process.versions.electron &&
+    executableName !== "node.exe" &&
+    executableName !== "node";
+
+  const finalEnv = {
+    ...env,
+    ...(isPackagedElectronBinary ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
+  };
+  writeDesktopLog(
+    `Yerel sunucu baslatiliyor: ${command} ${args.join(" ")}${isPackagedElectronBinary ? " [run-as-node]" : ""}`,
+  );
   const child = spawn(command, args, {
     cwd: workdir,
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
-    env,
+    env: finalEnv,
   });
 
   child.stdout.on("data", (chunk) => {
