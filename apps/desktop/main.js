@@ -436,16 +436,6 @@ if (!gotLock) {
       createMenu();
       createWindow(activeStartUrl);
 
-      if (localWeb.status !== "ready" && RUN_MODE !== "cloud") {
-        dialog
-          .showMessageBox({
-            type: "warning",
-            title: "Yerel mod hazir degil",
-            message: "Masaustu uygulama yerel servisi baslatamadi, bulut moda gecildi.",
-            detail: `Local DB: ${localDb.reason}\nLocal Web: ${localWeb.reason}`,
-          })
-          .catch(() => undefined);
-      }
 
       app.on("activate", () => {
         if (BrowserWindow.getAllWindows().length === 0) {
@@ -471,3 +461,4 @@ if (!gotLock) {
     }
   });
 }
+

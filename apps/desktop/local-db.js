@@ -42,6 +42,20 @@ function run(command, args) {
   });
 }
 
+function formatCliError(error) {
+  const raw = error instanceof Error ? error.message : String(error);
+  const lines = raw
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter(Boolean);
+
+  if (lines.some((line) => /No available upgrade found/i.test(line))) {
+    return "PostgreSQL paketi zaten kurulu. Mevcut servisi baslatmayi deniyorum.";
+  }
+
+  return lines.slice(-8).join("\n");
+}
+
 async function hasDocker() {
   try {
     await run("docker", ["--version"]);
@@ -54,6 +68,26 @@ async function hasDocker() {
 async function hasWinget() {
   try {
     await run("winget", ["--version"]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function tryStartWindowsPostgresServices() {
+  if (process.platform !== "win32") {
+    return false;
+  }
+
+  try {
+    const script = [
+      "$services = Get-Service | Where-Object { $_.Name -match 'postgres' -or $_.DisplayName -match 'postgres' }",
+      "foreach ($svc in $services) { if ($svc.Status -ne 'Running') { try { Start-Service -Name $svc.Name -ErrorAction Stop } catch {} } }",
+      "Start-Sleep -Seconds 3",
+      "($services | Select-Object -ExpandProperty Name) -join ','",
+    ].join("; ");
+
+    await run("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script]);
     return true;
   } catch {
     return false;
@@ -99,6 +133,11 @@ async function findExistingLocalDatabaseUrl() {
   }
 
   return null;
+}
+
+async function detectLocalDatabaseAfterServiceStart() {
+  await tryStartWindowsPostgresServices();
+  return findExistingLocalDatabaseUrl();
 }
 
 function getCommonPostgresPaths() {
@@ -183,26 +222,45 @@ async function installPostgresWithWinget() {
       "--mode unattended --unattendedmodeui none --serverport 54329 --superpassword postgres --servicepassword postgres",
     ]);
 
-    const reachable = await waitForPort("127.0.0.1", 54329, 120000);
-    if (!reachable) {
+    let reachableUrl = await detectLocalDatabaseAfterServiceStart();
+    if (!reachableUrl) {
+      const reachable = await waitForPort("127.0.0.1", 54329, 120000);
+      if (reachable) {
+        reachableUrl = LOCAL_DB_URL;
+      }
+    }
+
+    if (!reachableUrl) {
       return {
         status: "error",
-        reason: "PostgreSQL kuruldu ancak servis 54329 portunda hazir olmadi",
+        reason: "PostgreSQL kuruldu ancak servis erisilebilir hale gelmedi",
       };
     }
 
-    process.env.LOCAL_DATABASE_URL = LOCAL_DB_URL;
+    process.env.LOCAL_DATABASE_URL = reachableUrl;
     process.env.DATABASE_TARGET = "local";
     return {
       status: "ready",
-      reason: "PostgreSQL otomatik olarak kuruldu",
-      url: LOCAL_DB_URL,
+      reason: "PostgreSQL otomatik olarak kuruldu veya mevcut servis baslatildi",
+      url: reachableUrl,
       psqlPath: findPsqlExecutable(),
     };
   } catch (error) {
+    const reachableUrl = await detectLocalDatabaseAfterServiceStart();
+    if (reachableUrl) {
+      process.env.LOCAL_DATABASE_URL = reachableUrl;
+      process.env.DATABASE_TARGET = "local";
+      return {
+        status: "ready",
+        reason: "Mevcut PostgreSQL servisi baslatildi",
+        url: reachableUrl,
+        psqlPath: findPsqlExecutable(),
+      };
+    }
+
     return {
       status: "error",
-      reason: error instanceof Error ? error.message : "PostgreSQL otomatik kurulumu basarisiz",
+      reason: formatCliError(error) || "PostgreSQL otomatik kurulumu basarisiz",
     };
   }
 }
