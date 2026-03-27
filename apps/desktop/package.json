@@ -32,6 +32,7 @@
       "main.js",
       "local-db.js",
       "local-server.js",
+      "icon.png",
       "preload.js",
       "package.json"
     ],
@@ -42,6 +43,7 @@
       }
     ],
     "win": {
+      "icon": "icon.png",
       "artifactName": "Bey360-Setup-${version}.${ext}",
       "target": [
         {

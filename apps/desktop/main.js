@@ -7,8 +7,10 @@ const DEFAULT_CLOUD_URL = "https://bey360.com/giris";
 const DEFAULT_LOCAL_URL = "http://127.0.0.1:3015/giris";
 const START_URL_OVERRIDE = process.env.ELECTRON_START_URL?.trim();
 const RUN_MODE = (process.env.B360_DESKTOP_RUN_MODE ?? "local").trim().toLowerCase();
+const ICON_PATH = path.join(__dirname, "icon.png");
 
 let mainWindow = null;
+let splashWindow = null;
 let activeStartUrl = START_URL_OVERRIDE || DEFAULT_CLOUD_URL;
 
 function createLocalFailurePage(detail) {
@@ -77,6 +79,109 @@ function createMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+function createSplashMarkup(title, detail, progress) {
+  const safeTitle = String(title || "Bey360 baslatiliyor")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const safeDetail = String(detail || "Lokal servisler hazirlaniyor")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const safeProgress = Math.max(4, Math.min(100, Number(progress || 0)));
+
+  return `data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Bey360</title>
+    <style>
+      :root{color-scheme:dark}
+      *{box-sizing:border-box}
+      body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at top,#18345f 0,#081323 54%,#040b15 100%);font-family:Segoe UI,Arial,sans-serif;color:#eef4ff}
+      .shell{width:min(760px,92vw);padding:40px;border-radius:28px;background:linear-gradient(180deg,rgba(16,29,52,.96),rgba(9,17,31,.98));border:1px solid rgba(122,162,255,.18);box-shadow:0 30px 90px rgba(0,0,0,.4)}
+      .brand{display:flex;align-items:center;gap:18px;margin-bottom:26px}
+      .logo{width:74px;height:74px;border-radius:24px;background:linear-gradient(135deg,#2db4ff,#5a3bff);display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:800;box-shadow:0 18px 38px rgba(68,111,255,.4)}
+      .eyebrow{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:#78b8ff}
+      .name{font-size:34px;font-weight:800;line-height:1.1}
+      .tag{font-size:15px;color:#c6d3ec;margin-top:6px}
+      h1{margin:0 0 10px;font-size:26px}
+      p{margin:0;color:#bfd0ee;font-size:16px;line-height:1.6}
+      .progress-wrap{margin-top:26px;padding:18px;border-radius:18px;background:rgba(7,18,36,.82);border:1px solid rgba(88,125,196,.28)}
+      .progress-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:12px;font-size:14px;color:#d7e4ff}
+      .bar{height:12px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+      .bar>span{display:block;height:100%;width:${safeProgress}%;border-radius:999px;background:linear-gradient(90deg,#2dd4ff,#68ffb0)}
+      .foot{display:flex;justify-content:space-between;gap:12px;margin-top:18px;font-size:13px;color:#7ea1cf}
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <div class="brand">
+        <div class="logo">B</div>
+        <div>
+          <div class="eyebrow">ERP & POS Cozumleri</div>
+          <div class="name">Bey360</div>
+          <div class="tag">Yerel servisler ve veritabani kurulumu otomatik olarak hazirlaniyor.</div>
+        </div>
+      </div>
+      <h1>${safeTitle}</h1>
+      <p>${safeDetail}</p>
+      <section class="progress-wrap">
+        <div class="progress-head">
+          <span>Kurulum ilerlemesi</span>
+          <strong>%${safeProgress}</strong>
+        </div>
+        <div class="bar"><span></span></div>
+        <div class="foot">
+          <span>Veritabani • Migration • Seed • Uygulama Baslangici</span>
+          <span>Bey360 Desktop</span>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>`)}`;
+}
+
+function updateSplash(title, detail, progress) {
+  if (!splashWindow || splashWindow.isDestroyed()) {
+    return;
+  }
+
+  splashWindow.loadURL(createSplashMarkup(title, detail, progress)).catch(() => undefined);
+}
+
+function createSplashWindow() {
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    updateSplash("Bey360 baslatiliyor", "Lokal servisler hazirlaniyor", 8);
+    return splashWindow;
+  }
+
+  splashWindow = new BrowserWindow({
+    width: 760,
+    height: 460,
+    frame: false,
+    transparent: false,
+    resizable: false,
+    movable: true,
+    minimizable: false,
+    maximizable: false,
+    closable: false,
+    alwaysOnTop: true,
+    center: true,
+    show: true,
+    backgroundColor: "#071326",
+    icon: fileExists(ICON_PATH) ? ICON_PATH : undefined,
+    webPreferences: {
+      contextIsolation: true,
+      sandbox: true,
+    },
+  });
+
+  updateSplash("Bey360 baslatiliyor", "Lokal servisler hazirlaniyor", 8);
+  return splashWindow;
+}
+
 async function canReach(url) {
   try {
     const target = new URL(url);
@@ -130,6 +235,7 @@ function createWindow(startUrl) {
     autoHideMenuBar: false,
     fullscreen: true,
     show: false,
+    icon: fileExists(ICON_PATH) ? ICON_PATH : undefined,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -149,6 +255,10 @@ function createWindow(startUrl) {
   mainWindow.once("ready-to-show", () => {
     mainWindow.maximize();
     mainWindow.setFullScreen(true);
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.close();
+      splashWindow = null;
+    }
     mainWindow.show();
   });
 
@@ -209,14 +319,19 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
+    createSplashWindow();
+    updateSplash("Yerel veritabani kontrol ediliyor", "PostgreSQL kurulumu ve baglanti dogrulamasi yapiliyor", 18);
     const localDb = await ensureLocalDatabase();
+    updateSplash("Yerel uygulama hazirlaniyor", "Migration, seed ve lokal web sunucusu baslatiliyor", 56);
     const localWeb = await ensureLocalWebServer();
 
     if (localWeb.status === "ready" && localWeb.url) {
       activeStartUrl = localWeb.url;
     } else if (RUN_MODE === "local") {
+      updateSplash("Bey360 yerel modda acilamadi", "Detaylar hata ekranina aktariliyor", 96);
       activeStartUrl = createLocalFailurePage(`Local DB: ${localDb.reason}\nLocal Web: ${localWeb.reason}`);
     } else {
+      updateSplash("Bulut moda geciliyor", "Yerel servisler hazir degil, yedek acilis adresi kullaniliyor", 80);
       activeStartUrl = await resolveStartUrl();
     }
 
