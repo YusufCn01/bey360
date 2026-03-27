@@ -2,13 +2,22 @@ const { spawn } = require("child_process");
 const net = require("net");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 
 const CONTAINER_NAME = "bey360-postgres";
-const LOCAL_DB_URL = "postgresql://postgres:postgres@127.0.0.1:54329/muhasebe_local?schema=public";
+const MANAGED_PORT = 55432;
+const MANAGED_DB_NAME = "muhasebe_local";
+const MANAGED_DB_URL = `postgresql://postgres@127.0.0.1:${MANAGED_PORT}/${MANAGED_DB_NAME}?schema=public`;
+const LEGACY_DOCKER_URL = "postgresql://postgres:postgres@127.0.0.1:54329/muhasebe_local?schema=public";
+const APP_DATA_ROOT = path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), "Bey360");
+const MANAGED_PG_ROOT = path.join(APP_DATA_ROOT, "postgres-managed");
+const MANAGED_PG_DATA = path.join(MANAGED_PG_ROOT, "data");
+const MANAGED_PG_LOG = path.join(MANAGED_PG_ROOT, "postgres.log");
 const FALLBACK_LOCAL_URLS = [
   () => process.env.LOCAL_DATABASE_URL,
   () => process.env.DATABASE_URL,
-  () => LOCAL_DB_URL,
+  () => MANAGED_DB_URL,
+  () => LEGACY_DOCKER_URL,
   () => "postgresql://postgres:postgres@127.0.0.1:5432/muhasebe?schema=public",
   () => "postgresql://postgres:postgres@127.0.0.1:5432/muhasebe_local?schema=public",
 ];
@@ -50,7 +59,7 @@ function formatCliError(error) {
     .filter(Boolean);
 
   if (lines.some((line) => /No available upgrade found/i.test(line))) {
-    return "PostgreSQL paketi zaten kurulu. Mevcut servisi baslatmayi deniyorum.";
+    return "PostgreSQL paketi zaten kurulu. Bey360 icin yerel veritabani ortami hazirlaniyor.";
   }
 
   return lines.slice(-8).join("\n");
@@ -68,26 +77,6 @@ async function hasDocker() {
 async function hasWinget() {
   try {
     await run("winget", ["--version"]);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function tryStartWindowsPostgresServices() {
-  if (process.platform !== "win32") {
-    return false;
-  }
-
-  try {
-    const script = [
-      "$services = Get-Service | Where-Object { $_.Name -match 'postgres' -or $_.DisplayName -match 'postgres' }",
-      "foreach ($svc in $services) { if ($svc.Status -ne 'Running') { try { Start-Service -Name $svc.Name -ErrorAction Stop } catch {} } }",
-      "Start-Sleep -Seconds 3",
-      "($services | Select-Object -ExpandProperty Name) -join ','",
-    ].join("; ");
-
-    await run("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script]);
     return true;
   } catch {
     return false;
@@ -114,32 +103,6 @@ async function canReachTcp(host, port) {
   });
 }
 
-async function findExistingLocalDatabaseUrl() {
-  for (const candidateFactory of FALLBACK_LOCAL_URLS) {
-    const candidate = candidateFactory()?.trim();
-    if (!candidate) {
-      continue;
-    }
-
-    try {
-      const parsed = new URL(candidate);
-      const reachable = await canReachTcp(parsed.hostname, Number(parsed.port || 5432));
-      if (reachable) {
-        return candidate;
-      }
-    } catch {
-      // ignore malformed candidate
-    }
-  }
-
-  return null;
-}
-
-async function detectLocalDatabaseAfterServiceStart() {
-  await tryStartWindowsPostgresServices();
-  return findExistingLocalDatabaseUrl();
-}
-
 function getCommonPostgresPaths() {
   return [
     path.join(process.env.ProgramFiles || "C:\\Program Files", "PostgreSQL"),
@@ -148,9 +111,9 @@ function getCommonPostgresPaths() {
   ];
 }
 
-function findPsqlExecutable() {
+function findExecutable(executableName) {
   const directCandidates = [
-    path.join("C:\\laragon\\bin\\postgresql\\postgresql\\bin", "psql.exe"),
+    path.join("C:\\laragon\\bin\\postgresql\\postgresql\\bin", executableName),
   ];
 
   for (const candidate of directCandidates) {
@@ -171,7 +134,7 @@ function findPsqlExecutable() {
       .sort((left, right) => right.localeCompare(left, undefined, { numeric: true, sensitivity: "base" }));
 
     for (const version of versions) {
-      const binPath = path.join(root, version, "bin", "psql.exe");
+      const binPath = path.join(root, version, "bin", executableName);
       if (fs.existsSync(binPath)) {
         return binPath;
       }
@@ -179,6 +142,18 @@ function findPsqlExecutable() {
   }
 
   return null;
+}
+
+function findPsqlExecutable() {
+  return findExecutable("psql.exe");
+}
+
+function findInitDbExecutable() {
+  return findExecutable("initdb.exe");
+}
+
+function findPgCtlExecutable() {
+  return findExecutable("pg_ctl.exe");
 }
 
 async function waitForPort(host, port, timeoutMs = 90000) {
@@ -190,6 +165,27 @@ async function waitForPort(host, port, timeoutMs = 90000) {
     await new Promise((resolve) => setTimeout(resolve, 1500));
   }
   return false;
+}
+
+async function findExistingLocalDatabaseUrl() {
+  for (const candidateFactory of FALLBACK_LOCAL_URLS) {
+    const candidate = candidateFactory()?.trim();
+    if (!candidate) {
+      continue;
+    }
+
+    try {
+      const parsed = new URL(candidate);
+      const reachable = await canReachTcp(parsed.hostname, Number(parsed.port || 5432));
+      if (reachable) {
+        return candidate;
+      }
+    } catch {
+      // ignore malformed candidate
+    }
+  }
+
+  return null;
 }
 
 async function installPostgresWithWinget() {
@@ -218,43 +214,18 @@ async function installPostgresWithWinget() {
       "--accept-source-agreements",
       "--disable-interactivity",
       "--silent",
-      "--override",
-      "--mode unattended --unattendedmodeui none --serverport 54329 --superpassword postgres --servicepassword postgres",
     ]);
 
-    let reachableUrl = await detectLocalDatabaseAfterServiceStart();
-    if (!reachableUrl) {
-      const reachable = await waitForPort("127.0.0.1", 54329, 120000);
-      if (reachable) {
-        reachableUrl = LOCAL_DB_URL;
-      }
-    }
-
-    if (!reachableUrl) {
-      return {
-        status: "error",
-        reason: "PostgreSQL kuruldu ancak servis erisilebilir hale gelmedi",
-      };
-    }
-
-    process.env.LOCAL_DATABASE_URL = reachableUrl;
-    process.env.DATABASE_TARGET = "local";
     return {
       status: "ready",
-      reason: "PostgreSQL otomatik olarak kuruldu veya mevcut servis baslatildi",
-      url: reachableUrl,
-      psqlPath: findPsqlExecutable(),
+      reason: "PostgreSQL binary paketleri hazirlandi",
     };
   } catch (error) {
-    const reachableUrl = await detectLocalDatabaseAfterServiceStart();
-    if (reachableUrl) {
-      process.env.LOCAL_DATABASE_URL = reachableUrl;
-      process.env.DATABASE_TARGET = "local";
+    const psqlPath = findPsqlExecutable();
+    if (psqlPath) {
       return {
         status: "ready",
-        reason: "Mevcut PostgreSQL servisi baslatildi",
-        url: reachableUrl,
-        psqlPath: findPsqlExecutable(),
+        reason: "PostgreSQL zaten kurulu, mevcut binaryler kullanilacak",
       };
     }
 
@@ -263,6 +234,109 @@ async function installPostgresWithWinget() {
       reason: formatCliError(error) || "PostgreSQL otomatik kurulumu basarisiz",
     };
   }
+}
+
+async function ensureManagedPostgresInstance() {
+  const initdbPath = findInitDbExecutable();
+  const pgCtlPath = findPgCtlExecutable();
+  const psqlPath = findPsqlExecutable();
+
+  if (!initdbPath || !pgCtlPath || !psqlPath) {
+    const install = await installPostgresWithWinget();
+    if (install.status !== "ready") {
+      return {
+        status: "error",
+        url: null,
+        reason: install.reason,
+      };
+    }
+  }
+
+  const resolvedInitdbPath = findInitDbExecutable();
+  const resolvedPgCtlPath = findPgCtlExecutable();
+  const resolvedPsqlPath = findPsqlExecutable();
+
+  if (!resolvedInitdbPath || !resolvedPgCtlPath || !resolvedPsqlPath) {
+    return {
+      status: "error",
+      url: null,
+      reason: "PostgreSQL araclari (initdb/pg_ctl/psql) bulunamadi",
+    };
+  }
+
+  fs.mkdirSync(MANAGED_PG_ROOT, { recursive: true });
+
+  if (!fs.existsSync(path.join(MANAGED_PG_DATA, "PG_VERSION"))) {
+    fs.rmSync(MANAGED_PG_DATA, { recursive: true, force: true });
+    fs.mkdirSync(MANAGED_PG_DATA, { recursive: true });
+
+    try {
+      await run(resolvedInitdbPath, [
+        "-D",
+        MANAGED_PG_DATA,
+        "-U",
+        "postgres",
+        "-A",
+        "trust",
+        "--encoding=UTF8",
+        "--locale=C",
+      ]);
+
+      fs.appendFileSync(
+        path.join(MANAGED_PG_DATA, "postgresql.conf"),
+        `\nlisten_addresses = '127.0.0.1'\nport = ${MANAGED_PORT}\nshared_buffers = 128MB\nmax_connections = 100\n`,
+        "utf8",
+      );
+    } catch (error) {
+      return {
+        status: "error",
+        url: null,
+        reason: formatCliError(error) || "Bey360 icin local PostgreSQL ortami hazirlanamadi",
+      };
+    }
+  }
+
+  const alreadyRunning = await canReachTcp("127.0.0.1", MANAGED_PORT);
+  if (!alreadyRunning) {
+    try {
+      await run(resolvedPgCtlPath, [
+        "-D",
+        MANAGED_PG_DATA,
+        "-l",
+        MANAGED_PG_LOG,
+        "-o",
+        `-p ${MANAGED_PORT}`,
+        "start",
+      ]);
+    } catch (error) {
+      const reachable = await waitForPort("127.0.0.1", MANAGED_PORT, 20000);
+      if (!reachable) {
+        return {
+          status: "error",
+          url: null,
+          reason: formatCliError(error) || "Bey360 local PostgreSQL instance baslatilamadi",
+        };
+      }
+    }
+  }
+
+  const ready = await waitForPort("127.0.0.1", MANAGED_PORT, 30000);
+  if (!ready) {
+    return {
+      status: "error",
+      url: null,
+      reason: `Bey360 local PostgreSQL instance ${MANAGED_PORT} portunda hazir olmadi`,
+    };
+  }
+
+  process.env.LOCAL_DATABASE_URL = MANAGED_DB_URL;
+  process.env.DATABASE_TARGET = "local";
+
+  return {
+    status: "ready",
+    url: MANAGED_DB_URL,
+    reason: "Bey360 icin izole local PostgreSQL instance baslatildi",
+  };
 }
 
 async function ensureLocalDatabase() {
@@ -286,21 +360,17 @@ async function ensureLocalDatabase() {
     };
   }
 
+  const managed = await ensureManagedPostgresInstance();
+  if (managed.status === "ready") {
+    return managed;
+  }
+
   const dockerOk = await hasDocker();
   if (!dockerOk) {
-    const autoInstall = await installPostgresWithWinget();
-    if (autoInstall.status === "ready") {
-      return {
-        status: "ready",
-        url: autoInstall.url,
-        reason: autoInstall.reason,
-      };
-    }
-
     return {
       status: "unavailable",
       url: null,
-      reason: autoInstall.reason || "Docker bulunamadi",
+      reason: managed.reason || "Ne Docker ne de PostgreSQL binaryleri kullanilabilir durumda",
     };
   }
 
@@ -328,38 +398,25 @@ async function ensureLocalDatabase() {
       await run("docker", ["start", CONTAINER_NAME]);
     }
 
-    process.env.LOCAL_DATABASE_URL = LOCAL_DB_URL;
+    process.env.LOCAL_DATABASE_URL = LEGACY_DOCKER_URL;
     process.env.DATABASE_TARGET = "local";
 
     return {
       status: "ready",
-      url: LOCAL_DB_URL,
+      url: LEGACY_DOCKER_URL,
       reason: "Local PostgreSQL container hazir",
     };
   } catch (error) {
-    const autoInstall = await installPostgresWithWinget();
-    if (autoInstall.status === "ready") {
-      return {
-        status: "ready",
-        url: autoInstall.url,
-        reason: autoInstall.reason,
-      };
-    }
-
     return {
       status: "error",
       url: null,
-      reason:
-        autoInstall.reason ||
-        (error instanceof Error
-          ? error.message
-          : "Local DB baslatilamadi"),
+      reason: managed.reason || (error instanceof Error ? error.message : "Local DB baslatilamadi"),
     };
   }
 }
 
 module.exports = {
   ensureLocalDatabase,
-  LOCAL_DB_URL,
+  LOCAL_DB_URL: MANAGED_DB_URL,
   findPsqlExecutable,
 };
