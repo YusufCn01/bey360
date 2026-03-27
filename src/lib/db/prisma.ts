@@ -15,6 +15,16 @@ type ResolvedDatabaseInfo = {
   host?: string;
 };
 
+function isLocalDatabaseHost(hostname: string) {
+  const normalized = hostname.trim().toLowerCase();
+  return (
+    normalized === "localhost" ||
+    normalized === "127.0.0.1" ||
+    normalized === "::1" ||
+    normalized.endsWith(".local")
+  );
+}
+
 function pickDatabaseCandidates(): Array<{ source: DatabaseSourceKey; value: string }> {
   const target = (process.env.DATABASE_TARGET ?? "auto").trim().toLowerCase();
 
@@ -59,6 +69,8 @@ function resolveDatabaseInfo(): ResolvedDatabaseInfo {
 
   try {
     const url = new URL(raw);
+    const isLocalHost = isLocalDatabaseHost(url.hostname);
+    const isLocalTarget = (process.env.DATABASE_TARGET ?? "auto").trim().toLowerCase() === "local";
 
     // Some managed hosts + Prisma runtime combinations fail with channel_binding.
     url.searchParams.delete("channel_binding");
@@ -69,7 +81,9 @@ function resolveDatabaseInfo(): ResolvedDatabaseInfo {
       url.searchParams.set("pgbouncer", "true");
     }
 
-    if (!url.searchParams.has("sslmode")) {
+    if ((isLocalHost || isLocalTarget) && !url.searchParams.has("sslmode")) {
+      url.searchParams.set("sslmode", "disable");
+    } else if (!isLocalHost && !isLocalTarget && !url.searchParams.has("sslmode")) {
       url.searchParams.set("sslmode", "require");
     }
 
