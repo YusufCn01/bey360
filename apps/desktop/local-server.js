@@ -50,6 +50,24 @@ function resolveNodeExecutable() {
   return process.execPath;
 }
 
+function buildBundledRuntimeEnv(runtimeRoot, env) {
+  const nextRuntimeModules = path.join(runtimeRoot, "runtime-node-modules");
+  const prismaRuntimeModules = path.join(runtimeRoot, "prisma-runtime");
+  const nodePathEntries = [nextRuntimeModules, prismaRuntimeModules, env.NODE_PATH].filter(Boolean);
+  const queryEngineBinary = path.join(prismaRuntimeModules, ".prisma", "client", "query-engine-windows.exe");
+
+  return {
+    ...env,
+    NODE_PATH: nodePathEntries.join(path.delimiter),
+    ...(fileExists(queryEngineBinary)
+      ? {
+          PRISMA_QUERY_ENGINE_BINARY: queryEngineBinary,
+          PRISMA_QUERY_ENGINE_LIBRARY: "",
+        }
+      : {}),
+  };
+}
+
 function getRuntimeRoot() {
   const packagedRoot = path.join(process.resourcesPath || "", "app-bundle");
   if (fileExists(path.join(packagedRoot, "server.js"))) {
@@ -672,11 +690,12 @@ async function ensureLocalWebServer() {
     LOCAL_DATABASE_URL: process.env.LOCAL_DATABASE_URL || LOCAL_DB_URL,
     DATABASE_URL: process.env.LOCAL_DATABASE_URL || process.env.DATABASE_URL || LOCAL_DB_URL,
   };
+  const runtimeEnv = runtime.kind === "bundle" ? buildBundledRuntimeEnv(runtime.root, env) : env;
 
   const dbPreparation =
     runtime.kind === "bundle"
-      ? await prepareBundledDatabase(runtime.root, env)
-      : await prepareRepoDatabase(runtime.root, env);
+      ? await prepareBundledDatabase(runtime.root, runtimeEnv)
+      : await prepareRepoDatabase(runtime.root, runtimeEnv);
 
   if (dbPreparation.status !== "ready") {
     writeDesktopLog(`DB hazirlama basarisiz: ${dbPreparation.reason}`);
@@ -690,9 +709,9 @@ async function ensureLocalWebServer() {
   try {
     if (runtime.kind === "bundle") {
       const nodeExecutable = resolveNodeExecutable();
-      serverProcess = spawnServer(nodeExecutable, [bundledServerPath], runtime.root, env);
+      serverProcess = spawnServer(nodeExecutable, [bundledServerPath], runtime.root, runtimeEnv);
     } else if (fileExists(nextBuildPath)) {
-      serverProcess = spawnServer(process.execPath, [startScriptPath], runtime.root, env);
+      serverProcess = spawnServer(process.execPath, [startScriptPath], runtime.root, runtimeEnv);
     } else {
       const requireFromRepo = getRequireFromRuntime(runtime.root);
       const nextBin = requireFromRepo.resolve("next/dist/bin/next");
@@ -700,7 +719,7 @@ async function ensureLocalWebServer() {
         process.execPath,
         [nextBin, "dev", "--webpack", "--hostname", "127.0.0.1", "--port", "3015"],
         runtime.root,
-        env,
+        runtimeEnv,
       );
     }
 

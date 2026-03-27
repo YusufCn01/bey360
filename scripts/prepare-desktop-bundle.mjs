@@ -27,7 +27,9 @@ await copyIfExists(path.join(repoRoot, ".next", "standalone"), bundleRoot);
 await copyIfExists(path.join(repoRoot, ".next", "static"), path.join(bundleRoot, ".next", "static"));
 await copyIfExists(path.join(repoRoot, "public"), path.join(bundleRoot, "public"));
 await copyIfExists(path.join(repoRoot, "prisma", "migrations"), path.join(bundleRoot, "prisma", "migrations"));
+await copyIfExists(path.join(repoRoot, ".next", "standalone", "node_modules"), path.join(bundleRoot, "runtime-node-modules"));
 await copyIfExists(path.join(repoRoot, "node_modules", "@prisma", "client"), path.join(bundleRoot, "prisma-runtime", "@prisma", "client"));
 await copyIfExists(path.join(repoRoot, "node_modules", ".prisma", "client"), path.join(bundleRoot, "prisma-runtime", ".prisma", "client"));
+await fs.rm(path.join(bundleRoot, "node_modules"), { recursive: true, force: true });
 
 console.log(`Desktop bundle hazirlandi: ${bundleRoot}`);
