@@ -1,6 +1,7 @@
 ﻿const path = require("path");
 const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require("electron");
 const { ensureLocalDatabase } = require("./local-db");
+const { ensureLocalWebServer, stopLocalWebServer } = require("./local-server");
 
 const DEFAULT_CLOUD_URL = "https://bey360.com/giris";
 const DEFAULT_LOCAL_URL = "http://127.0.0.1:3015/giris";
@@ -171,10 +172,28 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
-    await ensureLocalDatabase();
-    activeStartUrl = await resolveStartUrl();
+    const localDb = await ensureLocalDatabase();
+    const localWeb = await ensureLocalWebServer();
+
+    if (localWeb.status === "ready" && localWeb.url) {
+      activeStartUrl = localWeb.url;
+    } else {
+      activeStartUrl = await resolveStartUrl();
+    }
+
     createMenu();
     createWindow(activeStartUrl);
+
+    if (localWeb.status !== "ready" && RUN_MODE !== "cloud") {
+      dialog
+        .showMessageBox({
+          type: "warning",
+          title: "Yerel mod hazir degil",
+          message: "Masaustu uygulama yerel servisi baslatamadi, bulut moda gecildi.",
+          detail: `Local DB: ${localDb.reason}\nLocal Web: ${localWeb.reason}`,
+        })
+        .catch(() => undefined);
+    }
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -184,6 +203,7 @@ if (!gotLock) {
   });
 
   app.on("window-all-closed", () => {
+    stopLocalWebServer();
     if (process.platform !== "darwin") {
       app.quit();
     }
