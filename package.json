@@ -13,8 +13,8 @@
     "mobile:start": "npm --prefix apps/mobile run start",
     "mobile:android": "npm --prefix apps/mobile run android",
     "mobile:web": "npm --prefix apps/mobile run web",
-    "build": "prisma generate && next build --webpack",
-    "build:prod": "prisma generate && prisma migrate deploy && next build --webpack",
+    "build": "node scripts/build-app.mjs",
+    "build:prod": "node scripts/build-prod.mjs",
     "deploy:check": "node scripts/deploy-check.mjs",
     "deploy:prepare": "npm run deploy:check && npm run prisma:generate && npm run prisma:migrate:deploy && npm run build",
     "backup:daily": "node scripts/backup-daily.mjs",
@@ -25,10 +25,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "worker": "tsx src/worker/index.ts",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:migrate:deploy": "prisma migrate deploy",
-    "db:seed": "prisma db seed"
+    "prisma:generate": "node scripts/prisma-run.mjs generate",
+    "prisma:migrate": "node scripts/prisma-run.mjs migrate dev",
+    "prisma:migrate:deploy": "node scripts/prisma-run.mjs migrate deploy",
+    "db:seed": "node scripts/prisma-run.mjs db seed"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

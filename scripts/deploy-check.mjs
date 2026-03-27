@@ -1,5 +1,6 @@
 import process from "node:process";
 import { PrismaClient } from "@prisma/client";
+import { prepareDatabaseEnv } from "./db-env.mjs";
 
 function requiredEnv(name) {
   const value = process.env[name];
@@ -15,24 +16,10 @@ function optionalEnv(name) {
 }
 
 function requireDatabaseUrl() {
-  const fromDatabaseUrl = optionalEnv("DATABASE_URL");
-  if (fromDatabaseUrl) {
-    return fromDatabaseUrl;
-  }
-
-  const fromNeon = optionalEnv("NEON_DATABASE_URL");
-  if (fromNeon) {
-    process.env.DATABASE_URL = fromNeon;
-    return fromNeon;
-  }
-
-  const fromDirect = optionalEnv("DIRECT_URL");
-  if (fromDirect) {
-    process.env.DATABASE_URL = fromDirect;
-    return fromDirect;
-  }
-
-  throw new Error("Eksik ortam degiskeni: DATABASE_URL (veya NEON_DATABASE_URL / DIRECT_URL)");
+  const resolved = prepareDatabaseEnv();
+  process.env.DATABASE_URL = resolved.DATABASE_URL;
+  process.env.DIRECT_URL = resolved.DIRECT_URL;
+  return resolved.DATABASE_URL;
 }
 
 async function main() {
