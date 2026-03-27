@@ -1,4 +1,5 @@
-ï»¿const path = require("path");
+const fs = require("fs");
+const path = require("path");
 const { app, BrowserWindow, Menu, shell, dialog, ipcMain } = require("electron");
 const { ensureLocalDatabase } = require("./local-db");
 const { ensureLocalWebServer, stopLocalWebServer } = require("./local-server");
@@ -12,6 +13,27 @@ const ICON_PATH = path.join(__dirname, "icon.png");
 let mainWindow = null;
 let splashWindow = null;
 let activeStartUrl = START_URL_OVERRIDE || DEFAULT_CLOUD_URL;
+let logFilePath = "";
+
+function fileExists(targetPath) {
+  try {
+    return fs.existsSync(targetPath);
+  } catch {
+    return false;
+  }
+}
+
+function writeStartupLog(message) {
+  try {
+    if (!logFilePath) {
+      return;
+    }
+
+    fs.appendFileSync(logFilePath, `[${new Date().toISOString()}] ${message}\n`, "utf8");
+  } catch {
+    // ignore logging errors
+  }
+}
 
 function createLocalFailurePage(detail) {
   const safeDetail = String(detail || "Bilinmeyen hata")
@@ -44,6 +66,40 @@ function createLocalFailurePage(detail) {
         <li>Laragon/PostgreSQL kullaniyorsan veritabani servisinin calistigindan emin ol.</li>
         <li>Gerekirse <strong>LOCAL_DATABASE_URL</strong> ayarini local veritabanina gore tanimla.</li>
       </ul>
+      <div class="code">${safeDetail}</div>
+    </main>
+  </body>
+</html>`)}`;
+}
+
+function createFatalStartupPage(title, detail) {
+  const safeTitle = String(title || "Bey360 acilis hatasi")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const safeDetail = String(detail || "Bilinmeyen hata")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  return `data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Bey360 Hata</title>
+    <style>
+      body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#081425;color:#e8eefc;display:flex;min-height:100vh;align-items:center;justify-content:center}
+      .card{width:min(820px,92vw);background:#0f1d33;border:1px solid #223453;border-radius:20px;padding:32px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+      h1{margin:0 0 12px;font-size:32px}
+      p{font-size:16px;line-height:1.6;color:#c5d2ea}
+      .code{margin-top:16px;padding:16px;border-radius:14px;background:#08111f;border:1px solid #1f304f;color:#9fd2ff;white-space:pre-wrap;word-break:break-word}
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>${safeTitle}</h1>
+      <p>Bey360 masaustu uygulamasi baslatilirken kritik bir hata olustu.</p>
       <div class="code">${safeDetail}</div>
     </main>
   </body>
@@ -134,7 +190,7 @@ function createSplashMarkup(title, detail, progress) {
         </div>
         <div class="bar"><span></span></div>
         <div class="foot">
-          <span>Veritabani â€¢ Migration â€¢ Seed â€¢ Uygulama Baslangici</span>
+          <span>Veritabani • Migration • Seed • Uygulama Baslangici</span>
           <span>Bey360 Desktop</span>
         </div>
       </section>
@@ -179,7 +235,19 @@ function createSplashWindow() {
   });
 
   updateSplash("Bey360 baslatiliyor", "Lokal servisler hazirlaniyor", 8);
+  writeStartupLog("Splash penceresi olusturuldu");
   return splashWindow;
+}
+
+function ensureVisibleErrorWindow(title, detail) {
+  const failurePage = createFatalStartupPage(title, detail);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.loadURL(failurePage).catch(() => undefined);
+    mainWindow.show();
+    return;
+  }
+
+  createWindow(failurePage);
 }
 
 async function canReach(url) {
@@ -225,6 +293,7 @@ async function resolveStartUrl() {
 }
 
 function createWindow(startUrl) {
+  writeStartupLog(`Ana pencere olusturuluyor: ${startUrl}`);
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -262,7 +331,12 @@ function createWindow(startUrl) {
     mainWindow.show();
   });
 
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+
   mainWindow.webContents.on("did-fail-load", async () => {
+    writeStartupLog(`did-fail-load: ${startUrl}`);
     const result = await dialog.showMessageBox(mainWindow, {
       type: "error",
       title: "Bey360 baglanti hatasi",
@@ -309,55 +383,89 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on("second-instance", () => {
+    writeStartupLog("Ikinci instance algilandi");
     if (!mainWindow) {
       return;
     }
     if (mainWindow.isMinimized()) {
       mainWindow.restore();
     }
+    mainWindow.show();
     mainWindow.focus();
   });
 
+  process.on("uncaughtException", (error) => {
+    const detail = error instanceof Error ? `${error.message}\n\n${error.stack || ""}` : String(error);
+    writeStartupLog(`uncaughtException: ${detail}`);
+    ensureVisibleErrorWindow("Beklenmeyen masaustu hatasi", detail);
+  });
+
+  process.on("unhandledRejection", (reason) => {
+    const detail = reason instanceof Error ? `${reason.message}\n\n${reason.stack || ""}` : String(reason);
+    writeStartupLog(`unhandledRejection: ${detail}`);
+    ensureVisibleErrorWindow("Masaustu baslatma hatasi", detail);
+  });
+
   app.whenReady().then(async () => {
-    createSplashWindow();
-    updateSplash("Yerel veritabani kontrol ediliyor", "PostgreSQL kurulumu ve baglanti dogrulamasi yapiliyor", 18);
-    const localDb = await ensureLocalDatabase();
-    updateSplash("Yerel uygulama hazirlaniyor", "Migration, seed ve lokal web sunucusu baslatiliyor", 56);
-    const localWeb = await ensureLocalWebServer();
+    try {
+      const userDataPath = app.getPath("userData");
+      fs.mkdirSync(userDataPath, { recursive: true });
+      logFilePath = path.join(userDataPath, "desktop-startup.log");
+      writeStartupLog("Uygulama baslatildi");
+      writeStartupLog(`Run mode: ${RUN_MODE}`);
 
-    if (localWeb.status === "ready" && localWeb.url) {
-      activeStartUrl = localWeb.url;
-    } else if (RUN_MODE === "local") {
-      updateSplash("Bey360 yerel modda acilamadi", "Detaylar hata ekranina aktariliyor", 96);
-      activeStartUrl = createLocalFailurePage(`Local DB: ${localDb.reason}\nLocal Web: ${localWeb.reason}`);
-    } else {
-      updateSplash("Bulut moda geciliyor", "Yerel servisler hazir degil, yedek acilis adresi kullaniliyor", 80);
-      activeStartUrl = await resolveStartUrl();
-    }
+      createSplashWindow();
+      updateSplash("Yerel veritabani kontrol ediliyor", "PostgreSQL kurulumu ve baglanti dogrulamasi yapiliyor", 18);
+      const localDb = await ensureLocalDatabase();
+      writeStartupLog(`Local DB sonucu: ${JSON.stringify(localDb)}`);
 
-    createMenu();
-    createWindow(activeStartUrl);
+      updateSplash("Yerel uygulama hazirlaniyor", "Migration, seed ve lokal web sunucusu baslatiliyor", 56);
+      const localWeb = await ensureLocalWebServer();
+      writeStartupLog(`Local web sonucu: ${JSON.stringify(localWeb)}`);
 
-    if (localWeb.status !== "ready" && RUN_MODE !== "cloud") {
-      dialog
-        .showMessageBox({
-          type: "warning",
-          title: "Yerel mod hazir degil",
-          message: "Masaustu uygulama yerel servisi baslatamadi, bulut moda gecildi.",
-          detail: `Local DB: ${localDb.reason}\nLocal Web: ${localWeb.reason}`,
-        })
-        .catch(() => undefined);
-    }
-
-    app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow(activeStartUrl);
+      if (localWeb.status === "ready" && localWeb.url) {
+        activeStartUrl = localWeb.url;
+      } else if (RUN_MODE === "local") {
+        updateSplash("Bey360 yerel modda acilamadi", "Detaylar hata ekranina aktariliyor", 96);
+        activeStartUrl = createLocalFailurePage(`Local DB: ${localDb.reason}\nLocal Web: ${localWeb.reason}`);
+      } else {
+        updateSplash("Bulut moda geciliyor", "Yerel servisler hazir degil, yedek acilis adresi kullaniliyor", 80);
+        activeStartUrl = await resolveStartUrl();
       }
-    });
+
+      createMenu();
+      createWindow(activeStartUrl);
+
+      if (localWeb.status !== "ready" && RUN_MODE !== "cloud") {
+        dialog
+          .showMessageBox({
+            type: "warning",
+            title: "Yerel mod hazir degil",
+            message: "Masaustu uygulama yerel servisi baslatamadi, bulut moda gecildi.",
+            detail: `Local DB: ${localDb.reason}\nLocal Web: ${localWeb.reason}`,
+          })
+          .catch(() => undefined);
+      }
+
+      app.on("activate", () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+          createWindow(activeStartUrl);
+        }
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? `${error.message}\n\n${error.stack || ""}` : String(error);
+      writeStartupLog(`Startup catch: ${detail}`);
+      ensureVisibleErrorWindow("Bey360 acilis hatasi", detail);
+    }
   });
 
   app.on("window-all-closed", () => {
+    writeStartupLog("Tum pencereler kapandi");
     stopLocalWebServer();
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.destroy();
+      splashWindow = null;
+    }
     if (process.platform !== "darwin") {
       app.quit();
     }
