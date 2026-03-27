@@ -1,7 +1,15 @@
 const { spawn } = require("child_process");
+const net = require("net");
 
 const CONTAINER_NAME = "bey360-postgres";
 const LOCAL_DB_URL = "postgresql://postgres:postgres@127.0.0.1:54329/muhasebe_local?schema=public";
+const FALLBACK_LOCAL_URLS = [
+  () => process.env.LOCAL_DATABASE_URL,
+  () => process.env.DATABASE_URL,
+  () => LOCAL_DB_URL,
+  () => "postgresql://postgres:postgres@127.0.0.1:5432/muhasebe?schema=public",
+  () => "postgresql://postgres:postgres@127.0.0.1:5432/muhasebe_local?schema=public",
+];
 
 function run(command, args) {
   return new Promise((resolve, reject) => {
@@ -41,6 +49,47 @@ async function hasDocker() {
   }
 }
 
+async function canReachTcp(host, port) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    let settled = false;
+
+    const finalize = (result) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(result);
+    };
+
+    socket.setTimeout(800);
+    socket.once("connect", () => finalize(true));
+    socket.once("timeout", () => finalize(false));
+    socket.once("error", () => finalize(false));
+    socket.connect(port, host);
+  });
+}
+
+async function findExistingLocalDatabaseUrl() {
+  for (const candidateFactory of FALLBACK_LOCAL_URLS) {
+    const candidate = candidateFactory()?.trim();
+    if (!candidate) {
+      continue;
+    }
+
+    try {
+      const parsed = new URL(candidate);
+      const reachable = await canReachTcp(parsed.hostname, Number(parsed.port || 5432));
+      if (reachable) {
+        return candidate;
+      }
+    } catch {
+      // ignore malformed candidate
+    }
+  }
+
+  return null;
+}
+
 async function ensureLocalDatabase() {
   const mode = (process.env.B360_DESKTOP_DB_MODE ?? "hybrid").trim().toLowerCase();
   if (mode === "cloud") {
@@ -48,6 +97,17 @@ async function ensureLocalDatabase() {
       status: "skipped",
       url: null,
       reason: "B360_DESKTOP_DB_MODE=cloud",
+    };
+  }
+
+  const existingUrl = await findExistingLocalDatabaseUrl();
+  if (existingUrl) {
+    process.env.LOCAL_DATABASE_URL = existingUrl;
+    process.env.DATABASE_TARGET = "local";
+    return {
+      status: "ready",
+      url: existingUrl,
+      reason: "Mevcut yerel PostgreSQL bulundu",
     };
   }
 
@@ -84,6 +144,9 @@ async function ensureLocalDatabase() {
       await run("docker", ["start", CONTAINER_NAME]);
     }
 
+    process.env.LOCAL_DATABASE_URL = LOCAL_DB_URL;
+    process.env.DATABASE_TARGET = "local";
+
     return {
       status: "ready",
       url: LOCAL_DB_URL,
@@ -93,7 +156,10 @@ async function ensureLocalDatabase() {
     return {
       status: "error",
       url: null,
-      reason: error instanceof Error ? error.message : "Local DB baslatilamadi",
+      reason:
+        error instanceof Error
+          ? error.message
+          : "Local DB baslatilamadi",
     };
   }
 }

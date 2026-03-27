@@ -11,6 +11,43 @@ const RUN_MODE = (process.env.B360_DESKTOP_RUN_MODE ?? "hybrid").trim().toLowerC
 let mainWindow = null;
 let activeStartUrl = START_URL_OVERRIDE || DEFAULT_CLOUD_URL;
 
+function createLocalFailurePage(detail) {
+  const safeDetail = String(detail || "Bilinmeyen hata")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  return `data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Bey360 Masaustu</title>
+    <style>
+      body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#081425;color:#e8eefc;display:flex;min-height:100vh;align-items:center;justify-content:center}
+      .card{width:min(760px,92vw);background:#0f1d33;border:1px solid #223453;border-radius:20px;padding:32px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+      h1{margin:0 0 12px;font-size:32px}
+      p{font-size:16px;line-height:1.6;color:#c5d2ea}
+      .code{margin-top:16px;padding:16px;border-radius:14px;background:#08111f;border:1px solid #1f304f;color:#9fd2ff;white-space:pre-wrap;word-break:break-word}
+      .list{margin:20px 0 0;padding-left:18px;color:#dbe7ff}
+      .list li{margin:8px 0}
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Yerel veritabani hazir degil</h1>
+      <p>Bey360 masaustu uygulamasi yerel PostgreSQL baglantisini kuramadi. Bu nedenle uygulama local modda acilamadi.</p>
+      <ul class="list">
+        <li>Docker Desktop kullaniyorsan daemon'u baslat.</li>
+        <li>Laragon/PostgreSQL kullaniyorsan veritabani servisinin calistigindan emin ol.</li>
+        <li>Gerekirse <strong>LOCAL_DATABASE_URL</strong> ayarini local veritabanina gore tanimla.</li>
+      </ul>
+      <div class="code">${safeDetail}</div>
+    </main>
+  </body>
+</html>`)}`;
+}
+
 function createMenu() {
   const isMac = process.platform === "darwin";
   const template = [
@@ -177,6 +214,8 @@ if (!gotLock) {
 
     if (localWeb.status === "ready" && localWeb.url) {
       activeStartUrl = localWeb.url;
+    } else if (RUN_MODE === "local") {
+      activeStartUrl = createLocalFailurePage(`Local DB: ${localDb.reason}\nLocal Web: ${localWeb.reason}`);
     } else {
       activeStartUrl = await resolveStartUrl();
     }
