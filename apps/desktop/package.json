@@ -11,8 +11,9 @@
     "dev:web": "npm --prefix ../.. run dev",
     "dev:desktop": "wait-on http://localhost:3015 && cross-env ELECTRON_START_URL=http://localhost:3015 electron .",
     "dev": "concurrently -k \"npm run dev:web\" \"npm run dev:desktop\"",
+    "build:prepare": "npm --prefix ../.. run build && node ../../scripts/prepare-desktop-bundle.mjs",
     "pack": "electron-builder --dir",
-    "build:win": "electron-builder --win nsis"
+    "build:win": "npm run build:prepare && electron-builder --win nsis"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
@@ -33,6 +34,12 @@
       "local-server.js",
       "preload.js",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "app-bundle",
+        "to": "app-bundle"
+      }
     ],
     "win": {
       "artifactName": "Bey360-Setup-${version}.${ext}",

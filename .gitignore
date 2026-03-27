@@ -44,6 +44,7 @@ yarn-error.log*
 
 # desktop
 apps/desktop/dist/
+apps/desktop/app-bundle/
 
 # vercel
 .vercel
