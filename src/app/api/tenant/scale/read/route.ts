@@ -4,7 +4,7 @@ import { AuthorizationError, requireTenantAccess } from "@/lib/auth/tenant-acces
 import { fail, ok } from "@/lib/http/response";
 import { readScaleWeight } from "@/modules/scale/application/scale-device-service";
 import { loadTenantScaleSettings, mergeScaleSettings } from "@/app/api/tenant/scale/_lib";
-import { isSerialScaleSupportedOnRequest } from "@/app/api/tenant/scale/runtime";
+import { isSerialScaleSupportedOnRequest, isTcpScaleTargetReachableOnRequest } from "@/app/api/tenant/scale/runtime";
 
 export const runtime = "nodejs";
 
@@ -46,6 +46,13 @@ export async function POST(request: NextRequest) {
       return fail(
         "Seri port teraziler bulut sunucuda okunamaz. Bey360 masaustu/local kurulum kullanin veya TCP/Ethernet terazi baglayin.",
         "SCALE_SERIAL_NOT_SUPPORTED",
+        422,
+      );
+    }
+    if (resolvedSettings.transport === "tcp" && !isTcpScaleTargetReachableOnRequest(request, resolvedSettings.host)) {
+      return fail(
+        "Yerel agdaki Ethernet teraziler bulut sunucudan okunamaz. Bu cihaz icin Bey360 masaustu/local kurulum kullanin veya teraziyi erisilebilir bir statik IP/VPN uzerinden baglayin.",
+        "SCALE_TCP_PRIVATE_NOT_SUPPORTED",
         422,
       );
     }
